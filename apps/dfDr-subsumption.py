@@ -28,16 +28,16 @@ class dfDrApp( JoyApp ):
         self.Turret_sign = -1
 
         # Waypoints 
-        self.waypoints = waypoints
+        self.waypoints = []
         
         # Line sensor data
-        self.line_sense = []
+        self.line_sense = [0,0]
 
         # Control constants
-        self.follow_line_p = 0.2
+        self.follow_line_p = 0.1
 
         # run
-        self.run = False
+        self.Run = False
         
     def stop( self ):
         progress( "Stopping all modules" )
@@ -48,14 +48,15 @@ class dfDrApp( JoyApp ):
     def parseField( self ):
         for msg in self.fieldInput.queueIter():
             msg = msg[1]
+            print msg
             if msg.has_key('w'):
                 self.waypoints = []
-                scale_factor = 57.0/100.0
+                scale_factor = 100.0/100.0
                 for wp in msg['w']:
                     self.waypoints.append(scale_factor*matrix([-wp[0], wp[1]])/100.0)
-            elif msg.has_key('b'):
+            if msg.has_key('b'):
                 self.line_sense[0] = msg['b']
-            elif msg.has_key('f'):
+            if msg.has_key('f'):
                 self.line_sense[1] = msg['f']
 
     def followLine( self ):
@@ -63,14 +64,18 @@ class dfDrApp( JoyApp ):
         A line following behavior.
         Does proportional control on the difference between the front and back sensors
         """
-        sense_diff = self.line_sense[0] - self.line_sense[1]
+        sense_diff = self.line_sense[1] - self.line_sense[0]
+        progress( "sense_diff: %f" % sense_diff )
         # Scale to 1.0 instead of 255 
         w_cmd = self.follow_line_p * (sense_diff/255.0) 
+        fforward = 0.12
+        w_cmd = w_cmd + copysign( fforward, w_cmd )
+        progress( "w_cmd: %f" % w_cmd )
         l_cmd = -self.LW_sign * w_cmd/2.0
         r_cmd =  self.RW_sign * w_cmd/2.0
 
-        self.r.LW.set_torque( lcmd )
-        self.r.RW.set_torque( rcmd )
+        self.r.LW.set_torque( l_cmd )
+        self.r.RW.set_torque( r_cmd )
 
     def findLine( self ):
         """
@@ -82,7 +87,17 @@ class dfDrApp( JoyApp ):
         """
         Make control decisions        
         """
-        if self.line_sense[0] == 0 or self.line_sense[1]:
+        # I like being able to get voltage ...
+        voltage = self.r.LW.get_voltage()
+        progress( "Voltage: %5.2f" % voltage )
+        if voltage < 13.0:
+            # If voltage is low stop the robot
+            progress(" LOW VOLTAGE!!!! " )
+            self.stop()
+            return
+
+        # Robot behaviors
+        if self.line_sense[0] == 0 or self.line_sense[1] == 0:
             self.findLine()
         else:
             self.followLine()
@@ -106,6 +121,7 @@ class dfDrApp( JoyApp ):
 
     def onStop( self ):
         """
+        Stop the robot
         """
         self.stop()
 
@@ -124,10 +140,10 @@ class dfDrApp( JoyApp ):
         if evt.type == KEYDOWN:
             if evt.key == K_SPACE:
                 # Toggle run state 
-                if self.run = True:
-                    self.run = False
-                elif self.run = False:
-                    self.run = True
+                if self.Run == True:
+                    self.Run = False
+                elif self.Run == False:
+                    self.Run = True
 
             elif evt.key in [K_ESCAPE, K_q]:
                 self.stop()
