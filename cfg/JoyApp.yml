@@ -1,0 +1,16 @@
+clockInterval: 100
+keyboardRepeatDelay: 500
+keyboardRepeatInterval: 50
+nodeNames: { 
+  0x01: H11,
+  0x02: K11,
+  0x03: H12,
+  0x04: K12,
+  0x05: H21,
+  0x06: K21,
+  0x07: H22,
+  0x08: K22,
+}
+positionTolerance: 200000
+robotPollRate: 10000000
+windowSize: [320, 240]
