@@ -438,10 +438,11 @@ class Bus( AbstractBus ):
             #   positions buf[:L+1]. We peel the wrapper and return the 
             #   payload portion
             pkt = self.buf[2:L-1]
+            fl_pkt = self.buf
             self.buf = self.buf[L:]
             self.rxPkts += 1
             if 'x' in self.DEBUG:
-              progress('[Dynamixel] recv --> %s\n' % repr(pkt))
+              progress('[Dynamixel] recv --> %s\n' % repr(fl_pkt))
               self._parseErr(pkt)
             return pkt
         # ends parsing loop
@@ -1136,8 +1137,6 @@ class DynamixelModule( AbstractServoModule ):
     
     MX_POS =  10000 #: maximal position value for servos
     MN_POS = -10000 #: minimal position value for servos
-    SPEED_LOWER = -450 #: speed range lower bound
-    SPEED_UPPER = 450 #: speed range upper bound
             
     @classmethod
     def ang2dynamixel(cls, ang):
@@ -1160,12 +1159,16 @@ class DynamixelModule( AbstractServoModule ):
     @classmethod
     def dynamixel2rpm(cls, dynamixel ):
         """Convert dynamixel units to rotations per minute"""
-        return dynamixel*cls.SPEED_SCL
+        # There is some sort of weird nonesense going on in the readings
+        direction = dynamixel >> 10
+        if direction == 0:
+          return (dynamixel & 0x3FF)*cls.SPEED_SCL
+        return -(dynamixel & 0x3FF)*cls.SPEED_SCL
   
     @classmethod
     def rpm2dynamixel(cls, rpm ):
         """Convert rpm to dynamixel units"""
-        return rpm/cls.SPEED_SCL
+        return int(rpm/cls.SPEED_SCL)+1
   
     @classmethod
     def dynamixel2voltage(cls, dynamixel ):
@@ -1307,7 +1310,7 @@ class DynamixelModule( AbstractServoModule ):
         """
         dxl = self.mem_read(self.mcu.present_position)
         #TODO: convert to units of deg/100
-        return Dynamixel.dynamixel2ang(dxl)
+        return self.dynamixel2ang(dxl)
 
     def get_pos_async(self):
         """
@@ -1346,7 +1349,8 @@ class DynamixelModule( AbstractServoModule ):
         -- mem_read the present_speed register and convert
         """
         spd = self.mem_read(self.mcu.present_speed)
-        return Dynamixel.dynamixel2rpm(spd)
+        rpm = self.dynamixel2rpm(spd)
+        return rpm 
 
     def set_torque(self,val):
         """
@@ -1367,7 +1371,7 @@ class DynamixelModule( AbstractServoModule ):
         INPUT:
           val -- units in rpm from -114 to 114
         """
-        if self.mode == 1:
+        if self.mode == 0:
             raise TypeError('set_speed not allowed for modules in Servo mode')
         val = self.rpm2dynamixel(val)
         return self.mem_write(self.mcu.moving_speed, val)
