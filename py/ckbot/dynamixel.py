@@ -271,7 +271,7 @@ class Bus( AbstractBus ):
              while now()-t0 < float(timeout)/retries:
                res = self.recv()
                if res is not None:
-                 found.append(b)
+                 found.append( b )
                  if useFirst:
                    self.reconnect( baudrate=found[0] )
                    return found
@@ -542,7 +542,7 @@ class Bus( AbstractBus ):
         """
         return self.write(nid, Dynamixel.CMD_RESET)
     
-    def send_cmd_sync( self, nid, cmd, pars, timeout=0.01, retries=4 ):
+    def send_cmd_sync( self, nid, cmd, pars, timeout=0.01, retries=5 ):
         """
         Send a command in synchronous form, waiting for reply
       
