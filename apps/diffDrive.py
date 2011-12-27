@@ -15,16 +15,18 @@ class diffDriveApp( JoyApp ):
         kw.update( robot=dict(protocol=p, count=3) )
         JoyApp.__init__( self, confPath="$/cfg/diffDriveApp.yml", *args, **kw )
         self.r = self.robot.at
-        return
-        
-    """
+        return        
+    
     def stop( self ):
         progress( "Stopping all modules" )
-        
         self.r.L.go_slack()
         self.r.R.go_slack()
         self.r.Turret.go_slack()
-    """
+
+    def onStart( self ):
+        
+
+    
 
 if __name__ == "__main__":
     
