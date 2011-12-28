@@ -6,7 +6,6 @@
    and protocol communication layers ( As specified in the Robotis E-manual http://support.robotis.com/en/ )
 
    ... talk about meminterface, pna, and module classes ...
-
 -- Typical usage via ckbot.logical python module:
     >>> from ckbot import logical, dynamixel
     >>> nodes = {0x01:'head', 0x06:'mid', 0x03:'tail'}
@@ -49,7 +48,7 @@ class DynamixelServoError( AbstractBusError ):
 def crop( val, lower, upper ):
   return max(min(val,upper),lower)
 
-DEBUG = ['x']
+DEBUG = []
 
 class Dynamixel( object ):
   """ 
