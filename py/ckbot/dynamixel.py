@@ -1370,10 +1370,21 @@ class DynamixelModule( AbstractServoModule ):
         INPUT:
           val -- units in rpm from -114 to 114
         """
-        if self.mode == 0:
-            raise TypeError('set_speed not allowed for modules in Servo mode')
+        if self.mode == 1:
+            raise TypeError('set_speed not allowed for modules in CR mode')
         val = self.rpm2dynamixel(val)
         return self.mem_write(self.mcu.moving_speed, val)
+
+    def get_voltage( self ):
+        """
+        Get present voltage on bus as read by servo
+
+        OUTPUTS:
+        -- voltage -- int -- volts
+        THEORY OF OPERATION:
+        -- mem_read the present_voltage register and convert
+        """      
+        return self.dynamixel2voltage(self.mem_read(self.mcu.present_voltage))
           
 class EX106Module( DynamixelModule ):
     """
