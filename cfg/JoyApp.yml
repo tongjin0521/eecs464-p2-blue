@@ -1,4 +1,4 @@
-clockInterval: 100
+clockInterval: 10
 keyboardRepeatDelay: 500
 keyboardRepeatInterval: 50
 nodeNames: { 
@@ -14,3 +14,4 @@ nodeNames: {
 positionTolerance: 200000
 robotPollRate: 10000000
 windowSize: [320, 240]
+# remote : { allowMisc : 10 }
