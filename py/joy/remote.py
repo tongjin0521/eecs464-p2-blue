@@ -26,10 +26,16 @@ class Sink( Plan ):
   
   Events are serialized into a JSON string and sent over separate UDP 
   packets. TIMEREVENTS are ignored.
+  
+  Additionally, any JSON packets that contain dictionaries without 
+  the 'type' key may be shunted to a separate queue, for application 
+  specific processing. This queue is windowed in time, i.e. will hold 
+  at most X seconds worth of packets, as specified by the allowMisc
+  constructor parameter. Its contents are accessible via queueIter(). 
   """ 
   DEFAULT_BINDING = ('0.0.0.0',DEFAULT_PORT)
   
-  def __init__( self, app, bnd=DEFAULT_BINDING, rate=100, convert=None ):
+  def __init__( self, app, bnd=DEFAULT_BINDING, rate=100, convert=None, allowMisc = None ):
     """
     Attributes:
       bnd -- 2-tuple -- binding address for socket, in socket library format
@@ -38,12 +44,16 @@ class Sink( Plan ):
       convert -- callable -- convert incoming event dictionaries.
         Allows remote joysticks/keys to be remapped. Returns None if
         event should be ignored
-        By default, only KEYUP and KEYDOWN events are allowed 
+        By default, only KEYUP and KEYDOWN events are allowed
+      allowMisc -- float / None -- number of seconds of "misc" packets 
+        to store in self.queue or None to disallow non-event packets
     """
     Plan.__init__(self,app)
     self.bnd = bnd
     self.sock = None
     self.rate = rate
+    self.queue = []
+    self.allow = allowMisc
     if convert is None:
       def default_convert( dic ):
         tc = dic['type_code']
@@ -81,14 +91,6 @@ class Sink( Plan ):
         # Create event from the next packet
         pkt = self.sock.recv(1024)
         dic = json_loads(pkt)
-        dic = self.convert(dic)
-        # If converter dropped event --> next
-        if not dic:
-          continue
-        # Put event on event queue
-        nev = JoyEvent( **dic )
-        #DBG progress('Remote event:'+str(nev))
-        pygame_event_post(nev)
       #
       except SocketError,err:
         # If socket is out of data --> we're done
@@ -101,7 +103,42 @@ class Sink( Plan ):
         # --> Log and continue
         progress('Received bad UDP packet: %s' % repr(pkt))
         continue
+      #
+      # Process the event packet
+      #
+      dic = self.convert(dic)
+      # If converter dropped event --> next
+      if not dic:
+        continue
+      # If has a 'type' --> JoyEvent
+      if dic.has_key('type'):
+        # Put event on event queue
+        nev = JoyEvent( **dic )
+        #DBG progress('Remote event:'+str(nev))
+        pygame_event_post(nev)
+        continue
+      # If custom events are allowed --> add to queue
+      if self.allow:
+        now = self.app.now
+        # Drop any out-of-date packets from queue
+        while self.queue and (now-self.queue[0][0] > self.allow):
+          self.queue.pop(0)
+        # Store new timestamp and packet
+        self.queue.append( (now,dic) )
     return False
+
+  def queueIter( self ):
+    """Iterate over the custom packets in the queue
+       Yields pairs (ts, pkt)
+         ts -- float -- arrival time
+         pkt -- dictionary -- packet contents
+    """
+    if self.allow is None:
+      raise IndexError,"No custom packets allowed -- use allowMisc parameter to Sink constructor"
+    while self.queue:
+      if (self.app.now-self.queue[0][0]) < self.allow:
+        yield self.queue[0]
+      self.queue.pop(0)
 
 class Source( Plan ):
   """
