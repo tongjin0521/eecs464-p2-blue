@@ -33,6 +33,8 @@ class diffDriveApp( JoyApp ):
     """
     Diff drive using 2 dynamixel servos controlled via joystick
     """
+    RPM2RADS = 9.5493
+
     def __init__( self, *args, **kw ):
         """
         Initialize the protocol, and app
@@ -48,8 +50,9 @@ class diffDriveApp( JoyApp ):
         self.k_turn = 0.5 
 
         self.LW_sign = 1
-        self.RW_sign = -1 
-        
+        self.RW_sign = -1     
+        self.Turret_sign = -1
+
         # Lowpass filters for the wheel rpms 
         self.l_filter = lowpass( tau=0.2 )
         self.r_filter = lowpass( tau=0.2 )
@@ -57,6 +60,12 @@ class diffDriveApp( JoyApp ):
         # Diff drive state 
         self.pose = matrix([0.0, 0.0, 0.0])
         self.state_t0 = now()
+
+        # Turret state_t0
+        self.turret_pose = 0.0
+        self.turret_t0 = now()
+        self.K_turret = -0.5
+        self.turret_max = 0.2
         return        
     
     def stop( self ):
@@ -70,18 +79,51 @@ class diffDriveApp( JoyApp ):
         self.r.LW.set_torque( self.LW_sign * (self.k_drive*self.drive - self.k_turn*self.turn) )
         self.r.RW.set_torque( self.RW_sign * (self.k_drive*self.drive + self.k_turn*self.turn) )
 
+        # I like being able to get voltage ...
+        voltage = self.r.LW.get_voltage()
+        progress( "Voltage: %5.2f" % voltage )
+        if voltage < 13.0:
+            progress(" LOW VOLTAGE!!!! " )
+        
+
+    def update_turret( self, phase ):
         # Update control input for turret based upon estimated orientation
-        
-        
+        # Read until we get a non-nonesense value, ... kinda ( filter? )
+        while True:
+            turret_rpm = self.Turret_sign * self.r.Turret.get_speed()
+            if abs(turret_rpm) < 70.0:
+                break        
+        turret_rads = turret_rpm/self.RPM2RADS                
+        ###progress( "turret_rads: %5.2f" % turret_rads )
+        # Integrate to get believed turret position
+        # Update our dt before integrating 
+        curtime = now()
+        dt = curtime - self.turret_t0
+        self.turret_t0 = curtime    
+        self.turret_pose += turret_rads*dt
+        ###progress( "turret pose: %5.2f" % self.turret_pose )
+
+        # Convert radian values to degrees 
+        phi = self.pose[0,2]
+        rad2deg = (180/pi)
+        theta_des = phi        
+        theta_cur = self.turret_pose
+        error = theta_des - theta_cur
+        progress( "theta_cur: %5.2f, theta_des: %5.2f" % (theta_cur, theta_des) )
+        progress( "Turret Error: %5.2f" % error )                
+        cmd = self.K_turret*error
+        if abs(cmd) > self.turret_max:
+            cmd = copysign( self.turret_max, cmd )
+        self.r.Turret.set_torque( cmd )
 
     def update_pose( self , phase ):
         """
         Estimate pose of the diff drive
         """
         # Get rpm of each wheel
-        RPM2RADS = 9.5493
+
         
-        # Account for nonesense values 
+        # Read until we get a non-nonesense value, ... kinda ( filter? )
         while True:
             l_rpm = self.LW_sign*self.r.LW.get_speed()
             if abs(l_rpm) < 70.0:
@@ -89,10 +131,11 @@ class diffDriveApp( JoyApp ):
         while True:
             r_rpm = self.RW_sign*self.r.RW.get_speed()
             if abs(r_rpm) < 70.0:
-                break                
-        l_rads = l_rpm/RPM2RADS
-        r_rads = r_rpm/RPM2RADS
-        progress( "l_rads: %5.2f, r_rads: %5.2f" % (l_rads, r_rads) )
+                break   
+
+        l_rads = l_rpm/self.RPM2RADS
+        r_rads = r_rpm/self.RPM2RADS
+        ###progress( "l_rads: %5.2f, r_rads: %5.2f" % (l_rads, r_rads) )
         
         # Convert wheel rpm values into velocity and angular rate
         ### NOTE: I need to get all the conversions correct here
@@ -101,12 +144,12 @@ class diffDriveApp( JoyApp ):
         v = ((r_rads + l_rads)*wheel_radius)/2.0
         w = ((r_rads - l_rads)*wheel_radius)/base_width
         qdot = matrix([v, w])
-        progress( "v: %5.2f, w: %5.2f" % (v, w) )
+        ###progress( "v: %5.2f, w: %5.2f" % (v, w) )
 
         # Estimate pose by integrating x_velocity, y_velocity and angular rate 
-        theta = self.pose[0,2]
-        J = matrix( [[-sin( theta ), 0],
-                     [ cos( theta ), 0],
+        phi = self.pose[0,2]
+        J = matrix( [[-sin( phi ), 0],
+                     [ cos( phi ), 0],
                      [ 0           , 1]] )
         pdot = J*qdot.transpose()
         # Update our dt before integrating 
@@ -131,6 +174,11 @@ class diffDriveApp( JoyApp ):
         pose_fcp.onStop = curry( progress, "Stopping Estimator FCP" )
         self.pose_fcp = pose_fcp
 
+        turret_fcp = FunctionCyclePlan( self, self.update_turret, N=10, maxFreq=10, interval=0.1 )
+        turret_fcp.onStart = curry( progress, "Initializing Turret FCP" )
+        turret_fcp.onStop = curry( progress, "Stopping Turret FCP" )
+        self.turret_fcp = turret_fcp        
+
         # For now I'm just going to use keyboard control
         #sf = StickFilter( self )
         #sf.setLowpass( "joy0axis2", 5 )
@@ -151,6 +199,7 @@ class diffDriveApp( JoyApp ):
         # Handle keyboard events 
         if evt.type == KEYDOWN:
             if evt.key == K_SPACE:
+                # Toggle FunctionCyclePlans 
                 if self.control_fcp.isRunning():
                     self.control_fcp.stop()
                 else:
@@ -159,7 +208,10 @@ class diffDriveApp( JoyApp ):
                     self.pose_fcp.stop()
                 else:
                     self.pose_fcp.start()
-
+                if self.turret_fcp.isRunning():
+                    self.turret_fcp.stop()
+                else:
+                    self.turret_fcp.start()
             elif evt.key in [K_ESCAPE, K_q]:
                 self.stop()
             elif evt.key == K_w:
@@ -174,7 +226,6 @@ class diffDriveApp( JoyApp ):
             elif evt.key == K_d:
                 self.turn -= 0.1 
                 progress( "drive %5.2f, turn %5.2f" % (self.drive, self.turn) )            
-
         return                 
 
 if __name__ == "__main__":
