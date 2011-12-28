@@ -6,7 +6,6 @@
    and protocol communication layers ( As specified in the Robotis E-manual http://support.robotis.com/en/ )
 
    ... talk about meminterface, pna, and module classes ...
-
 -- Typical usage via ckbot.logical python module:
     >>> from ckbot import logical, dynamixel
     >>> nodes = {0x01:'head', 0x06:'mid', 0x03:'tail'}
@@ -49,7 +48,7 @@ class DynamixelServoError( AbstractBusError ):
 def crop( val, lower, upper ):
   return max(min(val,upper),lower)
 
-DEBUG = ['x']
+DEBUG = []
 
 class Dynamixel( object ):
   """ 
@@ -271,7 +270,7 @@ class Bus( AbstractBus ):
              while now()-t0 < float(timeout)/retries:
                res = self.recv()
                if res is not None:
-                 found.append(b)
+                 found.append( b )
                  if useFirst:
                    self.reconnect( baudrate=found[0] )
                    return found
@@ -438,10 +437,11 @@ class Bus( AbstractBus ):
             #   positions buf[:L+1]. We peel the wrapper and return the 
             #   payload portion
             pkt = self.buf[2:L-1]
+            fl_pkt = self.buf
             self.buf = self.buf[L:]
             self.rxPkts += 1
             if 'x' in self.DEBUG:
-              progress('[Dynamixel] recv --> %s\n' % repr(pkt))
+              progress('[Dynamixel] recv --> %s\n' % repr(fl_pkt))
               self._parseErr(pkt)
             return pkt
         # ends parsing loop
@@ -542,7 +542,7 @@ class Bus( AbstractBus ):
         """
         return self.write(nid, Dynamixel.CMD_RESET)
     
-    def send_cmd_sync( self, nid, cmd, pars, timeout=0.01, retries=4 ):
+    def send_cmd_sync( self, nid, cmd, pars, timeout=0.01, retries=5 ):
         """
         Send a command in synchronous form, waiting for reply
       
@@ -1136,8 +1136,6 @@ class DynamixelModule( AbstractServoModule ):
     
     MX_POS =  10000 #: maximal position value for servos
     MN_POS = -10000 #: minimal position value for servos
-    SPEED_LOWER = -450 #: speed range lower bound
-    SPEED_UPPER = 450 #: speed range upper bound
             
     @classmethod
     def ang2dynamixel(cls, ang):
@@ -1160,12 +1158,16 @@ class DynamixelModule( AbstractServoModule ):
     @classmethod
     def dynamixel2rpm(cls, dynamixel ):
         """Convert dynamixel units to rotations per minute"""
-        return dynamixel*cls.SPEED_SCL
+        # There is some sort of weird nonesense going on in the readings
+        direction = dynamixel >> 10
+        if direction == 0:
+          return (dynamixel & 0x3FF)*cls.SPEED_SCL
+        return -(dynamixel & 0x3FF)*cls.SPEED_SCL
   
     @classmethod
     def rpm2dynamixel(cls, rpm ):
         """Convert rpm to dynamixel units"""
-        return rpm/cls.SPEED_SCL
+        return int(rpm/cls.SPEED_SCL)+1
   
     @classmethod
     def dynamixel2voltage(cls, dynamixel ):
@@ -1307,7 +1309,7 @@ class DynamixelModule( AbstractServoModule ):
         """
         dxl = self.mem_read(self.mcu.present_position)
         #TODO: convert to units of deg/100
-        return Dynamixel.dynamixel2ang(dxl)
+        return self.dynamixel2ang(dxl)
 
     def get_pos_async(self):
         """
@@ -1346,7 +1348,8 @@ class DynamixelModule( AbstractServoModule ):
         -- mem_read the present_speed register and convert
         """
         spd = self.mem_read(self.mcu.present_speed)
-        return Dynamixel.dynamixel2rpm(spd)
+        rpm = self.dynamixel2rpm(spd)
+        return rpm 
 
     def set_torque(self,val):
         """
@@ -1368,9 +1371,20 @@ class DynamixelModule( AbstractServoModule ):
           val -- units in rpm from -114 to 114
         """
         if self.mode == 1:
-            raise TypeError('set_speed not allowed for modules in Servo mode')
+            raise TypeError('set_speed not allowed for modules in CR mode')
         val = self.rpm2dynamixel(val)
         return self.mem_write(self.mcu.moving_speed, val)
+
+    def get_voltage( self ):
+        """
+        Get present voltage on bus as read by servo
+
+        OUTPUTS:
+        -- voltage -- int -- volts
+        THEORY OF OPERATION:
+        -- mem_read the present_voltage register and convert
+        """      
+        return self.dynamixel2voltage(self.mem_read(self.mcu.present_voltage))
           
 class EX106Module( DynamixelModule ):
     """
