@@ -1,7 +1,8 @@
 from joy import *
+from joy.remote import Sink as RemoteSink
 import ckbot.dynamixel as dynamixel
 import ckbot.logical as logical
-from math import copysign, cos, sin, pi
+from math import copysign, cos, sin, pi, atan2
 from time import time as now, sleep
 from numpy import matrix 
 
@@ -40,14 +41,16 @@ class diffDriveApp( JoyApp ):
         Initialize the protocol, and app
         """
         p = dynamixel.Protocol()
-        kw.update( robot=dict(protocol=p, count=3) )
+        kw.update( robot=dict(protocol=p, count=2) )
         JoyApp.__init__( self, confPath="$/cfg/diffDriveApp.yml", *args, **kw )
         self.r = self.robot.at
+        self.stop()
     
         self.drive = 0
         self.turn = 0
         self.k_drive = 1
-        self.k_turn = 0.5 
+        self.k_turn = 0.25 
+        self.i_turn = 0
 
         self.LW_sign = 1
         self.RW_sign = -1     
@@ -66,15 +69,20 @@ class diffDriveApp( JoyApp ):
         self.turret_t0 = now()
         self.K_turret = -0.5
         self.turret_max = 0.2
+
+        # Waypoints 
+        self.waypoints = None
+        self.init_pos = False
         return        
     
     def stop( self ):
         progress( "Stopping all modules" )
         self.r.LW.go_slack()
         self.r.RW.go_slack()
-        self.r.Turret.go_slack()
+        #self.r.Turret.go_slack()
 
-    def update_control( self, phase ):        
+    def update_control( self, phase ):    
+
         # Update control inputs for wheels
         self.r.LW.set_torque( self.LW_sign * (self.k_drive*self.drive - self.k_turn*self.turn) )
         self.r.RW.set_torque( self.RW_sign * (self.k_drive*self.drive + self.k_turn*self.turn) )
@@ -83,7 +91,45 @@ class diffDriveApp( JoyApp ):
         voltage = self.r.LW.get_voltage()
         progress( "Voltage: %5.2f" % voltage )
         if voltage < 13.0:
+            # If voltage is low stop the robot
             progress(" LOW VOLTAGE!!!! " )
+            self.stop()
+            return
+
+        # If we have yet to set our current position, set it to the location
+        # of the first waypoint
+        if not self.waypoints:
+            return
+        
+        if not self.init_pos:
+            progress( " Initializing position " )
+            self.pose[0,:2] = self.waypoints[0]
+            self.init_pos = True
+            
+        cur_pos = self.pose[0,:2] 
+        dir_vec = self.waypoints[1] - cur_pos
+        progress("dir_vec: %s" % repr( dir_vec ))
+        theta_des = atan2( dir_vec[0,0], dir_vec[0,1] )
+        progress( "theta_des: %f" % theta_des )
+
+        # Turn towards waypoint 
+        theta_cur = self.pose[0,2]        
+        error = theta_des - theta_cur  
+        progress("error: %f" % error)     
+        self.i_turn += 0.05*error
+        w = self.k_turn * error + self.i_turn 
+        w_l = -w/2.0
+        w_r = w/2.0
+
+        # Calculate remaining command authority 
+        max_cmd = 0.2
+        cmd_remaining = max_cmd - (abs(w_l)+abs(w_r))        
+        if cmd_remaining < 0.0:
+            cmd_remaining = 0.0
+        """
+        self.r.LW.set_torque( self.LW_sign * ( w_l + cmd_remaining ) )
+        self.r.RW.set_torque( self.RW_sign * ( w_r +cmd_remaining ) )
+        """
         
 
     def update_turret( self, phase ):
@@ -139,8 +185,8 @@ class diffDriveApp( JoyApp ):
         
         # Convert wheel rpm values into velocity and angular rate
         ### NOTE: I need to get all the conversions correct here
-        wheel_radius = 0.05
-        base_width = 0.24
+        wheel_radius = 0.0625
+        base_width = 0.195
         v = ((r_rads + l_rads)*wheel_radius)/2.0
         w = ((r_rads - l_rads)*wheel_radius)/base_width
         qdot = matrix([v, w])
@@ -148,7 +194,7 @@ class diffDriveApp( JoyApp ):
 
         # Estimate pose by integrating x_velocity, y_velocity and angular rate 
         phi = self.pose[0,2]
-        J = matrix( [[-sin( phi ), 0],
+        J = matrix( [[ -sin( phi ), 0],
                      [ cos( phi ), 0],
                      [ 0           , 1]] )
         pdot = J*qdot.transpose()
@@ -164,6 +210,7 @@ class diffDriveApp( JoyApp ):
     def onStart( self ):
         """
         """
+
         control_fcp = FunctionCyclePlan( self, self.update_control, N=10, maxFreq=10, interval=0.1 )
         control_fcp.onStart = curry( progress, "Initializing Control FCP" )
         control_fcp.onStop = curry( progress, "Stopping Control  FCP" )
@@ -174,10 +221,21 @@ class diffDriveApp( JoyApp ):
         pose_fcp.onStop = curry( progress, "Stopping Estimator FCP" )
         self.pose_fcp = pose_fcp
 
+        """
         turret_fcp = FunctionCyclePlan( self, self.update_turret, N=10, maxFreq=10, interval=0.1 )
         turret_fcp.onStart = curry( progress, "Initializing Turret FCP" )
         turret_fcp.onStop = curry( progress, "Stopping Turret FCP" )
         self.turret_fcp = turret_fcp        
+        """
+
+        self.remoteInput = RemoteSink( self, bnd=('',31313) )
+        self.remoteInput.start()
+
+        # Remote Sink for misc data, need to talk to Shai about JoyApp one
+        self.fieldInput = RemoteSink( self, convert=lambda x: x, allowMisc=10.0 )
+        self.fieldInput.start()
+
+        self.timeToGet = self.onceEvery(0.25)
 
         # For now I'm just going to use keyboard control
         #sf = StickFilter( self )
@@ -195,7 +253,21 @@ class diffDriveApp( JoyApp ):
         # Also remember to stop all modules
         self.stop()
     
-    def onEvent( self, evt ):        
+    def onEvent( self, evt ):    
+
+        # Get data from field
+        if self.timeToGet():            
+            for msg in self.fieldInput.queueIter():
+                msg = msg[1]
+                if not msg.has_key('w'):
+                    continue                
+                self.waypoints = []
+                for wp in msg['w']:
+                    self.waypoints.append(matrix([-wp[0], wp[1]])/100.0)
+                    
+            progress('Waypoints %s'
+                     % repr(self.waypoints) )
+
         # Handle keyboard events 
         if evt.type == KEYDOWN:
             if evt.key == K_SPACE:
@@ -208,10 +280,12 @@ class diffDriveApp( JoyApp ):
                     self.pose_fcp.stop()
                 else:
                     self.pose_fcp.start()
+                """
                 if self.turret_fcp.isRunning():
                     self.turret_fcp.stop()
                 else:
                     self.turret_fcp.start()
+                """
             elif evt.key in [K_ESCAPE, K_q]:
                 self.stop()
             elif evt.key == K_w:
@@ -226,6 +300,7 @@ class diffDriveApp( JoyApp ):
             elif evt.key == K_d:
                 self.turn -= 0.1 
                 progress( "drive %5.2f, turn %5.2f" % (self.drive, self.turn) )            
+        JoyApp.onEvent( self, evt )
         return                 
 
 if __name__ == "__main__":
