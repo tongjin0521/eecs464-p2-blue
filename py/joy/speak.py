@@ -13,7 +13,8 @@ Typical usage:
 >>> say("it's wonderful to have text to speech working")
 
 If espeak is not supported, the say() function does nothing.
-You can tell whether espeak should 
+
+LICENSE GPL 3.0 (c) Shai Revzen, U. Penn, 2010
 """
 global __SYNTH
 __SYNTH = None
@@ -34,7 +35,13 @@ def _espeak_say(text):
     s = Popen( "espeak -v f3 -s 200 >/dev/null 2>/dev/null", shell=True, stdin=PIPE )
   if s is None:
     return
+  try:
   s.stdin.write(text+"\n")
+  except IOError,ioe:
+    warn("espeak pipe failed with error %s" % ioe)
+    __SYNTH = None
+    # Try again
+    _espeak_say(text)
   __SYNTH = s
   
 def _nospeak_say(text):
