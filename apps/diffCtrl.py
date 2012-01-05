@@ -1,32 +1,33 @@
-# Just a copy of the remoteSource demo with fixed host and port
-from joy import *
-from joy.remote import Source as RemoteSource
-
-class RemoteSourceApp( JoyApp ):
-  def __init__(self,*arg,**kw):
-    JoyApp.__init__(self,*arg,**kw)
-
-
-  def onStart( self ):
-    self.rs = RemoteSource(self, dst=('172.16.16.135', 31313))
-    self.rs.start()
-
-  def onEvent( self, evt ): 
-    if evt.type in set([KEYDOWN, KEYUP]):
-      print evt
-      self.rs.push( evt )
-      return   
-    JoyApp.onEvent( self, evt )
-   
+#!/usr/bin/env
+# I can't seem to get remoteSource to do what I want ... this is worrisome
+from socket import socket, AF_INET, SOCK_DGRAM
+import pygame
+from pygame.locals import *
+from joy.events import describeEvt
+from json import dumps as json_dumps
+from time import time as now
 
 if __name__=="__main__":
   print """
-    Demonstration of RemoteSource plan
-    ------------------------------------
-    
-    Sends keyboard events to a remote JoyApp, specified on the commandline as two parameters: host port
-    
-  """
-  app = RemoteSourceApp()
-  app.run()
+	Send pygame keyboard events over UDP
+	"""    
+  s = socket( AF_INET, SOCK_DGRAM )
+  dst = ('172.16.16.135', 31313)
+  t0 = now()
+  
+  pygame.init()
+  disp = pygame.display.set_mode( (400, 400 ) )
 
+  while True:
+    evts = pygame.event.get()
+    for evt in evts:
+      if evt.type in [MOUSEMOTION]:
+        continue
+      dic = describeEvt( evt, parseOnly = True )
+      dic['t'] = now()-t0
+      jsn = json_dumps( dic, ensure_ascii = True )
+      s.sendto( jsn, dst )
+      print "Sending %s to %s:%d" % ( (jsn,)+dst )
+    pygame.display.flip()
+  
+  
