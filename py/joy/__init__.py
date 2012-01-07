@@ -233,7 +233,7 @@ class JoyApp( object ):
    3. onStop, called prior to pygame shutdown.
      
   """
-  def __init__(self, confPath=None, robot=None, scr=None, cfg={}, remote=None):
+  def __init__(self, confPath=None, robot=None, scr=None, cfg={}):
     """
     Initialize a JoyApp application. This superclass constructor MUST be called
     by all subclasses.
@@ -252,8 +252,6 @@ class JoyApp( object ):
       cfg -- dict -- new/overridden configuration parameters. These override the
             configuration found in JoyApp.yml and confPath (if present). The 
             configuration will be in a JoyAppConfig instance in self.cfg
-      remote -- an interface for communicating between multiple joy
-               instances ... this needs to be made more modular -U
 
     Configuration parameters are searched for in the following order
       1. JoyApp constructor cfg keyword argument
@@ -605,10 +603,13 @@ class JoyApp( object ):
     onStop() is called before the application is shut down.
     """
     self._startPyGame()
-    if self.cfg.remote is not None:
-      rs = remote.Sink(self, convert=lambda x: x, **self.cfg.remote )
+    if self.cfg.remote is None:
+      self.remote = None
+    else:
+      self.remote = remote.Sink(self, convert=lambda x: x, **self.cfg.remote )
       progress("Starting up a remote.Sink interface")
-      rs.start()   
+      self.remote.start()
+    
     try:
       self.onStart()
       while self.isRunning():
