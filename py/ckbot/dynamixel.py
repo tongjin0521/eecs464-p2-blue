@@ -1359,6 +1359,8 @@ class DynamixelModule( AbstractServoModule ):
           val -- units in between -1.0 - 1.0
         """
         if self.mode == 0:
+          self.get_mode()
+          if self.mode == 0:
             raise TypeError('set_torque not allowed for modules in Servo')
         val = self.torque2dynamixel(val)
         return self.pna.mem_write_fast(self.mcu.moving_speed, val)
