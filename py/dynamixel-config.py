@@ -10,7 +10,7 @@ change their IDs
 
    ... more examples ...
 """
-from sys import argv
+from sys import argv, exit as sys_exit
 import sys
 from getopt import getopt, GetoptError
 from yaml import load, dump
