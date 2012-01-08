@@ -52,8 +52,8 @@ class Sink( Plan ):
     self.bnd = bnd
     self.sock = None
     self.rate = rate
-    self.queue = []
-    self.allow = allowMisc
+    self.flushMisc()
+    self.setAllowMisc(allowMisc)
     if convert is None:
       def default_convert( dic ):
         tc = dic['type_code']
@@ -74,7 +74,18 @@ class Sink( Plan ):
     if self.sock:
       self.sock.close()
     self.sock = None
-      
+  
+  def setAllowMisc( self, allow ):
+    """
+    (re)set the depth of the misc event queue
+    """
+    self.allow = allow
+    self._clearQueue()
+  
+  def flushMisc( self ):
+    """flush the misc event queue"""
+    self.queue = []
+    
   def setSink( self, bnd ):
     """
     Set the socket binding address. 
@@ -111,7 +122,7 @@ class Sink( Plan ):
       if not dic:
         continue
       # If has a 'type' --> JoyEvent
-      if dic.has_key('type'):
+      if type(dic) is dict and dic.has_key('type'):
         # Put event on event queue
         nev = JoyEvent( **dic )
         #DBG progress('Remote event:'+str(nev))
@@ -120,13 +131,18 @@ class Sink( Plan ):
       # If custom events are allowed --> add to queue
       if self.allow:
         now = self.app.now
-        # Drop any out-of-date packets from queue
-        while self.queue and (now-self.queue[0][0] > self.allow):
-          self.queue.pop(0)
+        self._clearQueue()
         # Store new timestamp and packet
         self.queue.append( (now,dic) )
     return False
-
+  
+  def _clearQueue(self):
+    """(private) clear old events from misc queue"""
+    # Drop any out-of-date packets from queue
+    now = self.app.now
+    while self.queue and (now-self.queue[0][0] > self.allow):
+      self.queue.pop(0)
+      
   def queueIter( self ):
     """Iterate over the custom packets in the queue
        Yields pairs (ts, pkt)
@@ -187,6 +203,6 @@ class Source( Plan ):
     dic['t'] = self.app.now
     jsn = json_dumps(dic, ensure_ascii = True )
     self.sock.sendto( jsn, self.dst )
-    #DBG progress( "Sending '%s' to %s:%d" % ((jsn,)+self.dst) )
+    progress( "Sending '%s' to %s:%d" % ((jsn,)+self.dst) )
     return False
 

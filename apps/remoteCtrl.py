@@ -12,8 +12,9 @@ class RemoteSourceApp( JoyApp ):
     self.rs.start()
 
   def onEvent( self, evt ): 
-    print evt
-    self.rs.push( evt )
+    if evt.type in set([KEYUP, KEYDOWN, JOYAXISMOTION, JOYBUTTONUP, JOYBUTTONDOWN]):
+      print evt
+      self.rs.push( evt )
     JoyApp.onEvent( self, evt )
    
 
