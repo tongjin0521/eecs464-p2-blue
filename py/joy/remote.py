@@ -203,6 +203,6 @@ class Source( Plan ):
     dic['t'] = self.app.now
     jsn = json_dumps(dic, ensure_ascii = True )
     self.sock.sendto( jsn, self.dst )
-    #DBG progress( "Sending '%s' to %s:%d" % ((jsn,)+self.dst) )
+    progress( "Sending '%s' to %s:%d" % ((jsn,)+self.dst) )
     return False
 
