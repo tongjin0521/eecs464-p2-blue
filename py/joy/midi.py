@@ -1,7 +1,8 @@
 import pygame.midi as pygm
 import sys
- 
-DEV = {}
+from joy.events import MIDIEVENT, JoyEvent
+
+DEV = None
 
 class Channels(object):
   def __init__(self):
@@ -191,10 +192,19 @@ class KorgNanoKontrol( MidiInput ):
       nm = self.C2N.get((a,b),None)
       if not nm:
         continue
-      evt[nm] = float(c)
+      evt[nm] = c
     self.at.__dict__.update(evt)
     return evt
-        
+
+def joyEventIter():
+  """(protected) generate all pending events as JoyApp events
+  This is used internally by JoyApp's event pump to collect midi events
+  """
+  for k,dev in DEV.iteritems():
+    evt = dev.getUpdate()
+    for ch,val in evt.iteritems():
+	yield JoyEvent( MIDIEVENT, dev=k, dial=ch, value=(val-64)/64.0 )
+      
 if 0: # function to help create an N2C dictionary 
   import time, sys
   def foo(f='rewind'):
@@ -230,6 +240,14 @@ if 0: # function to help create an N2C dictionary
        sys.stdout.flush()
      
 def init():
+   """
+   Initialize the pygame midi interface and enumerate the devices in
+   the .DEV module variable
+   """
+   global DEV
+   if DEV is not None:
+     return
+   DEV = {}
    pygm.init()
    for k in xrange(pygm.get_count()):
      _,nm,inp,_,_ = pygm.get_device_info(k)
