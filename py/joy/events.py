@@ -41,7 +41,10 @@ TIMEREVENT = USEREVENT
 #   and `robotPollRate` are configuration parameters and can be set via the
 #   JoyApp.yml configuration file.
 CKBOTPOSITION = USEREVENT+1
+# SCRATCHUPDATE events indicate a change in a Scratch channel
 SCRATCHUPDATE = USEREVENT+2
+# MIDIEVENT-s indicate input from a MIDI device
+MIDIEVENT = USEREVENT+3
 
 _EVENT_STRUCTURE = {
     QUIT             : (),
@@ -60,13 +63,15 @@ _EVENT_STRUCTURE = {
     VIDEOEXPOSE      : (),
     CKBOTPOSITION    : ('module','pos'),
     SCRATCHUPDATE    : ('scr','var','value'),
-    TIMEREVENT       : ()
+    TIMEREVENT       : (),
+    MIDIEVENT        : ('dev','dial','value'),
   }
   
 _JOY_EVENT_NAMES = {
     SCRATCHUPDATE : "ScratchUpdate",
     CKBOTPOSITION : "CKBotPosition",
-    TIMEREVENT : "TimerEvent"
+    TIMEREVENT : "TimerEvent",
+    MIDIEVENT : "MIDIEvent"
   }
   
 def describeEvt( evt, parseOnly = False ):
