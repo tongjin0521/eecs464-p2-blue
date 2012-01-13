@@ -871,7 +871,7 @@ class StickFilter( Plan ):
   joy<joystick-number>hat<hat-number>
   joy<joystick-number>axis<axis-number>, e.g. joy0axis1, for joystick events
   Nx<node-id-2-HEX-digits>, e.g. Nx3C, for CKBOTPOSITION events
-  midi<dev-number><dial-name> MIDI input device
+  midi<dev-number>sc<scene><kind><index-number> MIDI input device
   """
   def __init__(self,app,t0=None,dt=0.1):
     """
@@ -883,7 +883,7 @@ class StickFilter( Plan ):
     self.dt = dt
     self.t = None
   
-  def setLowpass( self, evt, tau, t0=None ):
+  def setLowpass( self, evt, tau, t0=None, func=float ):
     """
     Process evt events with a first-order lowpass with time constant tau.    
     
@@ -893,18 +893,18 @@ class StickFilter( Plan ):
       raise ValueError('Only tau>=2 supported, got tau=%g' % tau)
     a = exp(-pi / tau)
     b = (1-a)/2.0
-    return self.setFilter( evt, t0, [1,-a], [b,b] )
+    return self.setFilter( evt, t0, [1,-a], [b,b], func=func )
 
-  def setIntegrator( self, evt, gain=1, t0=None, lower=-1e9, upper=1e-9 ):
+  def setIntegrator( self, evt, gain=1, t0=None, lower=-1e9, upper=1e-9,  func=float):
     """
     Process evt events with a (leaky) integrator
     first-order lowpass with time constant tau.
 
     By default, integrator is not leaky.
     """
-    return self.setFilter( evt, t0, [1,-1], [gain],lower=lower,upper=upper )
+    return self.setFilter( evt, t0, [1,-1], [gain],lower=lower,upper=upper, func=func )
 
-  def setFilter( self, evt, t0=None, A=[1.0], B=[1.0], x0=None, y0=None,lower=-1e9,upper=1e9 ):
+  def setFilter( self, evt, t0=None, A=[1.0], B=[1.0], x0=None, y0=None,lower=-1e9, upper=1e9, func=float ):
     """
     Specify a filter for an event channel.
     
@@ -925,8 +925,9 @@ class StickFilter( Plan ):
       A,B -- sequences of floats -- transfer function
       x0 -- sequence of len(B) floats -- initial state of x values (default 0-s)
       y0 -- sequence of len(A) floats -- initial state of y values (default 0-s)
-      lower -- number -- lower limit on values (saturation value)
-      upper -- number -- upper limit on values (saturation value)
+      lower -- number -- lower limit on filter values (saturation value)
+      upper -- number -- upper limit on filter values (saturation value)
+      func -- callable -- input mapping applied to channel values before filtering
     """
     # Identify the event class
     if isinstance(evt,pygame.event.EventType):
@@ -945,9 +946,12 @@ class StickFilter( Plan ):
       raise ValueError('len(x0)=%d; must equal len(A)=%d' % (len(x0),len(A)))
     if len(y0) != len(A): 
       raise ValueError('len(y0)=%d; must equal len(B)=%d' % (len(y0),len(B)))
+    # Test func
+    if not callable(func):
+      raise TypeError("'func' must be a callable")
     # Store
     if t0 is None: t0 = self.app.now
-    self.flt[evt] = (tuple(A),tuple(B),x0,y0,[],[t0],(lower,upper))    
+    self.flt[evt] = (tuple(A),tuple(B),x0,y0,[],[t0],(lower,upper),func)    
 
   def feed(self, evt ):
     """
@@ -964,7 +968,7 @@ class StickFilter( Plan ):
     # Retrieve filter state
     flt = self.flt[key]
     # Overwrite queue to contain this value
-    flt[4][:]=[float(val)]
+    flt[4][:]=[flt[-1](val)]
 
   def setToZero(self, evt):
     """
@@ -981,10 +985,10 @@ class StickFilter( Plan ):
     # Retrieve filter state
     flt = self.flt[key]
     # Overwrite queue to contain this value
-    A,B,X,Y,Q,(last,),(lb,ub) = flt
+    A,B,X,Y,Q,(last,),(lb,ub),func = flt
     X[:]=[0]*len(X)
     Y[:]=[0]*len(Y)
-    self.flt[key] = ( A,B,X,Y,Q,(last,),(lb,ub) )
+    self.flt[key] = ( A,B,X,Y,Q,(last,),(lb,ub),func )
 
   def _runFilterTo(self, flt, t):
     """(private)
@@ -994,7 +998,7 @@ class StickFilter( Plan ):
         flt -- a filter state
         t -- float -- time
     """
-    A,B,X,Y,Q,(last,),(lb,ub) = flt
+    A,B,X,Y,Q,(last,),(lb,ub),func = flt
     # Interpolating up to time t, feed samples into filter
     # System equation is:
     #  a[0]*y[n] = b[0]*x[n] + b[1]*x[n-1] + ... + b[nb]*x[n-nb]
@@ -1018,7 +1022,7 @@ class StickFilter( Plan ):
       #DEBUG# progress("A %s B %s X %s Y %s" % tuple(map(repr,(A,B,X,Y))))
       #DEBUG# progress("-FLT- %9g %g %g %g %g" % (ts,X[0],Y[0],z0,z1))
     # Update filter timestamp
-    flt[-2][0] = ts
+    flt[-3][0] = ts
     return ts
     
   def getValue( self, evt ):
@@ -1056,7 +1060,7 @@ class StickFilter( Plan ):
     elif evt.type==CKBOTPOSITION:
       return 'Nx%02X' % evt.module, evt.pos
     elif evt.type==MIDIEVENT:
-      return 'midi%d%s' % (evt.dev,evt.dial), evt.value
+      return 'midi%dsc%d%s%d' % (evt.dev,evt.sc,evt.kind,evt.index), evt.value
     return None, None
     
   def onEvent( self, evt ):
