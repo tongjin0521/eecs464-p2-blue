@@ -64,7 +64,7 @@ _EVENT_STRUCTURE = {
     CKBOTPOSITION    : ('module','pos'),
     SCRATCHUPDATE    : ('scr','var','value'),
     TIMEREVENT       : (),
-    MIDIEVENT        : ('dev','dial','value'),
+    MIDIEVENT        : ('dev','sc','kind','index','value'),
   }
   
 _JOY_EVENT_NAMES = {

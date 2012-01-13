@@ -16,7 +16,7 @@ class StickFilterApp( JoyApp ):
     # This channel is integrated, saturating at +/- 9.
     sf.setIntegrator( "joy0axis1", lower=-9, upper=9)
     # This channel is integrated, saturating at +/- 9.
-    sf.setIntegrator( "midi3sc1_slider2", lower=-9, upper=9 )
+    sf.setIntegrator( "midi3sc1slider2", lower=-9, upper=9, func = lambda x : (x-63.5)/64 )
     # Start it up, otherwise nothing will happen...
     sf.start()
     self.sf = sf
@@ -27,8 +27,8 @@ class StickFilterApp( JoyApp ):
   def onEvent( self, evt ):
     # If its time to show the operator a status message --> do so
     if self.timeToShow():
-      progress("State x %.3f y %.3f %.3f" % (
-        self.sf.getValue("joy0axis0"), self.sf.getValue("joy0axis1"), self.sf.getValue("midi3sc1_slider2") 
+      progress("State x %.3f y %.3f sc1slider2 %.3f" % (
+        self.sf.getValue("joy0axis0"), self.sf.getValue("joy0axis1"), self.sf.getValue("midi3sc1slider2") 
       ))
     # Send all joystick motion events to our StickFilter
     if evt.type in [JOYAXISMOTION,MIDIEVENT]:

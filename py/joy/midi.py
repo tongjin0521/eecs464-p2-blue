@@ -22,7 +22,7 @@ class MidiInput( object ):
     self.at = Channels()
     assert pygm.get_device_info(ID)[2], "Must be an input device"
 
-  def iterevents(self):
+  def rawEventIter(self):
     while self.mi.poll():
       for evt in self.mi.read(MidiInput.BUF_SIZE):
         yield evt
@@ -30,207 +30,210 @@ class MidiInput( object ):
 
 class KorgNanoKontrol( MidiInput ):
   N2C = {
-    'rewind' : (176, 47),
-    'play' : (176, 45),
-    'forward' : (176, 48),
-    'repeat' : (176, 49),
-    'stop' : (176, 46),
-    'record' : (176, 44),
-    'sc1_btnU1' : (176, 23),
-    'sc1_btnL1' : (176, 33),
-    'sc1_slider1' : (176, 2),
-    'sc1_knob1' : (176, 14),
-    'sc1_btnU2' : (176, 24),
-    'sc1_btnL2' : (176, 34),
-    'sc1_slider2' : (176, 3),
-    'sc1_knob2' : (176, 15),
-    'sc1_btnU3' : (176, 25),
-    'sc1_btnL3' : (176, 35),
-    'sc1_slider3' : (176, 4),
-    'sc1_knob3' : (176, 16),
-    'sc1_btnU4' : (176, 26),
-    'sc1_btnL4' : (176, 36),
-    'sc1_slider4' : (176, 5),
-    'sc1_knob4' : (176, 17),
-    'sc1_btnU5' : (176, 27),
-    'sc1_btnL5' : (176, 37),
-    'sc1_slider5' : (176, 6),
-    'sc1_knob5' : (176, 18),
-    'sc1_btnU6' : (176, 28),
-    'sc1_btnL6' : (176, 38),
-    'sc1_slider6' : (176, 8),
-    'sc1_knob6' : (176, 19),
-    'sc1_btnU7' : (176, 29),
-    'sc1_btnL7' : (176, 39),
-    'sc1_slider7' : (176, 9),
-    'sc1_knob7' : (176, 20),
-    'sc1_btnU8' : (176, 30),
-    'sc1_btnL8' : (176, 40),
-    'sc1_slider8' : (176, 12),
-    'sc1_knob8' : (176, 21),
-    'sc1_btnU9' : (176, 31),
-    'sc1_btnL9' : (176, 41),
-    'sc1_slider9' : (176, 13),
-    'sc1_knob9' : (176, 22),
-    'sc2_btnU1' : (176, 67),
-    'sc2_btnL1' : (176, 76),
-    'sc2_slider1' : (176, 42),
-    'sc2_knob1' : (176, 57),
-    'sc2_btnU2' : (176, 68),
-    'sc2_btnL2' : (176, 77),
-    'sc2_slider2' : (176, 43),
-    'sc2_knob2' : (176, 58),
-    'sc2_btnU3' : (176, 69),
-    'sc2_btnL3' : (176, 78),
-    'sc2_slider3' : (176, 50),
-    'sc2_knob3' : (176, 59),
-    'sc2_btnU4' : (176, 70),
-    'sc2_btnL4' : (176, 79),
-    'sc2_slider4' : (176, 51),
-    'sc2_knob4' : (176, 60),
-    'sc2_btnU5' : (176, 71),
-    'sc2_btnL5' : (176, 80),
-    'sc2_slider5' : (176, 52),
-    'sc2_knob5' : (176, 61),
-    'sc2_btnU6' : (176, 72),
-    'sc2_btnL6' : (176, 81),
-    'sc2_slider6' : (176, 53),
-    'sc2_knob6' : (176, 62),
-    'sc2_btnU7' : (176, 73),
-    'sc2_btnL7' : (176, 82),
-    'sc2_slider7' : (176, 54),
-    'sc2_knob7' : (176, 63),
-    'sc2_btnU8' : (176, 74),
-    'sc2_btnL8' : (176, 83),
-    'sc2_slider8' : (176, 55),
-    'sc2_knob8' : (176, 65),
-    'sc2_btnU9' : (176, 75),
-    'sc2_btnL9' : (176, 84),
-    'sc2_slider9' : (176, 56),
-    'sc2_knob9' : (176, 66),
-    'sc3_btnU1' : (176, 107),
-    'sc3_btnL1' : (176, 116),
-    'sc3_slider1' : (176, 85),
-    'sc3_knob1' : (176, 94),
-    'sc3_btnU2' : (176, 108),
-    'sc3_btnL2' : (176, 117),
-    'sc3_slider2' : (176, 86),
-    'sc3_knob2' : (176, 95),
-    'sc3_btnU3' : (176, 109),
-    'sc3_btnL3' : (176, 118),
-    'sc3_slider3' : (176, 87),
-    'sc3_knob3' : (176, 96),
-    'sc3_btnU4' : (176, 110),
-    'sc3_btnL4' : (176, 119),
-    'sc3_slider4' : (176, 88),
-    'sc3_knob4' : (176, 97),
-    'sc3_btnU5' : (176, 111),
-    'sc3_btnL5' : (176, 120),
-    'sc3_slider5' : (176, 89),
-    'sc3_knob5' : (176, 102),
-    'sc3_btnU6' : (176, 112),
-    'sc3_btnL6' : (176, 121),
-    'sc3_slider6' : (176, 90),
-    'sc3_knob6' : (176, 103),
-    'sc3_btnU7' : (176, 113),
-    'sc3_btnL7' : (176, 122),
-    'sc3_slider7' : (176, 91),
-    'sc3_knob7' : (176, 104),
-    'sc3_btnU8' : (176, 114),
-    'sc3_btnL8' : (176, 123),
-    'sc3_slider8' : (176, 92),
-    'sc3_knob8' : (176, 105),
-    'sc3_btnU9' : (176, 115),
-    'sc3_btnL9' : (176, 124),
-    'sc3_slider9' : (176, 93),
-    'sc3_knob9' : (176, 106),
-    #'sc4_btnU1' : (176, 16),
-    #'sc4_btnL1' : (176, 17),
-    #'sc4_slider1' : (176, 7),
-    #'sc4_knob1' : (176, 10),
-    'sc4_btnU2' : (177, 16),
-    'sc4_btnL2' : (177, 17),
-    'sc4_slider2' : (177, 7),
-    'sc4_knob2' : (177, 10),
-    'sc4_btnU3' : (178, 16),
-    'sc4_btnL3' : (178, 17),
-    'sc4_slider3' : (178, 7),
-    'sc4_knob3' : (178, 10),
-    'sc4_btnU4' : (179, 16),
-    'sc4_btnL4' : (179, 17),
-    'sc4_slider4' : (179, 7),
-    'sc4_knob4' : (179, 10),
-    'sc4_btnU5' : (180, 16),
-    'sc4_btnL5' : (180, 17),
-    'sc4_slider5' : (180, 7),
-    'sc4_knob5' : (180, 10),
-    'sc4_btnU6' : (181, 16),
-    'sc4_btnL6' : (181, 17),
-    'sc4_slider6' : (181, 7),
-    'sc4_knob6' : (181, 10),
-    'sc4_btnU7' : (182, 16),
-    'sc4_btnL7' : (182, 17),
-    'sc4_slider7' : (182, 7),
-    'sc4_knob7' : (182, 10),
-    'sc4_btnU8' : (183, 16),
-    'sc4_btnL8' : (183, 17),
-    'sc4_slider8' : (183, 7),
-    'sc4_knob8' : (183, 10),
-    'sc4_btnU9' : (184, 16),
-    'sc4_btnL9' : (184, 17),
-    'sc4_slider9' : (184, 10),
-    'sc4_knob9' : (184, 7),
+    (0,'rewind',0) : (176, 47),
+    (0,'play',0) : (176, 45),
+    (0,'forward',0) : (176, 48),
+    (0,'repeat',0) : (176, 49),
+    (0,'stop',0) : (176, 46),
+    (0,'record',0) : (176, 44),
+    (1,'btnU',1) : (176, 23),
+    (1,'btnL',1) : (176, 33),
+    (1,'slider',1) : (176, 2),
+    (1,'knob',1) : (176, 14),
+    (1,'btnU',2) : (176, 24),
+    (1,'btnL',2) : (176, 34),
+    (1,'slider',2) : (176, 3),
+    (1,'knob',2) : (176, 15),
+    (1,'btnU',3) : (176, 25),
+    (1,'btnL',3) : (176, 35),
+    (1,'slider',3) : (176, 4),
+    (1,'knob',3) : (176, 16),
+    (1,'btnU',4) : (176, 26),
+    (1,'btnL',4) : (176, 36),
+    (1,'slider',4) : (176, 5),
+    (1,'knob',4) : (176, 17),
+    (1,'btnU',5) : (176, 27),
+    (1,'btnL',5) : (176, 37),
+    (1,'slider',5) : (176, 6),
+    (1,'knob',5) : (176, 18),
+    (1,'btnU',6) : (176, 28),
+    (1,'btnL',6) : (176, 38),
+    (1,'slider',6) : (176, 8),
+    (1,'knob',6) : (176, 19),
+    (1,'btnU',7) : (176, 29),
+    (1,'btnL',7) : (176, 39),
+    (1,'slider',7) : (176, 9),
+    (1,'knob',7) : (176, 20),
+    (1,'btnU',8) : (176, 30),
+    (1,'btnL',8) : (176, 40),
+    (1,'slider',8) : (176, 12),
+    (1,'knob',8) : (176, 21),
+    (1,'btnU',9) : (176, 31),
+    (1,'btnL',9) : (176, 41),
+    (1,'slider',9) : (176, 13),
+    (1,'knob',9) : (176, 22),
+    (2,'btnU',1) : (176, 67),
+    (2,'btnL',1) : (176, 76),
+    (2,'slider',1) : (176, 42),
+    (2,'knob',1) : (176, 57),
+    (2,'btnU',2) : (176, 68),
+    (2,'btnL',2) : (176, 77),
+    (2,'slider',2) : (176, 43),
+    (2,'knob',2) : (176, 58),
+    (2,'btnU',3) : (176, 69),
+    (2,'btnL',3) : (176, 78),
+    (2,'slider',3) : (176, 50),
+    (2,'knob',3) : (176, 59),
+    (2,'btnU',4) : (176, 70),
+    (2,'btnL',4) : (176, 79),
+    (2,'slider',4) : (176, 51),
+    (2,'knob',4) : (176, 60),
+    (2,'btnU',5) : (176, 71),
+    (2,'btnL',5) : (176, 80),
+    (2,'slider',5) : (176, 52),
+    (2,'knob',5) : (176, 61),
+    (2,'btnU',6) : (176, 72),
+    (2,'btnL',6) : (176, 81),
+    (2,'slider',6) : (176, 53),
+    (2,'knob',6) : (176, 62),
+    (2,'btnU',7) : (176, 73),
+    (2,'btnL',7) : (176, 82),
+    (2,'slider',7) : (176, 54),
+    (2,'knob',7) : (176, 63),
+    (2,'btnU',8) : (176, 74),
+    (2,'btnL',8) : (176, 83),
+    (2,'slider',8) : (176, 55),
+    (2,'knob',8) : (176, 65),
+    (2,'btnU',9) : (176, 75),
+    (2,'btnL',9) : (176, 84),
+    (2,'slider',9) : (176, 56),
+    (2,'knob',9) : (176, 66),
+    (3,'btnU',1) : (176, 107),
+    (3,'btnL',1) : (176, 116),
+    (3,'slider',1) : (176, 85),
+    (3,'knob',1) : (176, 94),
+    (3,'btnU',2) : (176, 108),
+    (3,'btnL',2) : (176, 117),
+    (3,'slider',2) : (176, 86),
+    (3,'knob',2) : (176, 95),
+    (3,'btnU',3) : (176, 109),
+    (3,'btnL',3) : (176, 118),
+    (3,'slider',3) : (176, 87),
+    (3,'knob',3) : (176, 96),
+    (3,'btnU',4) : (176, 110),
+    (3,'btnL',4) : (176, 119),
+    (3,'slider',4) : (176, 88),
+    (3,'knob',4) : (176, 97),
+    (3,'btnU',5) : (176, 111),
+    (3,'btnL',5) : (176, 120),
+    (3,'slider',5) : (176, 89),
+    (3,'knob',5) : (176, 102),
+    (3,'btnU',6) : (176, 112),
+    (3,'btnL',6) : (176, 121),
+    (3,'slider',6) : (176, 90),
+    (3,'knob',6) : (176, 103),
+    (3,'btnU',7) : (176, 113),
+    (3,'btnL',7) : (176, 122),
+    (3,'slider',7) : (176, 91),
+    (3,'knob',7) : (176, 104),
+    (3,'btnU',8) : (176, 114),
+    (3,'btnL',8) : (176, 123),
+    (3,'slider',8) : (176, 92),
+    (3,'knob',8) : (176, 105),
+    (3,'btnU',9) : (176, 115),
+    (3,'btnL',9) : (176, 124),
+    (3,'slider',9) : (176, 93),
+    (3,'knob',9) : (176, 106),
+    #(4,'btnU',1) : (176, 16),
+    #(4,'btnL',1) : (176, 17),
+    #(4,'slider',1) : (176, 7),
+    #(4,'knob',1) : (176, 10),
+    (4,'btnU',2) : (177, 16),
+    (4,'btnL',2) : (177, 17),
+    (4,'slider',2) : (177, 7),
+    (4,'knob',2) : (177, 10),
+    (4,'btnU',3) : (178, 16),
+    (4,'btnL',3) : (178, 17),
+    (4,'slider',3) : (178, 7),
+    (4,'knob',3) : (178, 10),
+    (4,'btnU',4) : (179, 16),
+    (4,'btnL',4) : (179, 17),
+    (4,'slider',4) : (179, 7),
+    (4,'knob',4) : (179, 10),
+    (4,'btnU',5) : (180, 16),
+    (4,'btnL',5) : (180, 17),
+    (4,'slider',5) : (180, 7),
+    (4,'knob',5) : (180, 10),
+    (4,'btnU',6) : (181, 16),
+    (4,'btnL',6) : (181, 17),
+    (4,'slider',6) : (181, 7),
+    (4,'knob',6) : (181, 10),
+    (4,'btnU',7) : (182, 16),
+    (4,'btnL',7) : (182, 17),
+    (4,'slider',7) : (182, 7),
+    (4,'knob',7) : (182, 10),
+    (4,'btnU',8) : (183, 16),
+    (4,'btnL',8) : (183, 17),
+    (4,'slider',8) : (183, 7),
+    (4,'knob',8) : (183, 10),
+    (4,'btnU',9) : (184, 16),
+    (4,'btnL',9) : (184, 17),
+    (4,'slider',9) : (184, 10),
+    (4,'knob',9) : (184, 7),
   } # ENDS: N2C
   C2N = dict( [(x,y) for y,x in N2C.iteritems()] )
 
   def __init__(self,*argv,**kw):
     MidiInput.__init__(self,*argv,**kw)
-  
-  def getUpdate( self ):
-    evt = {}
-    for (a,b,c,d),t in self.iterevents():
-      nm = self.C2N.get((a,b),None)
-      if not nm:
+    
+  def eventIter( self ):
+    for (a,b,c,d),t in self.rawEventIter():
+      dcr = self.C2N.get((a,b),None)
+      if dcr is None:
         continue
-      evt[nm] = c
-    self.at.__dict__.update(evt)
-    return evt
+      if dcr[0]>0:
+        self.at.__dict__["sc%d_%s%d" % dcr] = c
+      else:
+        self.at.__dict__[dcr[1]] = c
+      yield dcr+(c,)
+
 
 def joyEventIter():
   """(protected) generate all pending events as JoyApp events
   This is used internally by JoyApp's event pump to collect midi events
   """
   for k,dev in DEV.iteritems():
-    evt = dev.getUpdate()
-    for ch,val in evt.iteritems():
-	yield JoyEvent( MIDIEVENT, dev=k, dial=ch, value=(val-64)/64.0 )
+    for sc,kind,index,value in dev.eventIter():
+      yield JoyEvent( MIDIEVENT,
+        dev=k,sc=sc,kind=kind,index=index,value=value
+      )
       
-if 0: # function to help create an N2C dictionary 
+if 1: # function to help create an N2C dictionary 
   import time, sys
   def foo(f='rewind'):
-    nm = [
+    nm = [ (0,k,0) for k in [
       'rewind',
       'play',
       'forward', 
       'repeat',
       'stop',
       'record'
-    ]
+    ]]
     for sc in xrange(1,5):
       for k in xrange(1,10):
-        nm.append('sc%d_btnU%d' % (sc,k))
-        nm.append('sc%d_btnL%d' % (sc,k))
-        nm.append('sc%d_slider%d' % (sc,k))
-        nm.append('sc%d_knob%d' % (sc,k))
+        nm.append((sc,'btnU',k))
+        nm.append((sc,'btnL',k))
+        nm.append((sc,'slider',k))
+        nm.append((sc,'knob',k))
     while nm and nm[0] != f:
       nm.pop(0)
     last = (None,None)
     for k in nm:
-       print "'%s'" % k,
+       print "(%d,'%s',%d)" % k,
        sys.stdout.flush()
        while True:
            time.sleep(0.1)
-           l = list(DEV[3].iterevents())
+           l = list(DEV[3].rawEventIter())
            if not l:
              continue
            if l[-1][0][:2] != last[:2]:
@@ -261,12 +264,16 @@ def init():
        
 if __name__=="__main__":
   from time import sleep, time as now
+  from joy.events import describeEvt
+  from sys import stdout
   print "Running test"
   init()
   t0 = now()
   while True:
-    for dev in DEV.itervalues():
-      print "%6.2f "%(now()-t0),str( dev.getUpdate() ) 
+    for evt in joyEventIter():
+      print "\r%6.2f "%(now()-t0),
+      print describeEvt(evt), "   ",
+      sys.stdout.flush()
     sleep(0.05)
     
   
