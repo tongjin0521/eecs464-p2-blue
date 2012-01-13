@@ -6,7 +6,7 @@ if __name__ == "__main__":
     c = L.Cluster()
     c.populate(input("How many modules to .populate()? "))
     pr = PoseRecorder(c.values())
-    cli = PoseRecorderCLI(pr)
+    cli = PoseRecorderCLI(pr,c)
     cli.run()
     pr.off()
 

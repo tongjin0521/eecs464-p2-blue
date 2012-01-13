@@ -14,6 +14,7 @@ from time import time as now, sleep
 from sys import stdout as STDOUT
 from numpy import asarray
 from cmd import Cmd
+from re import split as re_split
 from scipy.interpolate import interp1d
 
 class PoseRecorder( object ):
@@ -35,13 +36,13 @@ class PoseRecorder( object ):
 #        for m in mods:
 #            assert isinstance(m,Module),"%s must be a module" % str(m)
         self.servos = mods
-	self.record_time = None
-	self.reset()
+        self.record_time = None
+        self.reset()
         self.off()
 
-    def _get_pose(self):
-        """(private) collect positions of all servos"""
-	return [ m.get_pos() for m in self.servos ]
+    def getPose(self):
+        """collect positions of all servos"""
+        return [ m.get_pos() for m in self.servos ]
 
     def _set_pose(self,pose):
         """(private) set positions of all servos"""
@@ -50,7 +51,7 @@ class PoseRecorder( object ):
 
     def off(self):
         """Emegency Stop for all servos -- .go_slack()-s all modules, ignoring any exceptions"""
-	for m in self.servos:
+        for m in self.servos:
           try:
             m.go_slack()
           except Exception, ex:
@@ -59,15 +60,15 @@ class PoseRecorder( object ):
     def reset( self ):
         """Reset the recording, allowing a new recording to be started"""
         self.plan = []
-	self.record_time = None
+        self.record_time = None
 
     def snap( self, t = None ):
         """Add a snapshot of the current pose to the recording"""
         if not self.plan:
-	   t = 0
+          t = 0
         if t is None:
-           t = self.plan[-1][0]+1
-        self.plan.append( [t]+self._get_pose())
+          t = self.plan[-1][0]+1
+        self.plan.append( [t]+self.getPose())
 
     def snapClosed( self, dt = 1 ):
         """Add the first pose at the end of the recording, with specified delay.
@@ -80,7 +81,7 @@ class PoseRecorder( object ):
             raise IndexError("No recoding found; call .snap() at least once")
         self.plan.append( [self.plan[-1][0]+dt]+self.plan[0][1:] )
 
-    def show( self, stream=STDOUT, delim=" ", fmt="%5d", hfmt="%5s", rdel="\n"):
+    def show( self, stream=STDOUT, delim=" ", fmt="%5d", hfmt="%5s", rdel="\n", slc=slice(None)):
         """Write the current recording out on a stream in a text-based format
  
         INPUT:
@@ -89,10 +90,17 @@ class PoseRecorder( object ):
           fmt -- str -- format string for numbers (except time)
           hfmt -- str -- format string for column headings
           rdel -- str -- row delimiter
+          slc -- slice -- range of pose sequence to show
         """
-        stream.write( delim.join(["%5s" % "t"]+[hfmt % m.name for m in self.servos]) + rdel )
-        for pose in self.plan:
-	   stream.write( delim.join(["%5d" % pose[0]]+[fmt % v for v in pose[1:]]) + rdel )
+        stream.write( delim.join(
+          ["%5s" % "t"]
+          +[hfmt % m.name for m in self.servos[slc]]
+          ) + rdel )
+        for pose in self.plan[slc]:
+          stream.write( delim.join(
+            ["%5d" % pose[0]]
+            +[fmt % v for v in pose[1:]]
+          ) + rdel )
 
     def unsnap(self):
         """Drop the last pose from the recording"""
@@ -155,37 +163,40 @@ class PoseRecorder( object ):
         if stream is not STDOUT:
           stream.close()
 
-    def playback( self, period=None, count=1 ):
+    def playback( self, period=None, count=1, rate = 0.03 ):
         """Play back the current recording one or more times.
 
            INPUT:
              period -- float / None -- duration for entire recording
                if period is None, the recording timestamps are used
              count -- integer -- number of times to play
-        """
-	# playback current pose for a given amount of time and with a given period
-	if not self.plan:
-	  raise ValueError("No recording -- .snap() poses first!")
-	  return
-	gait = asarray(self.plan,int)
+             rate -- float -- delay between commands sent (sec)
+            """
+        # playback current pose for a given amount of time and with a given period
+        if not self.plan:
+          raise ValueError("No recording -- .snap() poses first!")
+          return
+        gait = asarray(self.plan,int)
         gaitfun = interp1d( gait[:,0], gait[:,1:].T ) # Gait interpolater function
-	dur = gait[-1,0]-gait[0,0]
+        dur = gait[-1,0]-gait[0,0]
         if period is None:
-            period = self.plan[-1][0] - self.plan[0][0]
+          period = self.plan[-1][0] - self.plan[0][0]
         t0 = now()
-	t1 = t0
+        t1 = t0
         try:
-  	  while t1-t0 < period*count:
-	    t1 = now()
- 	    phi = (t1-t0)/period
-	    phi %= 1.0
-	    goal = gaitfun(phi*dur).round()
-	    print "Phi: %f: " % phi, repr(goal)
-	    self._set_pose( goal )	
-            sleep(0.01)
-	except KeyboardInterrupt:
-          self.off()
-          raise    
+          while t1-t0 < period*count:
+            t1 = now()
+            phi = (t1-t0)/period
+            phi %= 1.0
+            goal = gaitfun(phi*dur).round()
+            print "\rphi: %.2f: " % phi, " ".join([
+                "%6d" % g for g in goal
+            ])
+            self._set_pose( goal )	
+            sleep(rate)
+        except KeyboardInterrupt:
+            self.off()
+            raise    
 
 class PoseRecorderCLI( Cmd ):
     """Concrete class PoseRecorderCLI provides a cmd.Cmd based commandline
@@ -193,13 +204,24 @@ class PoseRecorderCLI( Cmd ):
 
     Start one and give the 'help' command to get more information
     """
-    def __init__(self,pr):
+    def __init__(self,pr,clust=None):
+        """
+        INPUTS:
+          pr -- PoseRecorder -- PoseRecorder to control
+          clust -- Cluster / None -- Cluster; to allow the general
+            command interface
+        """
         Cmd.__init__(self)
         self.prompt = "PoseRecorder >> "
         assert isinstance(pr,PoseRecorder)
         self.pr = pr
         self.pr_duration = None
         self.pr_count = 1
+        self.clust = clust
+        if clust is None:
+          self.tgt = []
+        else:
+          self.tgt = clust.values()
 
     def run(self):
         self.cmdloop()
@@ -208,6 +230,51 @@ class PoseRecorderCLI( Cmd ):
         Cmd.emptyline(self)
         self.do_show()
 
+    def do_target(self,line):
+        """Specify target for commands
+        
+        Target may be either * or a space-separate list of module names
+        """
+        if self.clust is None:
+          print "No Cluster specified; 'target' command is not available"
+          return
+        line = line.strip()
+        if line == "*":
+          self.tgt = self.clust.values()
+        else:
+          try:
+            self.tgt = [getattr(self.clust.at,nm) for nm in line.split(" ")]
+          except AttributeError,ae:
+            print "Unknown module:",ae
+            return
+          
+    def do_cmd(self,line):
+        """Specify command to broadcast to targets"""
+        if self.clust is None:
+          print "No Cluster specified; 'cmd' command is not available"
+          return
+        sp = re_split("\s+",line,1)
+        if len(sp)>1:
+          cmd,val = sp[0],int(sp[1])
+        else:
+          cmd,val = sp[0],None
+        #
+        res = []
+        for m in self.tgt:
+          try:
+            if val is None:
+              res.append(getattr(m,cmd)())
+            else:
+              res.append(getattr(m,cmd)(val))
+          except AttributeError,ae:
+            print "Module",m.name,"does not support '%s'" % cmd
+            res.append(None)
+        #
+        print " ".join([
+            "%6s" % m.name for m in self.clust.itervalues()])
+        print " ".join([
+            "%6s" % str(v) for v in res])
+        
     def do_show(self,line=None):
         """Show the current recording in text form"""
         print "# duration ",self.pr_duration," count ",self.pr_count
