@@ -107,8 +107,11 @@ import scratch
 
 # Joy event classes and support functions
 from events import (
-  describeEvt, TIMEREVENT, CKBOTPOSITION, SCRATCHUPDATE
+  describeEvt, TIMEREVENT, CKBOTPOSITION, SCRATCHUPDATE, MIDIEVENT
   )
+
+# MIDI interface
+from midi import joyEventIter as midi_joyEventIter, init as midi_init
 
 try:
   if PYCKBOTPATH:
@@ -299,6 +302,8 @@ class JoyApp( object ):
       progress("Connected to Scratch")
       self.__scr_cast = set()
       self.__scr_upd = {}
+    # initialize midi module (this is safe to call again multiple times)
+    midi_init()
     # init Plan scheduling structures
     self.plans = [] #: (private) List of currently active Plan instances ("threads")
     self.__new = []    
@@ -318,7 +323,8 @@ class JoyApp( object ):
       nodeNames = {},
       logFile = None,
       logProgress = False,
-      remote = None
+      remote = None,
+      midi = True
     )
     pth = PYCKBOTPATH + 'cfg%sJoyApp.yml' % OS_SEP
     if glob(pth):
@@ -618,6 +624,9 @@ class JoyApp( object ):
         if self.scr:
           self._scrEventPump()
           self._scrEventEmit()
+        if self.cfg.midi:
+          for evt in midi_joyEventIter():
+	    pygame.event.post(evt)
         evts = pygame.event.get()    
         for evt in evts:
           if evt.type == TIMEREVENT:

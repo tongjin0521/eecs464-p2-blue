@@ -11,7 +11,7 @@ from loggit import progress, debugMsg, dbgId
 
 from misc import curry,printExc
 
-from events import TIMEREVENT, describeEvt
+from events import TIMEREVENT, CKBOTPOSITION, MIDIEVENT, describeEvt
 DEBUG = []
 
 class Plan( object ):
@@ -843,7 +843,7 @@ class GaitCyclePlan( CyclePlan, SheetPlan ):
 class StickFilter( Plan ):
   """
   StickFilter Plans are event processors designed to simplify the problem of
-  processing joystick readings into continuous-time values.
+  processing joystick and midi readings into continuous-time values.
   
   The problem arises because pygame joystick events appear only when joystick
   values change -- even if they are far from 'zero'. This means that triggering
@@ -871,7 +871,7 @@ class StickFilter( Plan ):
   joy<joystick-number>hat<hat-number>
   joy<joystick-number>axis<axis-number>, e.g. joy0axis1, for joystick events
   Nx<node-id-2-HEX-digits>, e.g. Nx3C, for CKBOTPOSITION events
-  
+  midi<dev-number><dial-name> MIDI input device
   """
   def __init__(self,app,t0=None,dt=0.1):
     """
@@ -1055,6 +1055,8 @@ class StickFilter( Plan ):
       return 'joy%dhat%d' % (evt.joy,evt.hat), evt.value
     elif evt.type==CKBOTPOSITION:
       return 'Nx%02X' % evt.module, evt.pos
+    elif evt.type==MIDIEVENT:
+      return 'midi%d%s' % (evt.dev,evt.dial), evt.value
     return None, None
     
   def onEvent( self, evt ):

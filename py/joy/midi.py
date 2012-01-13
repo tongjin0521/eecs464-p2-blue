@@ -247,7 +247,7 @@ if __name__=="__main__":
   init()
   t0 = now()
   while True:
-    for dev in midi.DEV.itervalues():
+    for dev in DEV.itervalues():
       print "%6.2f "%(now()-t0),str( dev.getUpdate() ) 
     sleep(0.05)
     
