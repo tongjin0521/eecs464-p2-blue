@@ -178,8 +178,8 @@ class KorgNanoKontrol( MidiInput ):
     (4,'knob',8) : (183, 10),
     (4,'btnU',9) : (184, 16),
     (4,'btnL',9) : (184, 17),
-    (4,'slider',9) : (184, 10),
-    (4,'knob',9) : (184, 7),
+    (4,'slider',9) : (184, 7),
+    (4,'knob',9) : (184, 10),
   } # ENDS: N2C
   C2N = dict( [(x,y) for y,x in N2C.iteritems()] )
 
