@@ -88,6 +88,7 @@ from plans import ( Plan,
   )
 import plans
 import remote
+import safety
 
 ## Set up debug topics
 try:
@@ -121,6 +122,7 @@ except NameError:
   PYCKBOTPATH = getenv('PYCKBOTPATH',__path__[0]+OS_SEP+'..'+OS_SEP+'..')
   if PYCKBOTPATH[-1:] != OS_SEP:
       PYCKBOTPATH=PYCKBOTPATH+OS_SEP
+
 
 class NoJoyWarning( UserWarning ):
   """
@@ -270,6 +272,7 @@ class JoyApp( object ):
       remote -- interface to event factory
       now -- float - current time; updated every timer event
       plans -- list of Plan-s -- (private) list of active Plan co-routines
+      safety -- list of safety condition testers
     """
     self.DEBUG = DEBUG
     self.cfg = None #: EpyDoc (is a) dummy
@@ -285,6 +288,8 @@ class JoyApp( object ):
         PROGRESS_LOG.add(self.logger)       
     #
     self.now = time.time()
+    # initialize safety provider list
+    self.safety = []
     # init CKBot cluster interface
     if robot is not None:
       self.__initRobot(robot)
@@ -318,7 +323,9 @@ class JoyApp( object ):
       positionTolerance = 50,
       keyboardRepeatDelay = 500,
       keyboardRepeatInterval = 50,
-      clockInterval = 200,
+      clockInterval = 20,
+      voltagePollRate = 1.0,
+      minimalVoltage = 18,
       windowSize = [320,240],
       nodeNames = {},
       logFile = None,
@@ -362,7 +369,11 @@ class JoyApp( object ):
       c = Cluster()
     c.populate( **robot )
     self.robot = c
+    vs = []
     for m in c.itermodules():
+      # Collect modules that have a voltage sensing capability
+      if hasattr(m,'get_voltage'):
+        vs.append(m)
       if not isinstance(m,AbstractServoModule): 
         continue
       p = m.get_pos_async()
@@ -371,7 +382,15 @@ class JoyApp( object ):
       m.__promise = p
       m.__promise_time = self.now
       m.__last_pos = 0
-  
+    # If any voltage sensing modules found, and sensing was requested
+    #   then add the safety provider
+    if vs and self.cfg.minimalVoltage:
+      self.safety.append(safety.BatteryVoltage(
+        vmin = self.cfg.minimalVoltage,
+        sensors = vs,
+        pollRate = self.cfg.voltagePollRate 
+      ))
+
   def setterOf( self, func ):
     """
     Convert a setter specification (which may be a string) to a setter function.
@@ -489,7 +508,7 @@ class JoyApp( object ):
       evt = pygame.event.Event(
         SCRATCHUPDATE, scr=0, var=nm, value=None )
       pygame.event.post(evt)
-
+      
   # Table of functions for converting various event kinds into Scratch sensors
   SCRATCHY = {
     JOYAXISMOTION : lambda x : ('joy%d axis%d' % (x.joy,x.axis), x.value),
@@ -550,6 +569,20 @@ class JoyApp( object ):
         debugMsg(self,'Scratch update %s' % repr(self.__scr_udp) )
       self.__scr_upd = {}
 
+  def _pollSafety( self ):
+    """(private)
+    Poll all safety conditions and shut down immediately if violated
+    """
+    try:
+      for s in self.safety:
+        s.poll(self.now)
+    except safety.SafetyError,se:
+      if self.robot:
+         self.robot.off()
+      self.stop()
+      progress("(say) DANGER: safety conditions violated -- shutting down")
+      raise
+  
   def _timeslice( self, timerevt ):
     """(private)
     
@@ -619,6 +652,7 @@ class JoyApp( object ):
     try:
       self.onStart()
       while self.isRunning():
+        self._pollSafety()
         if self.robot:
           self._posEventPump()
         if self.scr:
@@ -626,7 +660,7 @@ class JoyApp( object ):
           self._scrEventEmit()
         if self.cfg.midi:
           for evt in midi_joyEventIter():
-	    pygame.event.post(evt)
+            pygame.event.post(evt)
         evts = pygame.event.get()    
         for evt in evts:
           if evt.type == TIMEREVENT:
@@ -640,6 +674,8 @@ class JoyApp( object ):
       self.onStop()
       if self.scr:
         self.scr.close()
+      if self.robot:
+        self.robot.off()
       if self.logger:
         self.logger.close()  
         if self.cfg.logProgress: 
