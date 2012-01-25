@@ -1121,17 +1121,9 @@ class Protocol( AbstractProtocol ):
             inc.setResponse(reply)
 
 class DynamixelModule( AbstractServoModule ):
-    """ ( concrete )
-    DESCRIPTION: 
-    -- The DynamixelModule class describes the basic functions of a DynamixelModule
-    RESPONSIBILITIES: 
-    -- Serves as a mixin class providing methods for other modules types
-    OWNERSHIP:
-    -- owned by the dynamixel module?
-    THEORY: 
-    -- Not exactly sure 
-    CONSTRAINTS:
-    -- Not exactly sure 
+    """ concrete class DynamixelModule provides shared capabilities of 
+    Dynamixel modules. It is usually used as the base class in a mixin,
+    with the model specific details provided by the mixin classes.
     """
     
     MX_POS =  10000 #: maximal position value for servos
