@@ -58,21 +58,24 @@ class SerialConnection( Serial, Connection ):
   Concrete Connection subclass representing a serial port
   """
   def __init__(self, glob=None, *args, **kw):
-    # Determine port name for current operating system
-    plat = platform.lower()        
-    if "linux" in plat: # Linux
-      port_path = (GLOB_GLOB("/dev/ttyUSB*")+[None])[0]        
-    elif "win32" in plat: # Windows
-      port_path = "7"          
-    elif "darwin" in plat: # Mac
-      port_path = (GLOB_GLOB("/dev/tty.usbserial*")+[None])[0]        
-    else: # Unhandled OS
-      raise IOError('Unknown OS -- cannot auto-configure serial')
+    # Try to resolve user globs
+    port_path = None
+    if glob is not None:
+      port_path = (GLOB_GLOB(glob)+[None])[0]
+    if port_path is None:
+      # Determine port name for current operating system
+      plat = platform.lower()
+      if "linux" in plat: # Linux
+        port_path = (GLOB_GLOB("/dev/ttyUSB*")+[None])[0]        
+      elif "win32" in plat: # Windows
+        port_path = "7"          
+      elif "darwin" in plat: # Mac
+        port_path = (GLOB_GLOB("/dev/tty.usbserial*")+[None])[0]        
+      else: # Unhandled OS
+        raise IOError('Unknown OS -- cannot auto-configure serial')
     
     if port_path is None:
-      if glob is None:
-        raise IOError("No serial port found and no glob hint given")
-      port_path = (GLOB_GLOB(glob)+[None])[0]        
+      raise IOError("No serial port found and no glob hint given")
     Serial.__init__(self, port_path, *args, **kw)
     Connection.__init__(self)
     if self.isOpen():
