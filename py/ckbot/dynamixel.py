@@ -63,16 +63,16 @@ class Dynamixel( object ):
   CONSTRAINTS: 
     -- none ... so far
   """
-  cmd_ping = 0x01 #: from command table EX-106 section 3-2
-  cmd_read_data = 0x02 #: from command table EX-106 section 3-2
-  cmd_write_data = 0x03 #: from command table EX-106 section 3-2
-  cmd_reg_write = 0x04 #: from command table EX-106 section 3-2
-  cmd_action = 0x05 #: from command table EX-106 section 3-2
-  cmd_reset = 0x06 #: from command table EX-106 section 3-2
-  cmd_sync_write = 0x83 #: from command table EX-106 section 3-2
-  mem_len = 0x39 #: length of control table EX-106 section 3-4
-  sync = '\xff\xff' #: synchronization pattern at start of packets EX-106 section 3-2
-  max_id = 0xFD #: maximal value of ID field EX-106 section 3-2
+  CMD_PING = 0x01 #: from command table EX-106 section 3-2
+  CMD_READ_DATA = 0x02 #: from command table EX-106 section 3-2
+  CMD_WRITE_DATA = 0x03 #: from command table EX-106 section 3-2
+  CMD_REG_WRITE = 0x04 #: from command table EX-106 section 3-2
+  CMD_ACTION = 0x05 #: from command table EX-106 section 3-2
+  CMD_RESET = 0x06 #: from command table EX-106 section 3-2
+  CMD_SYNC_WRITE = 0x83 #: from command table EX-106 section 3-2
+  MEM_LEN = 0x39 #: length of control table EX-106 section 3-4
+  SYNC = '\xff\xff' #: synchronization pattern at start of packets EX-106 section 3-2
+  MAX_ID = 0xFD #: maximal value of ID field EX-106 section 3-2
   broadcast_id = 0xFE #: broadcast address EX-106 section 3-2
   
  
@@ -397,8 +397,8 @@ class Bus( AbstractBus ):
             - Once Length bytes arrive, check if CRC is valid, otherwise drop byte
           - If there are no more bytes to read or parse then return None
         """
-        SYNC = Dynamixel.sync
-        MAX_ID = Dynamixel.max_id        
+        SYNC = Dynamixel.SYNC
+        MAX_ID = Dynamixel.MAX_ID        
         assert self.expect >= 6
         while len(self.buf)+self.ser.inWaiting()>=self.expect:
             # If we don't have at least self.expect bytes --> nothing to do
@@ -469,7 +469,7 @@ class Bus( AbstractBus ):
 
         """
         body = pack('BBB',nid,len(pars)+2,cmd)+pars  
-        msg = Dynamixel.sync+body+pack("B",self._chksum(body))
+        msg = Dynamixel.SYNC+body+pack("B",self._chksum(body))
         if 'x' in self.DEBUG:
           progress('[Dynamixel] send(%s)\n' % repr(msg))
         self.ser.write(msg)
@@ -494,12 +494,12 @@ class Bus( AbstractBus ):
         THEORY OF OPERATION:
           Set a value remotely, without expecting a reply
         """
-        body = ( pack('BBB', Dynamixel.broadcast_id, len(pars)+5, Dynamixel.cmd_sync_write)
+        body = ( pack('BBB', Dynamixel.BROADCAST_ID, len(pars)+5, Dynamixel.CMD_SYNC_WRITE)
                 +addr
                 +pack('BB', len(pars),nid)
                 +pars
            ) 
-        msg = Dynamixel.sync+body+pack("B",self._chksum(body))
+        msg = Dynamixel.SYNC+body+pack("B",self._chksum(body))
         if 'x' in self.DEBUG:
           progress('[Dynamixel] sync_write(%s)\n' % repr(msg))
         self.ser.write(msg)
@@ -559,7 +559,7 @@ class Bus( AbstractBus ):
           sends out the message. In between, poll for a reply for that message at a
           hard coded rate (currently 100Hz)
         """
-        if nid==Dynamixel.broadcast_id:
+        if nid==Dynamixel.BROADCAST_ID:
           raise ValueError('Broadcasts get no replies -- cannot send_cmd_sync')
         for k in xrange(retries+1):
           hdr0 = self.send(nid, cmd, pars)[0]
@@ -655,7 +655,7 @@ class ProtocolNodeAdaptor( AbstractNodeAdaptor ):
         OUTPUTS: 
           promise -- list -- promise returned from request
         """
-        return self.p.request( self.nid, Dynamixel.cmd_read_data, addr+pack('B',self.mm.val2len(addr)))
+        return self.p.request( self.nid, Dynamixel.CMD_READ_DATA, addr+pack('B',self.mm.val2len(addr)))
 
     def mem_write_async( self, addr, val ):
         """
@@ -668,7 +668,7 @@ class ProtocolNodeAdaptor( AbstractNodeAdaptor ):
         OUTPUTS: 
           promise -- list -- promise returned from request
         """        
-        return self.p.request( self.nid, Dynamixel.cmd_write_data, addr+self.mm.val2pkt( addr, val ))
+        return self.p.request( self.nid, Dynamixel.CMD_WRITE_DATA, addr+self.mm.val2pkt( addr, val ))
 
     @classmethod
     def async_parse(cls,promise,barf=True):
@@ -702,7 +702,7 @@ class ProtocolNodeAdaptor( AbstractNodeAdaptor ):
         THEORY OF OPERATION:
         -- mem_read the present_voltage register and convert
         """      
-        return Dynamixel.dynamixel2voltage(self.mem_read(self.mm.present_voltage))
+        return self.dynamixel2voltage(self.mem_read(self.mm.present_voltage))
 
     def get_temperature( self ):
         """
@@ -724,7 +724,7 @@ class ProtocolNodeAdaptor( AbstractNodeAdaptor ):
         THEORY OF OPERATION:
         -- mem_read the present_load register
         """      
-        return Dynamixel.dynamixel2voltage(self.mem_read(self.mm.present_load))
+        return self.dynamixel2voltage(self.mem_read(self.mm.present_load))
                
 class Request(object):
     """ ( internal concrete )
@@ -909,7 +909,7 @@ class Protocol( AbstractProtocol ):
         found = []
         for retry in xrange(0, retries):
             self.bus.flush()
-            self.bus.send(Dynamixel.broadcast_id, Dynamixel.cmd_ping)
+            self.bus.send(Dynamixel.BROADCAST_ID, Dynamixel.CMD_PING)
             t0 = now()
             while now()-t0 < float(timeout)/retries:
                 pkt = self.bus.recv()
@@ -991,7 +991,7 @@ class Protocol( AbstractProtocol ):
         OUTPUTS: 
           msg -- string -- transmitted packet minus SYNC        
         """
-        return self.bus.send_cmd_sync( nid, Dynamixel.cmd_write_data, addr+pars ) 
+        return self.bus.send_cmd_sync( nid, Dynamixel.CMD_WRITE_DATA, addr+pars ) 
   
     def mem_read_sync( self, nid, addr, length, retries=4 ):
       """
@@ -1004,7 +1004,7 @@ class Protocol( AbstractProtocol ):
           retries -- int -- number of times to retry if there exist protocol errors
       """
       for retry in xrange(0,retries):
-          reply = self.bus.send_cmd_sync( nid, Dynamixel.cmd_read_data, addr+pack('B', length))
+          reply = self.bus.send_cmd_sync( nid, Dynamixel.CMD_READ_DATA, addr+pack('B', length))
           if reply is None:
             return ProtocolError("NID 0x%02x mem_read[0x%02x] timed out" 
               % (nid, ord(addr)))
@@ -1056,7 +1056,7 @@ class Protocol( AbstractProtocol ):
           nid = self.pollRing.popleft()
           nxt.append(nid)
           if now-self.heartbeats.get( nid, (0,) )[0]>self.ping_rate:
-            self.request( nid, Dynamixel.cmd_ping )
+            self.request( nid, Dynamixel.CMD_PING )
             break
         self.pollRing.extend(nxt)
         
@@ -1083,11 +1083,11 @@ class Protocol( AbstractProtocol ):
               fill promise with ProtocolError(timeout)
               continue
             if message ID is BROADCAST_ID:
-              if message cmd not cmd_sync_write:
+              if message cmd not CMD_SYNC_WRITE:
                 bus.send the message
                 fill promise with None
               else:
-                fill promise with ProtocolError(not cmd_sync_write bcast not allowed) 
+                fill promise with ProtocolError(not CMD_SYNC_WRITE bcast not allowed) 
               continue
             else:
               bus.send_cmd_sync the message
@@ -1108,12 +1108,12 @@ class Protocol( AbstractProtocol ):
         
         TODO finish comment
         """
-        if inc.nid == Dynamixel.broadcast_id:
-            if cmd != Dynamixel.cmd_sync_write:
+        if inc.nid == Dynamixel.BROADCAST_ID:
+            if cmd != Dynamixel.CMD_SYNC_WRITE:
                 self.bus.send(*inc.sendArgs())
                 inc.setResponse(None)
             else:
-                inc.setError("broadcast allowed only for cmd_sync_write")
+                inc.setError("broadcast allowed only for CMD_SYNC_WRITE")
         else:
             reply = self.bus.send_cmd_sync(*inc.sendArgs())
             if reply is not None and not isinstance(reply,Exception):
