@@ -33,6 +33,7 @@ import hitec
 import dynamixel
 
 DEFAULT_BUS = dynamixel
+DEFAULT_PORT = None
 
 def nids2str( nids ):
   return ",".join(["Nx%02x" % nid for nid in nids])
@@ -128,7 +129,10 @@ class Cluster(dict):
     """
     dict.__init__(self,*args,**kwargs)
     if protocol is None:
-      self.p = DEFAULT_BUS.Protocol()
+      if DEFAULT_PORT is None:
+        self.p = DEFAULT_BUS.Protocol()
+      else:
+        self.p = DEFAULT_BUS.Protocol( bus = DEFAULT_BUS.Bus(port=DEFAULT_PORT) )
     elif type(protocol)==type:
       self.p = protocol()
     else:
