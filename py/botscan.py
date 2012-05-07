@@ -41,15 +41,16 @@ class ScanRobot( JoyApp ):
 if __name__=="__main__":
   robot = {}
   cfg = {}
-  protocol = {
-    'hitec' : hitec.Protocol,
-    'pololu' : pololu.Protocol,
-    'dynamixel' : dynamixel.Protocol,
-    'h' : hitec.Protocol,
-    'p' : pololu.Protocol,
-    'd' : dynamixel.Protocol
+  # Table of available busses
+  busTbl = {
+    'hitec' : hitec,
+    'pololu' : pololu,
+    'dynamixel' : dynamixel,
+    'h' : hitec,
+    'p' : pololu,
+    'd' : dynamixel
   }
-  p = protocol['hitec']
+  bus = None
   args = list(sys.argv[1:])
   while args:
     arg = args.pop(0)
@@ -65,11 +66,12 @@ if __name__=="__main__":
       robot.update( count=None )
     elif arg=='--duration' or arg=='-d':
       cfg.update( duration = float(args.pop(0)) )
+    elif arg=='--port' or arg=='-p':
+      cfg.update( port = args.pop(0))
     elif arg=='--frequency' or arg=='-f':
       cfg.update( rate = float(args.pop(0)) )
-    elif arg=='--bus' or arg=='-f':
-      bus = args.pop(0)
-      p = protocol.get(bus,None)
+    elif arg=='--bus' or arg=='-b':
+      bus = busTbl.get(args.pop(0),None)
       if p is None:
         sys.stderr.write("Unknown bus '%s'\n" % bus)
         sys.exit(2)   
@@ -102,6 +104,10 @@ if __name__=="__main__":
       --bus <bus-name> | -b <bus-name>
         Supported busses are 'hitec', 'pololu' and 'dynamixel'
         Bus names may be abbreviated to a single character
+      
+      --port <device-port> | -p <device-string>
+        Access the bus on the specified device. Device strings are
+        described in port2port.py newConnection
         
       --any | -a
         Scan any number of modules

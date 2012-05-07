@@ -18,6 +18,7 @@ from time import time as now
 from warnings import warn
 from glob import glob as GLOB_GLOB
 from os import sep, getenv
+from struct import pack, unpack
 
 # Support functions ###################################################
 
@@ -402,16 +403,9 @@ class MemInterface( object ):
     if type(key) is list:
       for k,v in zip(key,val):
         self[k]=v
-    #elif type(key) is tuple:
-    #  addr, b = key
-    #  tmp = self.get(addr)
-    #  if val:
-    #    self.set( addr, tmp | (1<<b))
-    #  else:
-    #    self.set( addr, tmp & ~(1<<b))
     else:
       self.set(key,val)
-
+    
 
 class GenericModule( Module ):
   """
