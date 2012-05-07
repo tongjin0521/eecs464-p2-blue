@@ -37,7 +37,7 @@ from glob import glob
 from random import uniform
 from collections import deque
 
-from ckmodule import Module, AbstractNodeAdaptor, AbstractProtocol, AbstractBus, progress, AbstractServoModule, AbstractProtocolError, AbstractBusError
+from ckmodule import Module, AbstractNodeAdaptor, AbstractProtocol, AbstractBus, progress, AbstractServoModule, AbstractProtocolError, AbstractBusError, MemInterface
 from port2port import newConnection
 
 class DynamixelServoError( AbstractBusError ):
@@ -73,7 +73,7 @@ class Dynamixel( object ):
   MEM_LEN = 0x39 #: length of control table EX-106 section 3-4
   SYNC = '\xff\xff' #: synchronization pattern at start of packets EX-106 section 3-2
   MAX_ID = 0xFD #: maximal value of ID field EX-106 section 3-2
-  broadcast_id = 0xFE #: broadcast address EX-106 section 3-2
+  BROADCAST_ID = 0xFE #: broadcast address EX-106 section 3-2
   
  
 class DynamixelMemMap:
@@ -1124,6 +1124,12 @@ class DynamixelModule( AbstractServoModule ):
     """ concrete class DynamixelModule provides shared capabilities of 
     Dynamixel modules. It is usually used as the base class in a mixin,
     with the model specific details provided by the mixin classes.
+    
+    Because the Dynamixel memory model is complicated (not all addressed
+    accept the same data types), the .mem member is useless. Instead,
+    Dynamixel-s have a .set method that accepts keyword arguments
+    corresponding to the address names in the .mcu sub-object. For 
+    example, .set( alarm_LED=1 ) will turn on the alarm LED.
     """
     
     MX_POS =  10000 #: maximal position value for servos
@@ -1177,13 +1183,14 @@ class DynamixelModule( AbstractServoModule ):
         """
         AbstractServoModule.__init__(self, node_id, typecode, pna) 
         self.mcu = self.pna.mm.memMapParent
+        self.mem = MemInterface( self )
         self._attr.update(
           set_pos_sync="2W",
           set_trim="2W",
           get_trim="1R",
           set_speed="2W",
           set_speed_sync="2W",
-      set_torque="2W",
+          set_torque="2W",
           get_speed="1R",
           get_voltage="1R",
           get_temperature="1R",
@@ -1192,7 +1199,7 @@ class DynamixelModule( AbstractServoModule ):
           mem_read="1R",
           get_mode="1R",
           set_mode="2W",
-      go_slack="2W"
+          go_slack="2W"
         )
         self.get_mode()
 
