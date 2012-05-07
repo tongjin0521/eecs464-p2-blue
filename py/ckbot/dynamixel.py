@@ -1124,12 +1124,6 @@ class DynamixelModule( AbstractServoModule ):
     """ concrete class DynamixelModule provides shared capabilities of 
     Dynamixel modules. It is usually used as the base class in a mixin,
     with the model specific details provided by the mixin classes.
-    
-    Because the Dynamixel memory model is complicated (not all addressed
-    accept the same data types), the .mem member is useless. Instead,
-    Dynamixel-s have a .set method that accepts keyword arguments
-    corresponding to the address names in the .mcu sub-object. For 
-    example, .set( alarm_LED=1 ) will turn on the alarm LED.
     """
     
     MX_POS =  10000 #: maximal position value for servos

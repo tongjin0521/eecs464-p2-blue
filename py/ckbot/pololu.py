@@ -35,6 +35,8 @@ import commands
 from ckmodule import Module, AbstractNodeAdaptor, AbstractProtocol, AbstractBus, progress, AbstractServoModule
 from port2port import newConnection
 
+DEBUG=[]
+
 class Bus(AbstractBus):
   """
   Concrete class that provides the functionality
@@ -59,6 +61,7 @@ class Bus(AbstractBus):
     self.ser = newConnection( port )
     self.port = port
     self.crc_enabled = crc_enabled
+    self.DEBUG = DEBUG
 
   def get_errors(self):
     """
@@ -101,7 +104,8 @@ class Bus(AbstractBus):
 
     if self.crc_enabled:
       cmd_str = self.crc7(cmd_str) # Calculate and append Cyclic Redundancy Check byte
-
+    if 'w' in self.DEBUG:
+      print "Ser WR>",repr(cmd_str)
     self.ser.write(cmd_str)            
 
   def close(self):
