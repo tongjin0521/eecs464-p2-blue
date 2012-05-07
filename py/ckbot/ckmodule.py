@@ -18,7 +18,6 @@ from time import time as now
 from warnings import warn
 from glob import glob as GLOB_GLOB
 from os import sep, getenv
-from struct import pack, unpack
 
 # Support functions ###################################################
 

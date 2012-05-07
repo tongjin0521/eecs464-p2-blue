@@ -18,6 +18,12 @@ from sys import platform, stderr
 from os import sep
 from json import loads as json_loads
 
+# Handle windows
+try:
+  import _winreg as winreg
+except:
+  winreg = None
+
 class Connection( object ):
   """
   Abstract superclass of all Connection objects
@@ -68,7 +74,10 @@ class SerialConnection( Serial, Connection ):
       if "linux" in plat: # Linux
         port_path = (GLOB_GLOB("/dev/ttyUSB*")+[None])[0]        
       elif "win32" in plat: # Windows
-        port_path = "7"          
+        # Grab first serial port from windows machine
+        path = 'HARDWARE\\DEVICEMAP\\SERIALCOMM'
+        key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path)
+        port_path = winreg.EnumValue(key,0)[1]
       elif "darwin" in plat: # Mac
         port_path = (GLOB_GLOB("/dev/tty.usbserial*")+[None])[0]        
       else: # Unhandled OS
