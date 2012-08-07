@@ -351,17 +351,24 @@ class Bus( AbstractBus ):
         """
         nid = ord(pkt[0])
         err = ord(pkt[2])
-
-        if err == 0x01:
-          raise DynamixelServoError("ID 0x%02x Voltage range outside of operating voltage in control table" % nid)
-        elif err == 0x02:
-          raise DynamixelServoError("ID 0x%02x  Angular Position outside of acceptable range" % nid)
-        elif err == 0x04:
-          raise DynamixelServoError("ID 0x%02x  Temperature outside  of acceptable range" % nid)
-        elif err == 0x20:
-          raise DynamixelServoError("ID 0x%02x  Current load cannot be controlled with set maximum torque" % nid)
-        else:
-          return 
+        msg = ["ID 0x%02x" % nid]
+        if err & 0x01:
+          msg.append("Voltage out of operating range")
+        if err & 0x02:
+          msg.append("Angular position out of range")
+        if err & 0x04:
+          msg.append("Overheating")
+        if err & 0x08:
+          msg.append("Command out of range")
+        if err & 0x10:
+          msg.append("Received message with checksum error")
+        if err & 0x20:
+          msg.append("Current load cannot be controlled with set maximum torque")
+        if err & 0x40:
+          msg.append("Unknown instruction in message")
+        if len(msg)>1:
+          raise DynamixelServoError("; ".join(msg))
+        return 
 
     def _dropByte( self, error=None ):
         """ (private)
@@ -372,7 +379,40 @@ class Bus( AbstractBus ):
         self.expect = 6
         if error is not None:
           setattr(self,error,getattr(self,error)+1)
-        
+    
+    @classmethod
+    def dump( cls, msg ):
+        """
+        Parses a message into human readable form
+        """
+        out = []
+        b = [ ord(m) for m in msg ]
+        while len(b)>6:
+          if b[0] != 0xff or b[1] != 0xff:
+            out.append("<<bad SYNC %02X %02X>>" % (b[0],b[1]))
+          else:
+            out.append("<SYNC>")
+          b = b[2:]
+          out.append("nid = 0x%02x" % b[0])
+          l = b[1]
+          if l+1>len(b):
+            out.append("<<bad len = %d total %d>>" % (l,len(b)))
+            break
+          out.append("len = %d" % l)
+          out.append({ 0x02:"read", 0x03:"write", 0x01:"ping",
+                       0x04:"REG WRITE", 0x05:"ACTION", 0x06:"RESET",
+                       0x83:"SYNC WRITE" 
+              }.get(b[2],"<<CMD 0x%02x>>" % b[2]))
+          out.append(" ".join("%02X" % bb for bb in b[3:l+1]) )
+          chk = sum(b[:l+1])
+          if b[l+1]+chk != 0xFF:
+            out.append("<<bad CHK %02X, need %02X>>" %(b[l+1],0xFF^chk))
+          else:
+            out.append("<CHK>")
+          # go to next message
+          b=b[l+2:]
+        return " ".join(out)
+          
     def recv( self, maxlen=10 ):
         """
         reads a single packet off of the RS485 or serial bus 
@@ -412,7 +452,7 @@ class Bus( AbstractBus ):
                 # --> didn't find sync; drop the first byte
                 self._dropByte('eSync')
                 continue
-            assert self.buf.startswith(SYNC)
+            ## assert self.buf.startswith(SYNC)
             # Make sure that our nid makes sense
             ID = ord(self.buf[2])
             if ID > MAX_ID: # Where 0xFD is the maximum ID 
@@ -437,12 +477,13 @@ class Bus( AbstractBus ):
             #   positions buf[:L+1]. We peel the wrapper and return the 
             #   payload portion
             pkt = self.buf[2:L-1]
-            fl_pkt = self.buf
+            fl_pkt = self.buf[:L]
             self.buf = self.buf[L:]
             self.rxPkts += 1
             if 'x' in self.DEBUG:
               progress('[Dynamixel] recv --> %s\n' % repr(fl_pkt))
-              self._parseErr(pkt)
+            # Run error check
+            self._parseErr(pkt)
             return pkt
         # ends parsing loop
         # Function terminates returning a valid packet payload or None
@@ -522,7 +563,7 @@ class Bus( AbstractBus ):
         THEORY OF OPERATION:
           Send CMD_PING for given nid as per section 3-5-5 pp. 37
         """
-        return self.write(nid, Dynamixel.CMD_PING)
+        return self.send(nid, Dynamixel.CMD_PING)
 
     def reset_nid( self, nid ):
         """ 
@@ -542,7 +583,7 @@ class Bus( AbstractBus ):
         """
         return self.write(nid, Dynamixel.CMD_RESET)
     
-    def send_cmd_sync( self, nid, cmd, pars, timeout=0.01, retries=5 ):
+    def send_cmd_sync( self, nid, cmd, pars, timeout=0.1, retries=5 ):
         """
         Send a command in synchronous form, waiting for reply
       
@@ -884,7 +925,7 @@ class Protocol( AbstractProtocol ):
             self.generatePNA( nid )
         progress("Dynamixel nodes: %s\n" % repr(list(nodes)))
 
-    def scan( self, timeout=0.1, retries=1, get_model=True ):
+    def scan( self, timeout=1.0, retries=1, get_model=True ):
         """
         Build a broadcast ping message and then read for responses, and if 
           the get_model flag is set, then get model numbers for all existing 
@@ -1099,6 +1140,12 @@ class Protocol( AbstractProtocol ):
         while (t1-t0 < timeout) and self.requests:
             t1 = now()
             self._doRequest( t0, self.requests.popleft() )
+        # Parse any remaining messages in buffer, generating
+        #   exceptions as needed
+        while (t1-t0 < timeout):
+            if not self.bus.recv():
+              break
+            
     
     def _doRequest(self, now, inc ):
         """
@@ -1344,6 +1391,19 @@ class DynamixelModule( AbstractServoModule ):
         rpm = self.dynamixel2rpm(spd)
         return rpm 
 
+    def get_moving_speed( self ):
+        """
+        Get the moving speed (set in set_speed) of servo
+
+        OUTPUTS:
+        -- speed -- float -- speed in rpm
+        THEORY OF OPERATION:
+        -- mem_read the moving_speed register and convert
+        """
+        spd = self.mem_read(self.mcu.moving_speed)
+        rpm = self.dynamixel2rpm(spd)
+        return rpm 
+
     def set_torque(self,val):
         """
         Sets torque of the module, with safety checks.
@@ -1357,6 +1417,21 @@ class DynamixelModule( AbstractServoModule ):
             raise TypeError('set_torque not allowed for modules in Servo')
         val = self.torque2dynamixel(val)
         return self.pna.mem_write_fast(self.mcu.moving_speed, val)
+
+    def set_torque_limit( self,val ):
+      """
+      Sets the maximum torque limit of the module
+      INPUT:
+          val -- unit from 0.0 to 1.0 where 1.0 is the maximum torque
+      """
+
+      if val > 1.0:
+        val = 1.0
+      elif val < 0.0:
+        val = 0.0
+      val = int(val*1023)
+      return self.mem_write( self.mcu.torque_limit, val )
+      
 
     def set_speed(self,val):
         """
