@@ -35,7 +35,7 @@ class dynamixelConfigurator:
         self.cur_nid = cur_nid
         self.new_nid = None
         self.cfg = cfg        
-        self.p = dynamixel.Protocol()
+        self.p = None
         
     def usage( self ):
         print """
@@ -45,8 +45,10 @@ class dynamixelConfigurator:
                 -c, --cur  : Desired servo ID to configure
                 -n, --new  : New servo ID
                 -f, --yaml : .yml file to read parameters from
-                -d, --debug : Set debug flag  
-           
+                -R, --reset : Start by sending a reset command
+                -d, --debug : Set debug flag
+                -p, --port : set an alternative port for the bus 
+                              (see port2port.newConnection)
               """
         return 
 
@@ -60,13 +62,16 @@ class dynamixelConfigurator:
             return False
 
         try:
-            opts, args = getopt( argv, "hn:c:f:d:sr", ["help", "new", "cur", "yaml", "debug", "scan"])
+          opts, args = getopt( argv, "Rhb:n:c:f:d:sp:", ["help", "new:", "cur:", "yam:l", "debug", "scan", "baud:", "port:","reset"])
             
         except GetoptError:
             progress( "Invalid Arguments" )
             self.usage()
             return False
 
+        self.withReset = False
+        self.baud = None
+        scan = False
         for opt, arg in opts:
             if opt in ("-h", "--help"):
                 self.usage()
@@ -82,25 +87,36 @@ class dynamixelConfigurator:
                 progress("Loading yaml configuration: %s" % self.cfg )
                 self.cfg = load( open( arg ))
             elif opt in ("-s", "--scan"):
-                self.scanAll()
-                return False
-        return True
+                scan = True
+            elif opt in ("-R", "--reset"):
+                self.withReset = True  
+            elif opt in ("-p", "--port"):
+                self.p = dynamixel.Protocol(dynamixel.Bus(port=arg))
+        return scan
 
+    def _defaultPort( self ):
+        self.p = dynamixel.Protocol()
+          
     def scanAll( self ):
         """ 
         A utility function that will scan all baudrates and return all
         nodes found. 
         Exits upon completion
         """
+        if self.p is None:
+          self._defaultPort()
         nid_str = []
-        bauds = self.p.bus.scanBauds(useFirst=False)
-        bauds = list(set(bauds))
-        for baud in bauds:
+        for baud in self._baudPlan():
+            progress("Testing baudrate %d" % baud)
             self.p.bus.reconnect(baudrate = baud)
             self.p.reset()
             for nid in self.p.pnas.keys():
                 tpe = self.read_type(nid)
                 nid_str.append(' ID 0x%02x: %s Module found at baudrate %d ' % (nid, tpe, baud))
+        if not nid_str:
+            progress('--- REPORT -- No modules found' )
+            return
+        progress( '--- REPORT %s' % ('-'*50))
         for s in nid_str:
             progress(s)
 
@@ -108,10 +124,9 @@ class dynamixelConfigurator:
         """
         Check to ensure that we don't try to overwrite another nid
         """
-        if nid is not None:
-            if self.p.pnas.has_key(nid):
-                progress("ID 0x%02x already exists cannot set new node id" % nid)
-                return False
+        if self.p.pnas.has_key(nid):
+            progress("ID 0x%02x already exists cannot set new node id" % nid)
+            return False
         return True
 
     def write_nid(self, nid_old, nid_new):
@@ -123,8 +138,6 @@ class dynamixelConfigurator:
         # Update nid if allowed
         if nid_new == 0x01:
             progress("Warning: NID 0x01 is reserved for configuration")
-        if nid_new is None:
-            return
         node = self.p.pnas[nid_old]
         progress("Setting old NID 0x%02x to new NID 0x%02x" % (nid_old, nid_new))
         node.mem_write_sync( getattr( node.mm, 'ID'), nid_new)
@@ -134,12 +147,14 @@ class dynamixelConfigurator:
         """
         Write node parameters as defined by config (cfg)
         """
-        baud = None
-        # For memory address names set those attributes 
-        node = self.p.pnas[nid]
         if self.cfg is None:
             progress("No configuration defined")
             return 
+        if self.p is None:
+          self._defaultPort()
+        baud = None
+        # For memory address names set those attributes 
+        node = self.p.pnas[nid]
         progress('Configuring ID 0x%02x with parameters %s' % (nid, self.cfg))
         node = self.p.pnas[nid]
         for name, val in self.cfg.iteritems():
@@ -164,15 +179,27 @@ class dynamixelConfigurator:
         """
         Read the servo type, returned upon scanAll, ... maybe scan?
         """
+        if self.p is None:
+          self._defaultPort()
         node = self.p.pnas[nid]
         cw_limit = node.mem_read_sync( node.mm.cw_angle_limit) 
         ccw_limit = node.mem_read_sync( node.mm.ccw_angle_limit)
-        print "cw_limit: %s" % repr(cw_limit)
-        print "ccw_limit: %s" % repr(ccw_limit)
         if cw_limit==0 and ccw_limit==0:
             return 'CR'
         return 'Servo'       
 
+    def _baudPlan( self ):
+        """(private) plan order in which baudrates are scanned
+        """
+        if self.baud:
+          return [self.baud]
+        bauds = [ b 
+            for b in self.p.bus.getSupportedBaudrates()
+            if (b>=1200 and b<=1e6 and b != 57600) ]
+        bauds.sort(reverse=True)
+        bauds.insert(0, 57600)
+        return bauds
+        
     def scan(self, nid, timeout=0.5, retries=1 ):
         """
         Check if a given node id exists on any baudrates,
@@ -183,12 +210,10 @@ class dynamixelConfigurator:
         nid -- int -- node id to scan for
         
         """
-        progress("Scanning")
-        bauds = [ b[1] for b in self.p.bus.ser.getSupportedBaudrates() if b[1]<=1e6]
-        bauds.sort(reverse=True)
-        bauds.insert(0, 57600)
-        found = []
-        for baud in bauds:
+        if self.p is None:
+          self._defaultPort()
+        progress("Scanning for 0x%02X" % nid)
+        for baud in self._baudPlan():
             self.p.bus.reconnect(baudrate = baud)
             self.p.reset()
             if self.p.pnas.has_key(nid):
@@ -198,22 +223,40 @@ class dynamixelConfigurator:
         progress( 'ID 0x%02x not found' % nid )
         return 
 
+    def reset_nid( self ):
+        """
+        Reset servo at cur_nid
+        """
+        if not self._safe_nid(1):
+          progress("A node ID 0x01 already exists on the bus. Reset aborted")
+          return
+        progress("Resetting 0x%02X... will be to 0x01, at 57600 baud")
+        self.p.bus.reset_nid( self.cur_nid )
+        self.p.bus.reconnect( 57600 )
+        self.cur_nid = 1          
+        
     def run( self ):
         """
         Read in and parse arguments, perform necessary configuration 
         """
-        cntu = self.parseArgs( self.argv )
-        if not cntu:
-            return        
+        scan = self.parseArgs( self.argv )
+        if scan:
+          return self.scanAll()       
         # Find desired nid
         self.scan( self.cur_nid )
+        if self.withReset:
+          self.reset_nid()
         # Check that new nid is safe 
         if not self._safe_nid( self.new_nid ):
             return 
-        self.write_config( self.cur_nid )
-        # After changing configuration we may be at a new baudrate so rescan
-        self.scan( self.cur_nid )
-        self.write_nid( self.cur_nid, self.new_nid )
+        # Configure, if requested
+        if self.cfg:
+          self.write_config( self.cur_nid )
+          # After changing configuration we may be at a new baudrate so rescan
+          self.scan( self.cur_nid )
+        # If nid change requested --> do it
+        if self.new_nid:
+          self.write_nid( self.cur_nid, self.new_nid )
         return 
 
 if __name__ == "__main__":
