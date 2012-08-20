@@ -206,7 +206,7 @@ class Bus( AbstractBus ):
       -- requires valid baudrate setting for communication
       -- writes and reads limited by pyserial->termios 
     """
-    def __init__(self, port='tty={ "baudrate":1000000, "timeout":0.01 }'):
+    def __init__(self, port='tty={ "baudrate":115200, "timeout":0.01 }'):
         """
         Initialize Dynamixel Bus
       
@@ -238,45 +238,11 @@ class Bus( AbstractBus ):
         if not self.ser.isOpen():
           raise ValueError('Could not open newly configured connection')
 
-    def scanBauds( self, bauds = None, useFirst=True, timeout=0.5, retries=1 ):
-        """ Scans the bus at specified baudrates and pings servos. 
-            When useFirst is True, will stop at first baud rate that gets a response.
-            When useFirst is False, will try all baudrates listed.
-            If no baudrates specified, tries all rates supported by the serial port 
-               and 1Mbps or lower. 
-
-            Returns list of baudrates which received a response.
-
-            NOTE: the serial interface is left with the first successful configuration, 
-                  so under typical conditions no further reconnection is needed.
-
-            Typically, you can use this to find the baudrate of your servos, then set them
-            to your preferred rate and use the .reconnect(...) method to reconnect at the
-            preferred rate.
+    def getSupportedBaudrates(self):
         """
-        # By default, scan all legal baud rates, high to low
-        if bauds == None:
-           bauds = [ b[1] for b in self.ser.getSupportedBaudrates() if b[1]<=1e6]
-           bauds.reverse()
-        #progress("Scanning baudrates: "+repr(bauds)+"\n")
-        found = []
-        for b in bauds:
-           self.reconnect(baudrate=b)
-           # Hard code a ping-all command
-           for retry in xrange(0, retries):
-             self.flush()
-             self.ser.write('\xff\xff\xfe\x02\x01\xfe')
-             t0 = now()
-             while now()-t0 < float(timeout)/retries:
-               res = self.recv()
-               if res is not None:
-                 found.append( b )
-                 if useFirst:
-                   self.reconnect( baudrate=found[0] )
-                   return found
-           sleep(0.01)
-        #progress("Baudrates in use are "+repr(found)+"\n")
-        return found
+        List of supported baud rates
+        """
+        return [ b[1] for b in self.ser.getSupportedBaudrates() ]
 
     def reset( self ):
         """
@@ -290,7 +256,9 @@ class Bus( AbstractBus ):
         self.eID = 0
         self.count = 0
         self.rxPkts = 0
+        self.rxEcho = 0
         self.txPkts = 0
+        self.suppress = {}
         self.ser.flush()
 
     def flush( self ):
@@ -313,6 +281,7 @@ class Bus( AbstractBus ):
             'bytes in %d' % self.count,
             'packets out %d' % self.txPkts,
             'packets in %d' % self.rxPkts,
+            'echos in %d' % self.rxEcho,
             'sync errors %d' % self.eSync,
             'id errors %d' % self.eID,            
             'length errors %d' % self.eLen, 
@@ -330,7 +299,7 @@ class Bus( AbstractBus ):
           raise ValueError('Could not open newly configured connection')
     
     @classmethod
-    def _chksum( self, dat ):
+    def _chksum( cls, dat ):
         """(private)
         Compute checksum as per EX-106 section 3-2 pp. 17  
         
@@ -345,7 +314,8 @@ class Bus( AbstractBus ):
         """
         return 0xFF ^ (0xFF & sum([ ord(c) for c in dat ]))
 
-    def _parseErr( self, pkt ):
+    @classmethod
+    def _parseErr( cls, pkt ):
         """ (private)
         Parse and output error returned from dynamixel servos as per 3-4-1 pp. 25
         """
@@ -384,6 +354,10 @@ class Bus( AbstractBus ):
     def dump( cls, msg ):
         """
         Parses a message into human readable form
+        INPUT:
+          msg -- one or more message in a string
+        OUTPUT:
+          the messages in human-readable form
         """
         out = []
         b = [ ord(m) for m in msg ]
@@ -403,9 +377,15 @@ class Bus( AbstractBus ):
                        0x04:"REG WRITE", 0x05:"ACTION", 0x06:"RESET",
                        0x83:"SYNC WRITE" 
               }.get(b[2],"<<CMD 0x%02x>>" % b[2]))
-          out.append(" ".join("%02X" % bb for bb in b[3:l+1]) )
+          # Sync write is parsed differently
+          if b[2]!=0x83:
+            out.append(" ".join("%02X" % bb for bb in b[3:l+1]) )
+          else:
+            out.append('addr = 0x%02X for %d' % (b[3],b[4]))
+            for k in xrange(5,l,3):
+              out.append('nid %02X %02X %02X' % tuple(b[k:k+3]))
           chk = sum(b[:l+1])
-          if b[l+1]+chk != 0xFF:
+          if 0xFF & (b[l+1]+chk) != 0xFF:
             out.append("<<bad CHK %02X, need %02X>>" %(b[l+1],0xFF^chk))
           else:
             out.append("<CHK>")
@@ -413,6 +393,24 @@ class Bus( AbstractBus ):
           b=b[l+2:]
         return " ".join(out)
           
+    def _testForEcho( self, pkt ):
+        SWEEP_EVERY = 100
+        tbl = self.suppress
+        n = self.txPkts
+        # Is it time to sweep out old packets from the echo suppression?
+        if (n % SWEEP_EVERY) == 0:
+          # If so, find packets that are older than SWEEP_EVERY
+          #   and remove them from the table
+          for key in tbl.keys():
+            if tbl[key] < n - SWEEP_EVERY:
+              del tbl[key]
+        # should packet be suppressed?
+        if tbl.has_key(pkt):
+          # yes; don't suppress if seen again
+          del tbl[pkt]
+          return True
+        return False
+        
     def recv( self, maxlen=10 ):
         """
         reads a single packet off of the RS485 or serial bus 
@@ -479,6 +477,12 @@ class Bus( AbstractBus ):
             pkt = self.buf[2:L-1]
             fl_pkt = self.buf[:L]
             self.buf = self.buf[L:]
+            # Check if this is an echo
+            if self._testForEcho(fl_pkt):
+              self.rxEcho += 1
+              if 'x' in self.DEBUG:
+                progress('[Dynamixel] recv echo --> %s\n' % repr(fl_pkt))
+              continue
             self.rxPkts += 1
             if 'x' in self.DEBUG:
               progress('[Dynamixel] recv --> %s\n' % repr(fl_pkt))
@@ -512,9 +516,10 @@ class Bus( AbstractBus ):
         body = pack('BBB',nid,len(pars)+2,cmd)+pars  
         msg = Dynamixel.SYNC+body+pack("B",self._chksum(body))
         if 'x' in self.DEBUG:
-          progress('[Dynamixel] send(%s)\n' % repr(msg))
+          progress('[Dynamixel] send --> %s\n' % repr(msg))
         self.ser.write(msg)
         self.txPkts+=1
+        self.suppress[msg] = self.txPkts
         return msg[2:]
 
     def send_sync_write( self, nid, addr, pars ):
@@ -542,8 +547,9 @@ class Bus( AbstractBus ):
            ) 
         msg = Dynamixel.SYNC+body+pack("B",self._chksum(body))
         if 'x' in self.DEBUG:
-          progress('[Dynamixel] sync_write(%s)\n' % repr(msg))
+          progress('[Dynamixel] sync_write --> %s\n' % repr(msg))
         self.ser.write(msg)
+        self.suppress[msg] = self.txPkts
         self.txPkts+=1
         return msg[2:]
 
@@ -577,9 +583,7 @@ class Bus( AbstractBus ):
           Resets all values in the servo's control table to factory
           defaults, INCLUDING the ID, which is reset to 0x01. 
 
-          !!! This indicates that we should probably reserve the ID 0x01 
-              for configuration purposes -U
-          !!!    
+          By convention, we reserve ID 0x01 for configuration purposes
         """
         return self.write(nid, Dynamixel.CMD_RESET)
     
