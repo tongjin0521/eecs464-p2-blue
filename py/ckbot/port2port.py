@@ -79,7 +79,8 @@ class SerialConnection( Serial, Connection ):
         key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path)
         port_path = winreg.EnumValue(key,0)[1]
       elif "darwin" in plat: # Mac
-        port_path = (GLOB_GLOB("/dev/tty.usbserial*")+[None])[0]        
+        # Grab the first usbserial, failing that the first usbmodem
+        port_path = (GLOB_GLOB("/dev/tty.usbserial*")+GLOB_GLOB("/dev/tty.usbmodem*")+[None])[0]        
       else: # Unhandled OS
         raise IOError('Unknown OS -- cannot auto-configure serial')
     
