@@ -321,7 +321,7 @@ class PoseRecorderCLI( Cmd ):
         except IOError,ioe:
             print ioe
             return
-        self.appendFrom(stream)
+        self.pr.appendFrom(stream)
 
     def do_count(self,line):
          """Set number of times to loop"""
