@@ -36,6 +36,8 @@ class dynamixelConfigurator:
         self.new_nid = None
         self.cfg = cfg        
         self.p = None
+        self.withReset = False
+        self.baud = None
         
     def usage( self ):
         print """
@@ -69,8 +71,6 @@ class dynamixelConfigurator:
             self.usage()
             return False
 
-        self.withReset = False
-        self.baud = None
         scan = False
         for opt, arg in opts:
             if opt in ("-h", "--help"):
