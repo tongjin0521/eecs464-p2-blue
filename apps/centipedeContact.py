@@ -170,7 +170,12 @@ class contactGait:
 
 	#determine contact state
 	def contact(self, phi):
-		if(cos(self.yaw) > 0.8):
-			return True
-		return False
+		if(0 <= phi < 0.5):
+			if(cos(self.yaw) > 0.8):
+				return True
+			return False
+		else:
+			if(cos(self.yaw) > 0.7):
+				return True
+			return False
 		

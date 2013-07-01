@@ -38,53 +38,54 @@ def printGait(roll, yaw, gaitState, roll2, yaw2, gaitState2, phi):
 	endFrontIdx = gaitState.index('stance') - 1
 	rollFront = roll[0:endFrontIdx]
 	yawFront = yaw[0:endFrontIdx]
-	plot(yawFront, rollFront, color='blue')
+	plot(yawFront, rollFront,'bo-')
 	hold(True)
 	
 	#plot 'stance'
 	endStanceIdx = gaitState.index('recovery') - 1
 	rollStance = roll[endFrontIdx+1:endStanceIdx]
 	yawStance = yaw[endFrontIdx+1:endStanceIdx]
-	plot(yawStance, rollStance, color='green')
+	plot(yawStance, rollStance, 'go-')
 	
 	#plot 'recovery'
 	rollRecov = roll[endStanceIdx+1:]
 	yawRecov = yaw[endStanceIdx+1:]
-	plot(yawRecov, rollRecov, color='red')
+	plot(yawRecov, rollRecov, 'ro-')
 	
-	grid(True)
-	title('Yaw v Roll for contact gait (side 1)\ncontact = cos(yaw) > 0.8')
-	xlim(-1.1, 1.1)
-	ylim(-1.1, 1.1)
+	
 	if not plotSecondHalf:
+		grid(True)
+		title('Yaw v Roll for contact gait (side 1)\ncontact = cos(yaw) > 0.8')
+		xlim(-1.1, 1.1)
+		ylim(-1.1, 1.1)
 		show()
 	
 	if plotSecondHalf:
 		#second half of gait
-		figure(2)
-		xlabel('Yaw')
-		ylabel('Roll')
+		#figure(2)
+		#xlabel('Yaw')
+		#ylabel('Roll')
 			
 		#get second half of gaitState list
 		endFrontIdx = gaitState2.index('stance') - 1
 		rollFront = roll2[0:endFrontIdx]
 		yawFront = yaw2[0:endFrontIdx]
-		plot(yawFront, rollFront, color='blue')
+		plot(-yawFront, -rollFront, 'bo-')
 		hold(True)
 	
 		#plot 'stance'
 		endStanceIdx = gaitState2.index('recovery') - 1
 		rollStance = roll2[endFrontIdx+1:endStanceIdx]
 		yawStance = yaw2[endFrontIdx+1:endStanceIdx]
-		plot(yawStance, rollStance, color='green')
+		plot(-yawStance, -rollStance, 'go-')
 	
 		#plot 'recovery'
 		rollRecov = roll2[endStanceIdx+1:-1]
 		yawRecov = yaw2[endStanceIdx+1:-1]
-		plot(yawRecov, rollRecov, color='red')
+		plot(-yawRecov, -rollRecov, 'ro-')
 	
 		grid(True)
-		title('Yaw v Roll for contact gait (side 2)\ncontact = cos(yaw) > 0.8')
+		title('Yaw v Roll for contact gait (both sides)\nside 1: contact = cos(yaw) > 0.8\nside 2: contact = cos(yaw) > 0.7')
 		xlim(-1.1, 1.1)
 		ylim(-1.1, 1.1)
 		show()
@@ -106,8 +107,8 @@ myGait = contactGait(initParams)
 #print('myGait.gaitState = ' + myGait.gaitState + '\n\n')
 
 #set up phi
-numVals = 2048
-phiVals = linspace(0, 1, numVals)
+numVals = 10
+phiVals = linspace(0, 0.9, numVals)
 
 #first half of gait
 rollVals = zeros(numVals/2, float)
