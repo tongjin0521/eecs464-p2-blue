@@ -1,7 +1,7 @@
 '''
 	centipedeContact.py
 	by Nick Quinnell
-	last updated 2013-06-19
+	last updated 2013-07-15
 	nicq@umich.edu
 	
 	Implementation of Prof Revzen's hexapod ground-sensing gait
@@ -51,6 +51,11 @@ class contactGait:
 	r1 = 0
 	phi0 = 0
 	phi1 = 0
+	frontLimit = 0
+	stanceLimit = 0
+	
+	#debug
+	debug = False
 		
 	#init takes one argument: an instance of gaitParams	
 	def __init__(self, inParams):
@@ -59,123 +64,174 @@ class contactGait:
 		self.params = inParams
 		self.yaw = inParams.yawAmp	#have to init yaw here to satisfy contraint
 									#of the gait (can't have yaw = roll = 0)
-		
-		#should update do()'s w/ abs() if needed
+									
+		#should update do()'s (see below) w/ abs() if needed
 		assert abs(self.params.rollThresh) < self.params.rollAmp, "rollAmp < rollThresh"
 		assert abs(self.params.yawThresh) < self.params.yawAmp, "yawAmp < yawThresh"
 		assert self.params.rollAmp > 0, "rollAmp <= 0"
 		assert self.params.yawAmp > 0, "yawAmp <= 0"
+									
+		#need to set up limits for front/stance/recovery given the parameters
+		#this will let the gaitState be purely a function of phi and contact
 		
-	#do stuff based on gaitState & contact
-	#should only call this function unless debugging
+		#set frontLimit
+		self.frontLimit = asin(-self.params.rollThresh/self.params.rollAmp)/(2*pi)
+		assert self.frontLimit > 0, "invalid rollThresh/rollAmp combination"
+		assert self.frontLimit < 0.25, "invalid rollThresh/rollAmp combination"
+		#the two 'asserts' above shold be covered by the 4 previous ones
+		
+		#cannot set stanceLimit until we have determined phi0... or can we?
+		
+		#initialize phi1 as 0.25, w/ corresponding y1/r1
+		self.phi1 = 0.25
+		self.y1 = 0
+		self.r1 = self.params.rollThresh
+		
+	#do stuff based on phi & contact
+	#this function should be the only one called from outside the class 
+	#unless debugging
 	def manageGait(self, phi):
 		#first find status of foot contact
 		self.inContact = self.contact(phi)
 		
-		#take appropriate action based on phi/contact
-		#calculate roll/yaw, then determine state when next called
-		if self.gaitState == 'front':
-			self.doFront(phi)
-			if self.exitFront():	
-			#if 'front' ends, record phi0
-				if(0.5 < phi < 1):
-					self.phi0 = phi - 0.5
-				else:
-					self.phi0 = phi
+		locPhi = phi
+		if(0.5 <= phi < 1):
+			locPhi -= 0.5
+			
+		if(self.debug):
+			print('phi = ' + str(locPhi))
+			print('contact = ' + str(self.inContact))
+			print('frontLimit = ' + str(self.frontLimit))
+			print('stanceLimit = ' + str(self.stanceLimit))
+			print('phi0 = ' + str(self.phi0))
+			print('phi1 = ' + str(self.phi1))
+			print('roll (pre-state) = ' + str(self.roll*180/pi))
+			print('yaw (pre-state)= ' + str(self.yaw*180/pi))
+		
+		
+		#determine state from phi & contact
+		if 0 <= locPhi < self.frontLimit:
+			if self.inContact:
 				self.gaitState = 'stance'
-		elif self.gaitState == 'stance':
-			self.doStance(phi)			
-			if self.exitStance():
-			#if 'stance' ends, record phi1, y1, r1 
-				if(0.5 < phi < 1):
-					self.phi1 = phi - 0.5
-				else:
-					self.phi1 = phi 
-				self.y1 = self.yaw	
-				self.r1 = self.roll	
-				self.gaitState = 'recovery'
-				assert self.y1 <= 0, "y1 > 0, ended 'stance' too early"
-		elif self.gaitState == 'recovery':
-			self.doRecovery(phi)
-			if self.exitRecovery(phi):
-			#if 'recovery' ends, we're back at front for the other side
-				self.roll = 0
-				self.yaw = self.params.yawAmp
+			else:
 				self.gaitState = 'front'
+		elif self.frontLimit <= locPhi < self.stanceLimit:
+			#if ((not self.inContact) and self.yawLessThanZero(locPhi)):
+			if ((not self.inContact) and (self.yaw < 0.0)):
+				self.gaitState = 'recovery'
+			else:
+				self.gaitState = 'stance'
+		else:
+			self.gaitState = 'recovery'
+			
+		if(self.debug):
+			print('state = ' + self.gaitState)	
+		
+		#take appropriate action based on state, calculate roll/yaw
+		#may have still have some issues with skipping a phase of the gait
+		#i.e. going straight from 'recovery' to 'stance' and skipping a 'front'
+		#phase
+		if self.gaitState == 'front':
+			#calculate roll/yaw
+			self.doFront(locPhi)
+			
+			#update phi0
+			self.phi0 = locPhi
+			
+			#set stanceLimit, since we now have a valid phi0
+			#this assumes that we will always go through at least one portion
+			#of 'front' before we get to 'stance' -- this may not be the case
+			#need to ask Prof Revzen			
+			self.stanceLimit = self.phi0 - (self.params.yawThresh - self.params.yawAmp*cos(2*pi*self.phi0))/(self.params.stanceVel)
+			
+			#reinitialize phi1 as 0.25, w/ corresponding y1/r1 in case we ski
+			#the 'stance' portion of the gait
+			self.phi1 = 0.25
+			self.y1 = 0
+			self.r1 = self.params.rollThresh
+			
+		elif self.gaitState == 'stance':
+			#calculate roll/yaw
+			self.doStance(locPhi)	
+			
+			#update local gait variables
+			self.phi1 = locPhi
+			self.r1 = self.roll
+			
+			#special update for y1 -> must have y1 <= 0 always?
+			if(self.yaw > 0):
+				self.y1 = 0
+			else:
+				self.y1 = self.yaw
+			
+		elif self.gaitState == 'recovery':
+			#calculate roll/yaw
+			self.doRecovery(locPhi)
+			
 		else:
 			#should never reach this code, must always be in
 			#front or stance or recovery
 			print("ERROR: invalid gaitState")
-			print("\tgaitState: '"  + "'")			
+			print("\tgaitState: '"  + "'")		
+			
+		if(self.debug):	
+			print('roll (post-calc) = ' + str(self.roll*180/pi))
+			print('yaw (post-calc)= ' + str(self.yaw*180/pi))
+			print('\n')
+			
+		
 
 	#calculate roll/yaw when in 'front' state
-	def doFront(self, phi):
-		locPhi = phi
-		#transform for second half of gait
-		if(0.5 <= phi < 1):
-			locPhi = phi - 0.5
-			
-		self.yaw = cos(locPhi*2*pi) * self.params.yawAmp 
-		self.roll = -sin(locPhi*2*pi) * self.params.rollAmp
-
-	#function to handle the exit conditions of the 'front' gaitState
-	def exitFront(self):
-		if (self.roll <= self.params.rollThresh) or self.inContact:
-			return True
-		return False
+	def doFront(self, phi):					
+		self.yaw = cos(phi*2*pi) * self.params.yawAmp 
+		self.roll = -sin(phi*2*pi) * self.params.rollAmp
 
 	#calculate roll/yaw when in 'stance' state
 	#error: if there is contact @ phi=0, doStance() will not change
 	#	yaw.  Need to change the sgn(sin(phi0)) to something else - it is
 	#	zero when phi0=0
+	#CORRECTION: removed sgn(sin(phi0)) -- not required because of how we
+	#handle phi in the range [0.5, 1]
 	def doStance(self, phi):
-		locPhi = phi
-		locPhi0 = self.phi0
-		#transform when in second half of gait
-		if(0.5 <= phi < 1):
-			locPhi = phi - 0.5
-		
-		self.yaw = (self.params.yawAmp*cos(2*pi*locPhi0) - 
-				self.params.stanceVel*(locPhi - locPhi0)*sgn(sin(2*pi*locPhi0)))
-		self.roll = -sin(2*pi*locPhi0)*self.params.rollAmp
-
-	#function to handle the exit conditions of the 'stance' gaitState
-	def exitStance(self):
-		if ((self.yaw < 0 and not self.inContact) or 
-						self.yaw <= self.params.yawThresh):
-			return True
-		return False
+		self.yaw = (self.params.yawAmp*cos(2*pi*self.phi0) - 
+				self.params.stanceVel*(phi - self.phi0))
+		self.roll = -sin(2*pi*self.phi0)*self.params.rollAmp
 			
 	#calculate roll/yaw when in 'recovery' state
 	#need to update the gait pdf with changes here, and assumptions about
 	#	the sign of yawAmp
 	def doRecovery(self, phi):
-		#transform when in second half of gait
-		locPhi = phi
-		locPhi1 = self.phi1
-		if(0.5 < phi <= 1):
-			locPhi = phi - 0.5
-			
 		#unlike phi, psi is a real angle that doesn't require *2*pi
-		psi = (pi/2)*(2*pi*locPhi - 2*pi*locPhi1)/(pi - 2*pi*locPhi1)
+		psi = (pi/2)*(2*pi*phi - 2*pi*self.phi1)/(pi - 2*pi*self.phi1)
 		self.yaw = self.y1 - ((self.params.yawAmp + self.y1) * sin(psi))
 		self.roll = self.r1 * cos(psi)
 
-	#function to handle the exit conditions of the 'recovery' gaitState
-	def exitRecovery(self, phi):
-		window = self.params.endRecovWindow
-		if (0.5 < phi < 0.5+window) or (phi == 1) or (0 <= phi < window):	
-			return True
-		return False
-
 	#determine contact state
 	def contact(self, phi):
-		if(0 <= phi < 0.5):
-			if(cos(self.yaw) > 0.8):
-				return True
-			return False
-		else:
-			if(cos(self.yaw) > 0.7):
-				return True
-			return False
+		#if(0 <= phi < 0.5):
+		#	if(cos(self.yaw) > 0.998):
+		#		return True
+		#	return False
+		#else:
+		#	if(cos(self.yaw) > 0.998):
+		#		return True
+		#	return False
+		if(cos(self.yaw) > 0.998):
+			return True
+		return False
+			
+	#rearranges the condition (yaw < 0) to be a function of phi
+	#ATTN: something is wrong here... needs a little work... check notes/math
+	def yawLessThanZero(self, phi):
+		phi_0 = self.phi0
+		yaw_amp = self.params.yawAmp
+		vel = self.params.stanceVel
 		
+		phiLimit = (phi_0 + yaw_amp*cos(2*pi*phi_0)/vel)
+		print('phiLimit = ' + str(phiLimit))
+		
+		temp = phiLimit < phi
+		print('current yaw: ' + str(self.yaw))
+		print('yaw < 0 = ' + str(temp))
+		
+		return temp
