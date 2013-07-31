@@ -159,7 +159,7 @@ class FunctionCyclePlanApp( JoyApp ):
       maxEcc = math.pi/2,
     )
 
-    self.plan = FunctionCyclePlan(self, self.fun,N=180,interval=0.005)
+    self.plan = FunctionCyclePlan(self, self.fun,N=360,interval=.07)
     self.plan.onStart = curry(progress,">>> START")
     self.plan.onStop = curry(progress,">>> STOP")
     self.plan.setFrequency(self.gaitSpec.freq)
@@ -215,6 +215,8 @@ class FunctionCyclePlanApp( JoyApp ):
         self.turnInPlaceMode = 0
       return
     if evt.type==KEYDOWN:
+      if evt.key==ord('m'):#
+          self.plan.start()#
       if evt.key==ord('e'): # 'e' increases eccentricity
           gs.ecc += 0.1
       if evt.key==ord('d'): # 'd' decreases eccentricity
