@@ -430,8 +430,9 @@ class MissingModule( Module ):
   MissingModule. Typically, one may set: m.msg = ckbot.logical.progress
   
   """
-  def __init__(self, nid, name):
-    Module.__init__(self, nid, "<<filler>>", None)
+  TYPECODE = "<<missing>>"
+  def __init__(self, nid, name, pna=None):
+    Module.__init__(self, nid, MissingModule.TYPECODE, None)
     self.mem = MemInterface(self)
     self.mcu = object()
     self._mem = {}

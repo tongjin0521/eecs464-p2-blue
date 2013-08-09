@@ -1,14 +1,15 @@
-clockInterval: 20
+minimalVoltage: 10
+clockInterval: 3
 keyboardRepeatDelay: 500
 keyboardRepeatInterval: 50
 nodeNames: { 
-  0x04 : L1,
-  0x0D : B1,
-  0x08 : F2,
-  0x0A : L2,
+  0x24 : L1,
+  0x31 : B1,
+  0x05 : F2,
+  0x2D : L2,
   0x09 : B2,
-  0x03 : F3,
-  0x05 : L3
+  0x27 : F3,
+  0x26 : L3
 }
 positionTolerance: 200000
 robotPollRate: 10000000
