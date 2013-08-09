@@ -76,7 +76,7 @@ from misc import *
 
 # Interface to robots
 import ckbot
-from ckbot.logical import Cluster,AbstractServoModule
+from ckbot.logical import Cluster,AbstractServoModule,AbstractProtocolError
 
 # Logging interface
 from loggit import progress,LogWriter,dbgId,debugMsg,PROGRESS_LOG
@@ -325,7 +325,7 @@ class JoyApp( object ):
       keyboardRepeatInterval = 50,
       clockInterval = 20,
       voltagePollRate = 1.0,
-      minimalVoltage = 16,
+      minimalVoltage = 10,
       windowSize = [320,240],
       nodeNames = {},
       logFile = None,
@@ -576,6 +576,8 @@ class JoyApp( object ):
     try:
       for s in self.safety:
         s.poll(self.now)
+    except AbstractProtocolError, ape:
+      progress("WARNING: safety test encountered a communication error '%s'" % str(ape))
     except safety.SafetyError,se:
       if self.robot:
          self.robot.off()
