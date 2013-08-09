@@ -15,3 +15,4 @@ positionTolerance: 200000
 robotPollRate: 10000000
 windowSize: [320, 240]
 # remote : { allowMisc : 10 }
+

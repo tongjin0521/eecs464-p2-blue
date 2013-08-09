@@ -325,7 +325,7 @@ class JoyApp( object ):
       keyboardRepeatInterval = 50,
       clockInterval = 20,
       voltagePollRate = 1.0,
-      minimalVoltage = 16,
+      minimalVoltage = 10,
       windowSize = [320,240],
       nodeNames = {},
       logFile = None,
@@ -470,7 +470,10 @@ class JoyApp( object ):
 
   def _posEventPump( self ):
     """(private)
-    
+    <<NOTE: feature is currently disabled in _timeslice due to timing problems
+      caused by robot.getLive(). This may be solvable by replacing the call to
+      getLive() by something less disruptive>>
+
     Check asynchronous position polling of robot modules for new updates and
     push the necessary custom events into pygame
     """
@@ -655,8 +658,9 @@ class JoyApp( object ):
       self.onStart()
       while self.isRunning():
         self._pollSafety()
-        if self.robot:
-          self._posEventPump()
+        # DISABLED DUE TO TIMING PROBLEMS, SEE COMMENT IN _posEventPump
+        #if self.robot:
+        #  self._posEventPump()
         if self.scr:
           self._scrEventPump()
           self._scrEventEmit()

@@ -8,7 +8,7 @@ class FunctionCyclePlanApp( JoyApp ):
   def onStart( self ):
     def fun( phase ):
       s = sin(phase*2*pi)
-      progress( " "*(int((s+1)*30)) + "#" )      
+      progress( " "*(int((s+1)*30)) + "#" )   
     self.plan = FunctionCyclePlan(self, fun, 24)
     self.plan.onStart = curry(progress,">>> START")
     self.plan.onStop = curry(progress,">>> STOP")
@@ -56,6 +56,12 @@ if __name__=="__main__":
   When any key is pressed, starts a FunctionCyclePlan that prints
   an ASCII art sine wave under keyboard control.
 
+  h -- help
+  q -- quit
+  , and . -- change rate
+  SPACE -- pause / resume
+  any other key -- start 
+  
   The application can be terminated with 'q' or [esc]
   """
   import joy

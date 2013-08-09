@@ -848,6 +848,7 @@ class IR_Node_Atx( Module, MemAt0x1010, MemIxMixin):
      self.mem = MemInterface( self )
 
 #Register module types:
+Module.Types[MissingModule.TYPECODE] = MissingModule
 Module.Types['V1.3'] = V1_3Module
 Module.Types['V1.4'] = V1_4Module
 Module.Types['mm'] =ICRA_Motor_Module

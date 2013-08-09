@@ -2,7 +2,7 @@ from joy import *
 from math import copysign,cos,sin,pi
 from numpy import matrix,floor
 from numpy import linalg
-import time
+from time import time as now
 import ckbot.dynamixel as DX
 import ckbot.logical as logical
 import math
@@ -103,15 +103,10 @@ class Segment(object):
 
 class FunctionCyclePlanApp( JoyApp ):
   def __init__(self,*arg,**kw):
-
-    self.bus = DX.Bus()
-    # set up protocol with hitec bus    
-    p = DX.Protocol(bus = self.bus)
-    kw.update(robot=dict( count=7))
     JoyApp.__init__(self, confPath="$/cfg/JoyAppCentipede.yml", *arg,**kw)
     self.turnInPlaceMode = 0
     self.gaitSpec = None
-    self.last = time.time()
+    self.last = now()
 
   def fun( self, phase ):
     g = self.gaitSpec
@@ -135,7 +130,6 @@ class FunctionCyclePlanApp( JoyApp ):
     self.S1.set_pos(yaw1,bend,-roll1)
     self.S2.set_pos(yaw2,bend,roll2)
     self.S3.set_pos((yaw1)+726,bend,roll1+2500)#offset the zero position of F3 and L3 +1000
-
   def onStart(self):
     self.S1 = Segment(None, self.robot.at.B1, self.robot.at.L1)
     self.S2 = Segment(self.robot.at.F2, self.robot.at.B2, self.robot.at.L2)
@@ -159,12 +153,11 @@ class FunctionCyclePlanApp( JoyApp ):
       maxEcc = math.pi/2,
     )
 
-    self.plan = FunctionCyclePlan(self, self.fun,N=360,interval=.07)
+    self.plan = FunctionCyclePlan(self, self.fun,N=302,interval=0.02)
     self.plan.onStart = curry(progress,">>> START")
     self.plan.onStop = curry(progress,">>> STOP")
     self.plan.setFrequency(self.gaitSpec.freq)
     self.dir = 1
-
     sf = StickFilter(self)
     sf.setLowpass("joy0axis2",10)
     sf.setLowpass("joy0axis3",10)
@@ -179,8 +172,8 @@ class FunctionCyclePlanApp( JoyApp ):
   def onEvent(self, evt):
     gs = self.gaitSpec
 
-    if self.timeToPlot():
-      progress('time: %g' % (time.time()))
+    #if self.timeToPlot():
+    #  progress('time: %g' % (time.time()))
 
     if self.timeToShow():
       gs.turn = 0.5*self.sf.getValue("joy0axis2")
@@ -228,125 +221,6 @@ class FunctionCyclePlanApp( JoyApp ):
     if evt.type!=TIMEREVENT:
       JoyApp.onEvent(self,evt)
 
-class GaitTestPlanApp( JoyApp ):
-
-# THIS IS FOR TESTING WITHOUT BEING CONNECTED TO ROBOT
-
-  def __init__(self,*arg,**kw):
-    JoyApp.__init__(self, confPath="$/cfg/JoyAppCentipede.yml", *arg,**kw)
-    self.turnInPlaceMode = 0
-    self.gaitSpec = None
-    self.last = time.time()
-    self.t = np.arange(-0.5,0.5,0.05)
-    phi = dblStanceIterable(self.t,0.94,0.23,0,0,0)
-    self.h, = pylab.plot(self.t,phi)
-
-  def fun( self, phase ):
-    g = self.gaitSpec
-    phase1 = dblStance(phase, g.phi_s, g.t_s, 0,0, -g.turn)
-    phase2 = dblStance(phase, g.phi_s, g.t_s, 0,0.5, -g.turn)
-    bend = 0 #-turn*maxTurn
-    roll1 = math.cos(phase1)*g.maxRoll*g.rollAmp
-
-    if self.turnInPlaceMode: # create figure 8
-      yaw1 = -math.sin(phase1*2)*1.3*g.maxYaw*g.yawAmp 
-      #1.3 b/c can make longer strides
-    else:
-      yaw1 = -math.sin(phase1+g.yawAmp*g.ecc)*g.maxYaw*g.yawAmp
-
-    roll2 = math.cos(phase2)*g.maxRoll*g.rollAmp
-    if self.turnInPlaceMode:
-      yaw2 = -math.sin(phase1*2)*1.3*g.maxYaw*g.yawAmp #turning
-    else:
-      yaw2 = -math.sin(phase2)*g.maxYaw*g.yawAmp #turning
-
-  def onStart(self):
-    self.last = 0
-
-    self.gaitSpec = Struct(
-      rollAmp = 0.2, 
-      yawAmp = 0,
-      phi_s = 0.94,
-      t_s = 0.23,
-      turn = 0,
-      freq = 2,
-      ecc =0,
-
-      maxFreq = 3.0,   
-      maxYaw = 700,
-      maxRoll = 7000,
-      maxTurn = -500,
-      maxEcc = math.pi/2,
-    )
-
-    self.plan = FunctionCyclePlan(self, self.fun,N=180,interval=0.05)
-    self.plan.onStart = curry(progress,">>> START")
-    self.plan.onStop = curry(progress,">>> STOP")
-    self.plan.setFrequency(self.gaitSpec.freq)
-    self.dir = 1
-
-    sf = StickFilter(self)
-    sf.setLowpass("joy0axis2",10)
-    sf.setLowpass("joy0axis3",10)
-    sf.start()
-    self.sf = sf
-    self.timeToShow = self.onceEvery(1)
-
-  def onStop(self):
-    progress('Stopped')
-  
-  def onEvent(self, evt):
-    gs = self.gaitSpec
-
-    if self.timeToShow():
-      gs.turn = 0.5*self.sf.getValue("joy0axis2")
-      gs.yawAmp = -self.sf.getValue("joy0axis3")
-      progress('freq: %g, roll: %g, yaw: %g, turn: %g, turn mode: %g' 
-               % (gs.freq, gs.rollAmp, gs.yawAmp, gs.turn, self.turnInPlaceMode))
-      phi = dblStanceIterable(self.t,gs.phi_s,gs.t_s,0,0,-gs.turn)
-      self.h.set_ydata(phi)
-      pylab.draw()
-
-    if evt.type==JOYBUTTONDOWN and evt.joy==0:
-      progress( describeEvt(evt) )
-      # plot
-#      if evt.button==6:
-      # start
-      if evt.button==5:
-        self.plan.start()
-        progress('--> starting plan')
-      # stop
-      if evt.button==7:
-        self.plan.stop()
-        progress('STOP')
-      if evt.button==2: #increase freq
-        gs.freq += 0.1
-        self.plan.setFrequency( gs.freq )
-      if evt.button==0: #decrease freq
-        gs.freq -= 0.1
-        self.plan.setFrequency( gs.freq )        
-      if evt.button==3: #increase roll
-        gs.rollAmp += 0.01
-      if evt.button==1: #decrease roll
-        gs.rollAmp -= 0.01
-      if evt.button==6: #turn in place mode = 1
-        self.turnInPlaceMode = 1
-      if evt.button==4: #turn in place mode = 0
-        self.turnInPlaceMode = 0
-      return
-    if evt.type==KEYDOWN:
-      if evt.key==ord('e'): # 'e' increases eccentricity
-          gs.ecc += 0.1
-      if evt.key==ord('d'): # 'd' decreases eccentricity
-          gs.ecc -= 0.1
-
-    if evt.type in [JOYAXISMOTION]:
-      self.sf.push(evt)
-      return
-    if evt.type!=TIMEREVENT:
-      JoyApp.onEvent(self,evt)
-
-
 
 if __name__=="__main__":
   print """
@@ -363,6 +237,14 @@ if __name__=="__main__":
   import joy
   joy.DEBUG[:]=[]
   app=FunctionCyclePlanApp(robot=dict(count=7))
+  import ckbot.logical, ckbot.nobus, ckbot.dynamixel
+  ckbot.logical.DEFAULT_BUS = ckbot.dynamixel
+  import joy
+  app=FunctionCyclePlanApp(robot=dict(
+    count=7,fillMissing=True,
+    required=[ 0x24, 0x31, 0x05, 0x2D, 0x09, 0x27, 0x26 ] 
+    ))
+
 #  app=GaitTestPlanApp()
   app.run()
 #  cProfile.run(  app.run()  , 'centipede_profile_stats')
