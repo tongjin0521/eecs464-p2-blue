@@ -83,7 +83,7 @@ def describeEvt( evt, parseOnly = False ):
   cut and paste them into code that pattern matches events, e.g.
   
   >>> evt = pygame.event.Event(pygame.locals.MOUSEMOTION,pos=(176, 140),rel=(0, 1),buttons=(0, 0, 0))
-  >>> print describeEvt( pygame.event.Event( JOYBUTTONDOWN, joy=1, button=3 ))
+  >>> print describeEvt(evt,0)
   type==MOUSEMOTION pos==(176, 140) rel==(0, 1) buttons==(0, 0, 0)
   
   If parseOnly is set, returns a dictionary with the extracted fields:

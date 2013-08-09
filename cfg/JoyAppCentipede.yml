@@ -1,5 +1,5 @@
-minimalVoltage: 5
-clockInterval: 10
+minimalVoltage: 7
+clockInterval: 3
 keyboardRepeatDelay: 500
 keyboardRepeatInterval: 50
 nodeNames: { 
@@ -8,7 +8,7 @@ nodeNames: {
   0x05 : F2,
   0x2D : L2,
   0x09 : B2,
-  0x27 : F3,
+  0x0C : F3,
   0x26 : L3
 }
 positionTolerance: 200000
