@@ -7,6 +7,12 @@ import ckbot.dynamixel as DX
 import ckbot.logical as logical
 import math
 
+# For plotting Buehler
+import matplotlib
+matplotlib.use('TkAgg') #Uses a backend that is usable in OSX as well
+import matplotlib.pyplot as plt
+import pylab
+import numpy as np
 """
 WARNING
 
@@ -97,15 +103,12 @@ class Segment(object):
 
 class FunctionCyclePlanApp( JoyApp ):
   def __init__(self,*arg,**kw):
-# set up protocol with hitec bus    
     JoyApp.__init__(self, confPath="$/cfg/JoyAppCentipede.yml", *arg,**kw)
     self.turnInPlaceMode = 0
     self.gaitSpec = None
     self.last = now()
 
   def fun( self, phase ):
-    t = now()
-    progress('FUN IN %g' %(t-self.last))
     g = self.gaitSpec
     phase1 = dblStance(phase, g.phi_s, g.t_s, 0,0, -g.turn)
     phase2 = dblStance(phase, g.phi_s, g.t_s, 0,0.5, -g.turn)
@@ -127,9 +130,6 @@ class FunctionCyclePlanApp( JoyApp ):
     self.S1.set_pos(yaw1,bend,-roll1)
     self.S2.set_pos(yaw2,bend,roll2)
     self.S3.set_pos((yaw1)+726,bend,roll1+2500)#offset the zero position of F3 and L3 +1000
-    progress('FUN OUT, %g' % (now()-t))
-    self.last = t
-    
   def onStart(self):
     self.S1 = Segment(None, self.robot.at.B1, self.robot.at.L1)
     self.S2 = Segment(self.robot.at.F2, self.robot.at.B2, self.robot.at.L2)
@@ -172,25 +172,15 @@ class FunctionCyclePlanApp( JoyApp ):
   def onEvent(self, evt):
     gs = self.gaitSpec
 
-    if self.timeToPlot():
-      progress('time: %g' % (time.time()))
+    #if self.timeToPlot():
+    #  progress('time: %g' % (time.time()))
 
     if self.timeToShow():
       gs.turn = 0.5*self.sf.getValue("joy0axis2")
       gs.yawAmp = -0.5#self.sf.getValue("joy0axis3")
       progress('freq: %g, roll: %g, yaw: %g, turn: %g, turn mode: %g' 
                % (gs.freq, gs.rollAmp, gs.yawAmp, gs.turn, self.turnInPlaceMode))
-    if evt.type==KEYDOWN:
-      progress( describeEvt(evt) )
-      # start
-      if evt.key==K_o:
-        self.plan.start()
-        progress('--> starting plan')
-      # stop
-      if evt.key==K_p:
-        self.plan.stop()
-        self.robot.off()
-        progress('STOP')
+
     if evt.type==JOYBUTTONDOWN and evt.joy==0:
       progress( describeEvt(evt) )
       # start
@@ -218,6 +208,8 @@ class FunctionCyclePlanApp( JoyApp ):
         self.turnInPlaceMode = 0
       return
     if evt.type==KEYDOWN:
+      if evt.key==ord('m'):#
+          self.plan.start()#
       if evt.key==ord('e'): # 'e' increases eccentricity
           gs.ecc += 0.1
       if evt.key==ord('d'): # 'd' decreases eccentricity
@@ -228,7 +220,6 @@ class FunctionCyclePlanApp( JoyApp ):
       return
     if evt.type!=TIMEREVENT:
       JoyApp.onEvent(self,evt)
-
 
 
 if __name__=="__main__":
@@ -243,8 +234,11 @@ if __name__=="__main__":
   robot = None
   
  # import cProfile
-  import ckbot.logical, ckbot.nobus
-  ckbot.logical.DEFAULT_BUS = ckbot.nobus 
+  import joy
+  joy.DEBUG[:]=[]
+  app=FunctionCyclePlanApp(robot=dict(count=7))
+  import ckbot.logical, ckbot.nobus, ckbot.dynamixel
+  ckbot.logical.DEFAULT_BUS = ckbot.dynamixel
   import joy
   app=FunctionCyclePlanApp(robot=dict(
     count=7,fillMissing=True,

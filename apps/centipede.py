@@ -3,7 +3,7 @@ from math import copysign,cos,sin,pi
 from numpy import matrix,floor
 from numpy import linalg
 import time
-import ckbot.hitec as hitec
+import ckbot.dynamixel as DX
 import ckbot.logical as logical
 import math
 
@@ -104,10 +104,10 @@ class Segment(object):
 class FunctionCyclePlanApp( JoyApp ):
   def __init__(self,*arg,**kw):
 
-    self.bus = hitec.Bus()
+    #self.bus = dynamixel.Bus()
     # set up protocol with hitec bus    
-    p = hitec.Protocol(bus = self.bus)
-    kw.update(robot=dict(protocol = p, count=7))
+    #p = hitec.Protocol(bus = self.bus)
+    kw.update(robot=dict( count=7))
     JoyApp.__init__(self, confPath="$/cfg/JoyAppCentipede.yml", *arg,**kw)
     self.turnInPlaceMode = 0
     self.gaitSpec = None
@@ -132,7 +132,7 @@ class FunctionCyclePlanApp( JoyApp ):
     else:
       yaw2 = -math.sin(phase2)*g.maxYaw*g.yawAmp #turning
 
-    self.S1.set_pos(yaw1,bend,roll1)
+    self.S1.set_pos(yaw1,bend,-roll1)
     self.S2.set_pos(yaw2,bend,roll2)
     self.S3.set_pos(yaw1,bend,roll1)
 
