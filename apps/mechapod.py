@@ -93,6 +93,7 @@ class Segment(object):
   def set_pos(self,yaw,bend,roll):
     A = matrix([[2,0.5,0],[-2,0.5,0],[0,0,1]],dtype='float')
     pos=A*matrix([[yaw],[bend],[roll]])
+    progress("ROLL " + str(self)+" " + str(roll))
     if self.f!=None:
       self.f.set_pos(pos[0])
     if self.b!=None:
