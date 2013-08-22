@@ -25,13 +25,13 @@ from numpy import *
 sgn = lambda x : (x>0) - (x<0)
 
 class gaitParams:
-	rollThresh = 0
-	yawThresh = 0
-	maxRoll = 0
-	rollAmp = 0
-	yawAmp = 0
-	stanceVel = 1
-	endRecovWindow = 0.01
+	rollThresh = -(33*pi/180)
+	yawThresh = -(12*pi/180)
+	maxRoll = (40*pi/180)
+	rollAmp = (40*pi/180)
+	yawAmp = (15*pi/180)
+	stanceVel = 3
+	endRecovWindow = 0.2
 	
 
 class contactGait:
@@ -208,16 +208,8 @@ class contactGait:
 
 	#determine contact state
 	def contact(self, phi):
-		#if(0 <= phi < 0.5):
-		#	if(cos(self.yaw) > 0.998):
-		#		return True
-		#	return False
-		#else:
-		#	if(cos(self.yaw) > 0.998):
-		#		return True
-		#	return False
-		if(cos(self.yaw) > 0.998):
-			return True
+		#if(cos(self.yaw) > 0.988):
+		#	return True
 		return False
 			
 	#rearranges the condition (yaw < 0) to be a function of phi

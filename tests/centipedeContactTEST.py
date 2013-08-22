@@ -85,8 +85,8 @@ initParams.endRecovWindow = 0.2
 myGait = contactGait(initParams)
 
 #set up phi
-numVals = 11
-phiVals = linspace(0, 1, numVals)
+numVals = 1024
+phiVals = linspace(0, 0.5, numVals)
 
 numVals -= 1
 phiVals = phiVals[:-1]
