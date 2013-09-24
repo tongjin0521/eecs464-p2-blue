@@ -32,6 +32,6 @@ class HelloJoyApp( JoyApp ):
     # If we reach this line, it was a MOUSEMOTION with button pressed
     #   so we send the value out to the output
     self.output( evt.pos[1] )
-  
-app = HelloJoyApp("#output ")
-app.run()
+if __name__=="__main__":  
+  app = HelloJoyApp("#output ")
+  app.run()
