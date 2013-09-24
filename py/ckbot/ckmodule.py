@@ -39,6 +39,12 @@ if not GLOB_GLOB(PYCKBOTPATH+"py%sckbot%sckmodule.py" % (sep,sep)):
 class AbstractProtocol( object ):
   """abstract superclass of all Protocol classes
   
+  Protocol classes are responsible for generating the Protocol Node 
+  Adaptors for each module on the bus, when the bus is scanned. 
+  Protocols implement the transactions that the underlying communication
+  infrastructure supports, and typically maintain state representing any
+  incomplete transactions. 
+  
   AbstractProtocol subclasses must implement the following methods:
     p.update()
     p.hintNodes(nodes)
@@ -52,6 +58,11 @@ class AbstractProtocol( object ):
 class AbstractBus( object ):
   """abstract superclass of all Bus classes
   
+     Bus classes are responsible for wrapping OS hardware drivers and
+     presenting a pythonically correct, human readable interface.
+     
+     Bus instances should be (mostly) stateless, and bus methods should
+     return as fast as possible.
   """
   pass
 
