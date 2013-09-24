@@ -2,11 +2,11 @@
 from joy import *
 
 NAMES = {
-  0xC : 'LT',
-  0x2 : 'RT',
-  0xD : 'Z',
-  0x3 : 'R0',
-  0x4 : 'R1'
+  0xB : 'LT',
+  0x9 : 'RT',
+#  0xD : 'Z',
+  0x21 : 'R0',
+  0x8 : 'R1'
 }
 
 class Cart( Plan ):
@@ -63,7 +63,7 @@ class MidiDOF( object ):
     self.fine = 0
     self.coarse = 0
     self.last = None
-    self.tau = 0.2
+    self.tau = 1.0
     self.maxJump = 1000
 
   @classmethod
@@ -88,12 +88,17 @@ class MidiDOF( object ):
       return int(width*(p/2e4+0.5))
     s[pos2idx(self.coarse)] = '+'
     p = pos2idx( self.pos )
-    if not self.active:
-      s[p] = "v"
-    elif self.smooth:
-      s[p] = 'S'
+    if p<0: 
+	s[0] = "<"
+    elif p>=width:
+        s[-1] = ">"
     else:
-      s[p] = "|"
+      if not self.active:
+        s[p] = "v"
+      elif self.smooth:
+        s[p] = 'S'
+      else:
+        s[p] = "|"
     return "".join(s)
 
   def onMidiEvent( self, evt ):
@@ -140,25 +145,26 @@ class MidiDOF( object ):
 
 class DemoJoyApp( JoyApp ):
   def __init__(self,*arg,**kw):
-    JoyApp.__init__(self,*arg,robot=dict(names=NAMES,count=5),cfg=dict(clockInterval=50),**kw)
+    JoyApp.__init__(self,*arg,robot=dict(names=NAMES,count=len(NAMES)),cfg=dict(clockInterval=50),**kw)
     self.voltage = 666
   
   def onStart( self ):
     # Set up a StickFilter Plan
     self.cp = Cart(self,LT="LT/@set_torque",RT="RT/@set_torque")
     self.cp.start()
-    self.Z = MidiDOF.ofModule("pivot",self.robot.at.Z)
+    #self.Z = MidiDOF.ofModule("pivot",self.robot.at.Z)
     self.R0 = MidiDOF.ofModule("shoulder",self.robot.at.R0)
     self.R1 = MidiDOF.ofModule("elbow",self.robot.at.R1)
     self.midis = {
       0 : self.cp.push,
       2 : self.cp.push,
-      7 : self.Z.onMidiEvent,
+     # 7 : self.Z.onMidiEvent,
       8 : self.R0.onMidiEvent,
       9 : self.R1.onMidiEvent,
     }
     self.voltageTest = self.onceEvery(5)
     self.display = self.onceEvery(0.5)
+    self.smoothStep = self.onceEvery(0.05)
 
   def onEvent( self, evt ):
     if self.voltageTest():
@@ -171,9 +177,13 @@ class DemoJoyApp( JoyApp ):
           progress('(say) WARNING: battery voltage is %d. Replace or recharge')
     if self.display():
       progress(self.cp.status)
-      progress("%-10s" % self.Z.name + self.Z.getStatus())
+      #progress("%-10s" % self.Z.name + self.Z.getStatus())
       progress("%-10s" % self.R0.name + self.R0.getStatus())
       progress("%-10s" % self.R1.name + self.R1.getStatus())
+    if self.smoothStep():
+      self.R0.update(self.now)
+      self.R1.update(self.now)
+      #self.Z.update(self.now)
     if evt.type==MIDIEVENT:
       if evt.sc != 4 and evt.index != 0:
         progress('WARNING: must use scene 4')
@@ -189,10 +199,6 @@ class DemoJoyApp( JoyApp ):
           h = lambda x : None
       h(evt)
       return
-    elif evt.type == TIMEREVENT:
-      self.R0.update(self.now)
-      self.R1.update(self.now)
-      self.Z.update(self.now)
     elif evt.type in [MOUSEMOTION]:
       return
     return JoyApp.onEvent(self,evt)

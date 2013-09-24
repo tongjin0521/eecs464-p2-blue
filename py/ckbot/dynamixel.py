@@ -822,7 +822,7 @@ class Protocol( AbstractProtocol ):
          for a given timeslice
       -- act as a abstraction layer for basic Bus functionality?
     OWNERSHIP:
-      -- owned by the dynamixel module?
+      -- owned by the Cluster
     THEORY: 
       -- The protocol owns a dictionary of the NodeAdaptor of each module 
          It initially checks for modules by performing a scan for all nodes
@@ -1153,7 +1153,7 @@ class Protocol( AbstractProtocol ):
     
     def _doRequest(self, now, inc ):
         """
-        Take a single request and process it.
+        Process a single incomplete request
         If it requires a response -- complete it or time-out; if not,
         complete with a None reply
         
