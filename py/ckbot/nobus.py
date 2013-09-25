@@ -12,9 +12,10 @@ class Protocol( AbstractProtocol ):
   AbstractProtocol instances must have the following data attributes:
     p.heartbeats -- dict -- nid to last heartbeat
   """
-  def __init__(self):
-    AbstractProtocol.__init__(self)
+  def __init__(self,*args,**kw):
+    AbstractProtocol.__init__(self,*args,**kw)
     self.hintNodes([])
+    
   def update(self):
     self._ts[0] = now()
   
@@ -32,8 +33,8 @@ class Bus( AbstractBus ):
   """abstract superclass of all Bus classes
   
   """
-  def __init__(self):
-    AbstractBus.__init__(self)
+  def __init__(self,*args,**kw):
+    AbstractBus.__init__(self,*args,**kw)
   
 class NodeAdaptor( AbstractNodeAdaptor ):
   """abstract superclass of all ProtocolNodeAdaptor classes

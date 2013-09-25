@@ -48,7 +48,7 @@ class Bus(AbstractBus):
   Maestro User Manual located at http://www.pololu.com/docs/0J40/all
   """
 
-  def __init__(self, port = 'tty={ "glob":"/dev/ttyACM0", "baudrate":38400, "timeout":0.1}', crc_enabled=False):
+  def __init__(self, port = 'tty={ "glob":"/dev/ttyACM0", "baudrate":38400, "timeout":0.1}', crc_enabled=False, *args,**kw):
     """
     Initialize a Pololu Bus class
 
@@ -58,6 +58,7 @@ class Bus(AbstractBus):
     ATTRIBUTES:
     ser -- connection handle
     """
+    AbstractBus.__init__(self,*args,**kw)
     self.ser = newConnection( port )
     self.port = port
     self.crc_enabled = crc_enabled
@@ -201,7 +202,7 @@ class Protocol( AbstractProtocol ):
   # This is also to initialize the Maestro to begin receiving commands using the PololuProtocol
   POLOLU_BYTE = 0xAA
 
-  def __init__(self, bus=None, nodes=None):
+  def __init__(self, bus=None, nodes=None, *args,**kw):
     """
     Initialize a pololu.Protocol
     
@@ -217,6 +218,7 @@ class Protocol( AbstractProtocol ):
     FUTURE:
     buses -- may be a list of buses (Protocol can communicate with multiple buses by changing servonums)
     """
+    AbstractProtocol.__init__(self,*args,**kw)
     if bus is None:
       self.bus = Bus()
     else:
