@@ -129,9 +129,7 @@ class Cluster(dict):
   """
   def __init__(self,arch=None,port=None,*args,**kwargs):
     """
-    Create a new cluster.
-    
-    NOTE: this DOES NOT populate the cluster with modules.
+    Create a new cluster. Optionally, also .populate() it
     
     INPUT:
       arch -- optional -- python module containing arch.Bus and
@@ -154,12 +152,15 @@ class Cluster(dict):
         This can be used to specify serial devices and baudrates, e.g.
         port = 'tty={glob="/dev/ttyACM1",baudrate=115200}'
       
+      *argc, **kw -- if any additional parameters are given, the
+        .populate(*argc,**kw) method is invoked after initialization
+        
     ATTRIBUTES:
       p -- instance of Protocol for communication with modules
       at -- instance of the Attributes class.
       limit -- float -- heartbeat time limit before considering node dead
     """
-    dict.__init__(self,*args,**kwargs)
+    dict.__init__(self)
     if arch is None:
       arch = DEFAULT_ARCH
     if port is None:
@@ -170,6 +171,8 @@ class Cluster(dict):
       self.p = arch.Protocol(bus = arch.Bus(port=port))
     self.at = ModulesByName()
     self.limit = 2.0
+    if args or kwargs:
+      return self.populate(*args,**kwargs)
 
   def populate(self, count = None, names = {}, timeout=2, timestep=0.1,
                 required = set(), fillMissing=None, walk=False,
