@@ -72,10 +72,10 @@ if __name__=="__main__":
       cfg.update( rate = float(args.pop(0)) )
     elif arg=='--bus' or arg=='-b':
       bus = busTbl.get(args.pop(0),None)
-      if p is None:
+      if bus is None:
         sys.stderr.write("Unknown bus '%s'\n" % bus)
         sys.exit(2)   
-      robot['protocol']=p
+      robot['protocol']=bus
     elif arg=='--help' or arg=='-h':
       robot=None
       break
