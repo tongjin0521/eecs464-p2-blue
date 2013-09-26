@@ -43,6 +43,9 @@ class contactGait:
 	roll = 0
 	yaw = 0
 	
+	#which leg to check the contact sensor on
+	leg = 1
+	
 	#parameters for tuning
 	params = gaitParams()
 	
@@ -58,12 +61,15 @@ class contactGait:
 	debug = False
 		
 	#init takes one argument: an instance of gaitParams	
-	def __init__(self, inParams):
+	def __init__(self, inParams, inLeg):
 		#initialize members
 		self.gaitState = 'front'
 		self.params = inParams
 		self.yaw = inParams.yawAmp	#have to init yaw here to satisfy contraint
 									#of the gait (can't have yaw = roll = 0)
+		
+		#set the leg on which we need to check the contact sensors
+		self.leg = inLeg
 									
 		#should update do()'s (see below) w/ abs() if needed
 		assert abs(self.params.rollThresh) < self.params.rollAmp, "rollAmp < rollThresh"
@@ -95,7 +101,7 @@ class contactGait:
 		self.inContact = self.contact(phi)
 		
 		locPhi = phi
-		if(0.5 <= phi < 1):
+		if(0.5 < phi <= 1):
 			locPhi -= 0.5
 			
 		if(self.debug):
@@ -208,8 +214,8 @@ class contactGait:
 
 	#determine contact state
 	def contact(self, phi):
-		#if(cos(self.yaw) > 0.988):
-		#	return True
+		if(cos(self.yaw) > 0.970):
+			return True
 		return False
 			
 	#rearranges the condition (yaw < 0) to be a function of phi
