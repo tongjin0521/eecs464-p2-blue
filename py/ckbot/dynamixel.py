@@ -206,7 +206,7 @@ class Bus( AbstractBus ):
       -- requires valid baudrate setting for communication
       -- writes and reads limited by pyserial->termios 
     """
-    def __init__(self, port='tty={ "baudrate":115200, "timeout":0.01 }'):
+    def __init__(self, port='tty={ "baudrate":115200, "timeout":0.01 }',*args,**kw):
         """
         Initialize Dynamixel Bus
       
@@ -225,6 +225,7 @@ class Bus( AbstractBus ):
           rxPkts -- a count of valid packets received
           txPkts -- a count of packets sent
         """
+        AbstractBus.__init__(self,*args,**kw)
         self.ser = newConnection(port)
         self.DEBUG = DEBUG
         self.reset()
@@ -822,7 +823,7 @@ class Protocol( AbstractProtocol ):
          for a given timeslice
       -- act as a abstraction layer for basic Bus functionality?
     OWNERSHIP:
-      -- owned by the dynamixel module?
+      -- owned by the Cluster
     THEORY: 
       -- The protocol owns a dictionary of the NodeAdaptor of each module 
          It initially checks for modules by performing a scan for all nodes
@@ -883,7 +884,7 @@ class Protocol( AbstractProtocol ):
       -- it is expected that a Dynamixel Bus has been instantiated as shown in the
          Dynamixel Module Examples   
     """
-    def __init__(self, bus=None, nodes=None):
+    def __init__(self, bus=None, nodes=None, *args,**kw):
         """ 
         Initialize a Dynamixel Protocol
       
@@ -898,7 +899,7 @@ class Protocol( AbstractProtocol ):
           ping_period -- float -- expected ping period 
       
         """
-        AbstractProtocol.__init__(self)
+        AbstractProtocol.__init__(self,*args,**kw)
         if bus is None:
             self.bus = Bus()
         else:
@@ -1153,7 +1154,7 @@ class Protocol( AbstractProtocol ):
     
     def _doRequest(self, now, inc ):
         """
-        Take a single request and process it.
+        Process a single incomplete request
         If it requires a response -- complete it or time-out; if not,
         complete with a None reply
         

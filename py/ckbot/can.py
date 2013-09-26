@@ -99,13 +99,14 @@ class Bus(AbstractBus):
       >>> (dword, rdmsg) =  b.read(2000);
       >>> b.close()
     """
-    def __init__(self):
+    def __init__(self,*args,**kw):
         """
         concrete constructor
 
         ATTRIBUTES:
           can -- instantiation of a CANIX class 
         """
+        AbstractBus.__init__(self,*args,**kw)
         self.can = pcan.CANIX()
         errno = self.can.init()
         if errno != 0:
@@ -234,7 +235,7 @@ class Protocol(AbstractProtocol):
 
     Example usage is shown in the module description.
     """
-    def __init__(self,bus=None):
+    def __init__(self,bus=None,*args,**kw):
         """
         constructor -- creates dictionaries to organize the different Robotics 
         Bus messages and instantiates a Bus.
@@ -253,6 +254,7 @@ class Protocol(AbstractProtocol):
           (node ID, PM index) e.g. (0x05, 0x100). values are a list of received
           process messages
         """
+        AbstractProtocol.__init__(self,*args,**kw)
         if bus is None:
           self.bus = Bus()
         elif type(bus)==type:

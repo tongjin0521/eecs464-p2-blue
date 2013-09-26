@@ -246,11 +246,11 @@ class JoyApp( object ):
     INPUTS: (all are optional)
       confPath -- str -- path to a YAML configuration file, start with $/ to 
             search relative to the PYCKBOTPATH directory
-      robot -- dict -- parameters for populating the robot interface; passed to
-            ckbot.logical.Cluster.populate when starting up; the resulting 
-            cluster will be in self.robot.
-            The key 'bus' can be used to pick the robot bus architecture (as in
-            can.Protocol)
+      robot -- dict -- parameters for populating the robot interface;
+            passed to ckbot.logical.Cluster when starting up;
+            the resulting Cluster will be in self.robot
+            Some useful parameters include arch= to set bus hardware
+            and count= to set number of modules to populate with.
       scr -- dict -- parameters for the Scratch interface; passed to
             scratch.Board when starting up; the resulting scratch.Board will be
             found in self.scr
@@ -357,20 +357,36 @@ class JoyApp( object ):
       robot -- dict -- Dictionary of settings for robot.populate
     """
     progress("Populating:")
+    # Collect names from the cfg
     nn = self.cfg.nodeNames.copy()
     nn.update(robot.get('names',{}))
     robot['names']=nn
+    # Show the names in the progress log
     for k,v in robot.iteritems():
       progress("\t%s=%s" % (k,repr(v)))
-    if robot.has_key('protocol'):
-      c = Cluster(protocol=robot['protocol'])
+    # Check for both protocol= and arch= parameters
+    p = robot.get('protocol',None)
+    a = robot.get('arch',None)
+    if a and p:
+      raise ValueError,"Do not combine legacy protocol= with arch="
+    # NOTE: A protocol instance can be passed in arch= parameter of Cluster
+    if p:
       del robot['protocol']
-    else:
-      c = Cluster()
-    c.populate( **robot )
-    self.robot = c
+      a = p
+    # Make sure that robot dictionary does not duplicate the arch= parameter
+    if a:
+      del robot['arch']
+    self.robot = Cluster(arch=a, **robot)
+    if self.cfg.minimalVoltage:
+      return self.__initVoltageSafety()
+    
+  def __initVoltageSafety( self ):
+    """(private) 
+    collect all robot modules that have a get_voltage() method
+    ans set them up for polling
+    """
     vs = []
-    for m in c.itermodules():
+    for m in self.robot.itermodules():
       # Collect modules that have a voltage sensing capability
       if hasattr(m,'get_voltage'):
         vs.append(m)
@@ -384,12 +400,13 @@ class JoyApp( object ):
       m.__last_pos = 0
     # If any voltage sensing modules found, and sensing was requested
     #   then add the safety provider
-    if vs and self.cfg.minimalVoltage:
-      self.safety.append(safety.BatteryVoltage(
-        vmin = self.cfg.minimalVoltage,
-        sensors = vs,
-        pollRate = self.cfg.voltagePollRate 
-      ))
+    if not vs:
+      return
+    self.safety.append(safety.BatteryVoltage(
+      vmin = self.cfg.minimalVoltage,
+      sensors = vs,
+      pollRate = self.cfg.voltagePollRate 
+    ))
 
   def setterOf( self, func ):
     """

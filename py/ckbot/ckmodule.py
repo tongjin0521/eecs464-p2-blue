@@ -39,6 +39,12 @@ if not GLOB_GLOB(PYCKBOTPATH+"py%sckbot%sckmodule.py" % (sep,sep)):
 class AbstractProtocol( object ):
   """abstract superclass of all Protocol classes
   
+  Protocol classes are responsible for generating the Protocol Node 
+  Adaptors for each module on the bus, when the bus is scanned. 
+  Protocols implement the transactions that the underlying communication
+  infrastructure supports, and typically maintain state representing any
+  incomplete transactions. 
+  
   AbstractProtocol subclasses must implement the following methods:
     p.update()
     p.hintNodes(nodes)
@@ -47,13 +53,46 @@ class AbstractProtocol( object ):
   AbstractProtocol instances must have the following data attributes:
     p.heartbeats -- dict -- nid to last heartbeat
   """
-  pass
+  def __init__(self,bus=None):
+    """
+    Allow a bus parameter to be passed to all AbstractProtocol subclass
+    constructors
+    """
+    self.heartbeats = {}
 
+  def update( self ):
+    """
+    *PURE* perform Protocol housekeeping operations
+    """
+    raise TypeError,"pure method called"
+    
+  def hintNodes( self, nodes ):
+    """
+    *PURE* use hint that specified nodes are available
+    """
+    raise TypeError,"pure method called"
+    
+  def generatePNA( self, nid ):
+    """
+    *PURE* Generate a ProtocolNodeAdaptor for the specified nid
+    """
+    raise TypeError,"pure method called"    
+  
 class AbstractBus( object ):
   """abstract superclass of all Bus classes
   
+     Bus classes are responsible for wrapping OS hardware drivers and
+     presenting a pythonically correct, human readable interface.
+     
+     Bus instances should be (mostly) stateless, and bus methods should
+     return as fast as possible.
   """
-  pass
+  def __init__(self,port=None):
+    """
+    Allow a port parameter to be passed to all AbstractBus subclass
+    constructors
+    """
+    pass
 
 class AbstractNodeAdaptor( object ):
   """abstract superclass of all ProtocolNodeAdaptor classes
