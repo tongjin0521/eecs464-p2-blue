@@ -40,6 +40,8 @@ from collections import deque
 from ckmodule import Module, AbstractNodeAdaptor, AbstractProtocol, AbstractBus, progress, AbstractServoModule, AbstractProtocolError, AbstractBusError, MemInterface
 from port2port import newConnection
 
+DEFAULT_PORT = dict(TYPE='tty', baudrate=115200, timeout=0.01)
+
 class DynamixelServoError( AbstractBusError ):
   "(organizational) Error for Dynamixel Servo """
   def __init__(self,*arg,**kw):
@@ -206,7 +208,7 @@ class Bus( AbstractBus ):
       -- requires valid baudrate setting for communication
       -- writes and reads limited by pyserial->termios 
     """
-    def __init__(self, port='tty={ "baudrate":115200, "timeout":0.01 }',*args,**kw):
+    def __init__(self, port=None,*args,**kw):
         """
         Initialize Dynamixel Bus
       
@@ -226,6 +228,8 @@ class Bus( AbstractBus ):
           txPkts -- a count of packets sent
         """
         AbstractBus.__init__(self,*args,**kw)
+        if port is None:
+          port = DEFAULT_PORT
         self.ser = newConnection(port)
         self.DEBUG = DEBUG
         self.reset()
