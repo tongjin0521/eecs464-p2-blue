@@ -98,7 +98,7 @@ class Bus(AbstractBus):
     Utilizes the protocol along with nid to create 
     an interface for a specific module
     """
-    def __init__(self, port = 'tty={ "baudrate":19200, "stopbits":2, "parity":"N", "timeout":0.5 }'):
+    def __init__(self, port = 'tty={ "baudrate":19200, "stopbits":2, "parity":"N", "timeout":0.5 }',*args,**kw):
       """ 
       Initialize hitec bus
       
@@ -108,6 +108,7 @@ class Bus(AbstractBus):
       ATTRIBUTES:
       ser -- serial handle 
       """
+      AbstractBus.__init__(self,*args,**kw)
       self.ser = newConnection(port)
       # Initialize receive buffer
       self.rxbuf = ''
@@ -288,7 +289,7 @@ class Protocol(AbstractProtocol):
   """
   TBD
   """
-  def __init__(self, bus=None, nodes=None):
+  def __init__(self, bus=None, nodes=None,*args,**kw):
     """
     Initialize a hitec.Protocol
     
@@ -300,7 +301,7 @@ class Protocol(AbstractProtocol):
     heartbeats -- dictionary -- nid : (timestamp, last message)
     pnas -- dictionary -- table of NodeID to ProtocolNodeAdaptor mappings
     """
-    AbstractProtocol.__init__(self)
+    AbstractProtocol.__init__(self,*args,**kw)
     if bus is None:
       self.bus = Bus()
     else:

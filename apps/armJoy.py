@@ -13,8 +13,7 @@ class armJoy( JoyApp ):
         """
         Initaliaze the app
         """
-        p = dynamixel.Protocol()
-        kw.update( robot=dict(protocol=p, count=4) )
+        kw.update( robot=dict(count=4) )
         JoyApp.__init__( self, confPath="$/cfg/armJoyApp.yml", *args, **kw )        
         self.r = self.robot.at
         self.stop()
