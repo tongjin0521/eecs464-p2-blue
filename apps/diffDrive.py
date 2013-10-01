@@ -40,8 +40,7 @@ class diffDriveApp( JoyApp ):
         """
         Initialize the protocol, and app
         """
-        p = dynamixel.Protocol()
-        kw.update( robot=dict(protocol=p, count=2) )
+        kw.update( robot=dict(count=2) )
         JoyApp.__init__( self, confPath="$/cfg/diffDriveApp.yml", *args, **kw )
         self.r = self.robot.at
         self.stop()

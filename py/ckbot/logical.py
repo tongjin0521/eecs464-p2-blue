@@ -32,7 +32,7 @@ import pololu
 import hitec
 import dynamixel
 
-DEFAULT_BUS = dynamixel
+DEFAULT_ARCH = dynamixel
 DEFAULT_PORT = None
 
 def nids2str( nids ):
@@ -103,11 +103,21 @@ class DelayedPermissionError( PermissionError ):
 
 class Cluster(dict):
   """
-  Concrete class representing a CKBot cluster.
+  Concrete class representing a CKBot cluster, which is a collection of
+  modules residing on the same bus.
 
-  A Cluster instance is a dictionary of modules. A Cluster also contains a 
-  Protocol class to communicate on the CANBus of the cluster, and the
-  convenience attribute at, which provides syntactic sugar for naming modules
+  A Cluster contains a Protocol class to manage communication with the
+  modules. 
+  
+  A Cluster instance is itself a dictionary of modules, addressed by
+  their node ID-s. This dictionary is populated by the .populate()
+  method. Clusters also implement the reflection iterators itermodules,
+  iterhwaddr, and iterprop.
+  
+  Typically, users will use the convenience attribute .at, which 
+  provides syntactic sugar for naming modules in a cluster using names
+  defined when the cluster is .populate()-ed. These allow ipython tab
+  completion to be used to quickly explore which modules are available.
 
   Typical use:
     >>> c = Cluster()
@@ -117,28 +127,52 @@ class Cluster(dict):
     >>> c.at.head.od.set_pos( 3000 ) # via object dictionary
     >>> c.at.head.set_pos(4500) # via process message
   """
-  def __init__(self,protocol=None,*args,**kwargs):
+  def __init__(self,arch=None,port=None,*args,**kwargs):
     """
-    Concrete constructor.
-      bus -- Bus class or bus instance to use; default is DEFAULT_BUS
+    Create a new cluster. Optionally, also .populate() it
+    
+    INPUT:
+      arch -- optional -- python module containing arch.Bus and
+        arch.Protocol to use for low level communication. Defaults
+        to DEFAULT_ARCH
+        
+        Can also be a Protocol instance ready to be used.
+        
+        Supported architectures include:
+          can -- CAN-bus CKBot 1.4 and earlier
+          hitec -- modified hitec servos
+          dynamixel -- Robotis Dynamixel RX, EX and MX
+          pololu -- pololu Maestro servo controllers
+          nobus -- software simulated modules for no-hardware-needed 
+            testing of code.
+          
+      port -- specification of the communication port to use, as per
+        ckbot.port2port.newConnection. Defaults to DEFAULT_PORT
+        
+        This can be used to specify serial devices and baudrates, e.g.
+        port = 'tty={glob="/dev/ttyACM1",baudrate=115200}'
       
+      *argc, **kw -- if any additional parameters are given, the
+        .populate(*argc,**kw) method is invoked after initialization
+        
     ATTRIBUTES:
       p -- instance of Protocol for communication with modules
       at -- instance of the Attributes class.
       limit -- float -- heartbeat time limit before considering node dead
     """
-    dict.__init__(self,*args,**kwargs)
-    if protocol is None:
-      if DEFAULT_PORT is None:
-        self.p = DEFAULT_BUS.Protocol()
-      else:
-        self.p = DEFAULT_BUS.Protocol( bus = DEFAULT_BUS.Bus(port=DEFAULT_PORT) )
-    elif type(protocol)==type:
-      self.p = protocol()
+    dict.__init__(self)
+    if arch is None:
+      arch = DEFAULT_ARCH
+    if port is None:
+      port = DEFAULT_PORT
+    if isinstance(arch,AbstractProtocol):
+      self.p = arch
     else:
-      self.p = protocol
+      self.p = arch.Protocol(bus = arch.Bus(port=port))
     self.at = ModulesByName()
     self.limit = 2.0
+    if args or kwargs:
+      return self.populate(*args,**kwargs)
 
   def populate(self, count = None, names = {}, timeout=2, timestep=0.1,
                 required = set(), fillMissing=None, walk=False,
