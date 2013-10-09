@@ -274,7 +274,8 @@ class dynamixelConfigurator:
         if self.cfg:
           self.write_config( self.cur_nid, self.opaque )
           # After changing configuration we may be at a new baudrate so rescan
-          self.scan( self.cur_nid )
+          if self.cfg.has_key('baud') and (self.new_nid != self.cur_nid):
+            self.scan( self.cur_nid )
         # If nid change requested --> do it
         if self.new_nid:
           self.write_nid( self.cur_nid, self.new_nid )
