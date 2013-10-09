@@ -74,6 +74,7 @@ class dynamixelConfigurator:
             return False
 
         scan = False
+        self.opaque = False
         for opt, arg in opts:
             if opt in ("-h", "--help"):
                 self.usage()
@@ -91,6 +92,7 @@ class dynamixelConfigurator:
             elif opt in ("-Q", "--opaque"):
                 progress("Configuring from opaque string: %s" % repr(arg))
                 self.cfg = load( decodestring( arg.replace("+","\n") ))
+                self.opaque = True
             elif opt in ("-s", "--scan"):
                 scan = True
             elif opt in ("-R", "--reset"):
@@ -267,7 +269,7 @@ class dynamixelConfigurator:
             return 
         # Configure, if requested
         if self.cfg:
-          self.write_config( self.cur_nid )
+          self.write_config( self.cur_nid, self.opaque )
           # After changing configuration we may be at a new baudrate so rescan
           self.scan( self.cur_nid )
         # If nid change requested --> do it
