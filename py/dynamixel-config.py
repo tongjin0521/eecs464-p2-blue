@@ -218,7 +218,7 @@ class dynamixelConfigurator:
             for b in self.p.bus.getSupportedBaudrates()
             if (b>=1200 and b<=1e6 and b != 57600) ]
         bauds.sort(reverse=True)
-        bauds.insert(0, 57600)
+        bauds.insert(0, 115200)
         return bauds
         
     def scan(self, nid, timeout=0.5, retries=1 ):
