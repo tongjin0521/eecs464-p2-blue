@@ -166,7 +166,10 @@ class dynamixelConfigurator:
         baud = None
         # For memory address names set those attributes 
         node = self.p.pnas[nid]
-        progress('Configuring ID 0x%02x with parameters %s' % (nid, self.cfg))
+        if self.opaque:
+          progress('Configuring ID 0x%02x with parameters %s' % (nid, self.cfg.keys()))
+        else:
+          progress('Configuring ID 0x%02x with parameters %s' % (nid, self.cfg))
         node = self.p.pnas[nid]
         for name, val in self.cfg.iteritems():
             # Check for node id setting 
