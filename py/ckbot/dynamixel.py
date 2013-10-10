@@ -279,6 +279,7 @@ class EX106MemWithOps( EX106Mem, MemMapOpsMixin ):
   
 class RX64MemWithOps( RX64Mem, MemMapOpsMixin ):
   memMapParent = RX64Mem
+  
 class MX64MemWithOps( MX64Mem, MemMapOpsMixin ):
   memMapParent = MX64Mem
 
@@ -1566,9 +1567,25 @@ class MX64Module(DynamixelModule ):
     RESPONSIBILITIES: 
     -- ...
     """
-    
-    # Scaling for Dynamixel continous turn torque 
+    #  Scale and offset for converting CKBot angles to and from dynamixel as per MX-64 e-Manual
+    MAX_POS = 0xFFF
+    MIN_POS = 0
+    MIN_ANG = 0 #Min, max angle are listed in centidegrees based on values from the manual
+    MAX_ANG = 36000
+       
+    # Scaling for Dynamixel continuous turn torque 
     MAX_TORQUE = 0x3FF
+    DIRECTION_BIT = 1<<10
+    TORQUE_SCL = float(MAX_TORQUE/1.0)
+    
+    # Scaling for Dynamixel speed 
+    SPEED_SCL = 0.114
+    # Scaling for Dynamixel voltage
+    VOLTAGE_SCL = 0.1
+    
+    SCL = float(MAX_POS - MIN_POS)/(MAX_ANG - MIN_ANG)
+    OFS = (MAX_POS - MIN_POS)/2 + MIN_POS
+
 
     def __init__( self, node_id, typecode, pna ): 
         """
@@ -1587,7 +1604,7 @@ class EX106Module( DynamixelModule ):
     MAX_POS = 0xFFF
     MIN_POS = 0
     MIN_ANG = 0 #Min, max angle are listed in centidegrees based on values from the manual
-    MAX_ANG = 28060
+    MAX_ANG = 25092
        
     # Scaling for Dynamixel continuous turn torque 
     MAX_TORQUE = 0x3FF
@@ -1619,7 +1636,7 @@ class RX64Module( DynamixelModule ):
     MAX_POS = 0x3FF
     MIN_POS = 0
     MIN_ANG = 0 #Min, max angle are listed in centidegrees based on values from the manual
-    MAX_ANG = 28060
+    MAX_ANG = 30000
        
     # Scaling for Dynamixel continous turn torque 
     MAX_TORQUE = 0x3FF
