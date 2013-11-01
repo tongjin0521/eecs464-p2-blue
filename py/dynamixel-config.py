@@ -13,6 +13,7 @@ change their IDs
 from sys import argv, exit as sys_exit
 from getopt import getopt, GetoptError
 from yaml import load, dump
+from base64 import decodestring
 from struct import unpack
 from time import time as now, sleep
 from ckbot.ckmodule import progress
@@ -47,6 +48,7 @@ class dynamixelConfigurator:
                 -c, --cur  : Desired servo ID to configure
                 -n, --new  : New servo ID
                 -f, --yaml : .yml file to read parameters from
+                -Q, --opaque : configure from an opaque configuration string
                 -R, --reset : Start by sending a reset command
                 -d, --debug : Set debug flag
                 -p, --port : set an alternative port for the bus 
@@ -64,7 +66,7 @@ class dynamixelConfigurator:
             return False
 
         try:
-          opts, args = getopt( argv, "Rhb:n:c:f:d:sp:", ["help", "new:", "cur:", "yam:l", "debug", "scan", "baud:", "port:","reset"])
+          opts, args = getopt( argv, "Rhb:n:c:f:d:sp:Q:", ["help", "new:", "cur:", "yam:l", "debug", "scan", "baud:", "port:","reset","opaque:"])
             
         except GetoptError:
             progress( "Invalid Arguments" )
@@ -72,6 +74,7 @@ class dynamixelConfigurator:
             return False
 
         scan = False
+        self.opaque = False
         for opt, arg in opts:
             if opt in ("-h", "--help"):
                 self.usage()
@@ -84,8 +87,12 @@ class dynamixelConfigurator:
                 self.baud = int(arg)
                 progress("No scan, fixed baudrate: %d " % self.baud)
             elif opt in ("-f", "--yaml"):    
-                progress("Loading yaml configuration: %s" % self.cfg )
+                progress("Loading yaml configuration: %s" % arg )
                 self.cfg = load( open( arg ))
+            elif opt in ("-Q", "--opaque"):
+                progress("Configuring from opaque string: %s" % repr(arg))
+                self.cfg = load( decodestring( arg.replace("+","\n") ))
+                self.opaque = True
             elif opt in ("-s", "--scan"):
                 scan = True
             elif opt in ("-R", "--reset"):
@@ -143,9 +150,13 @@ class dynamixelConfigurator:
         node.mem_write_sync( getattr( node.mm, 'ID'), nid_new)
         return  
 
-    def write_config( self, nid ):
+    def write_config( self, nid, opaque = False ):
         """
         Write node parameters as defined by config (cfg)
+        
+        INPUT:
+          nid -- int -- node ID
+          opaque -- bool -- if true, configuration is not shown on stdout
         """
         if self.cfg is None:
             progress("No configuration defined")
@@ -155,25 +166,35 @@ class dynamixelConfigurator:
         baud = None
         # For memory address names set those attributes 
         node = self.p.pnas[nid]
-        progress('Configuring ID 0x%02x with parameters %s' % (nid, self.cfg))
+        if self.opaque:
+          progress('Configuring ID 0x%02x with parameters %s' % (nid, self.cfg.keys()))
+        else:
+          progress('Configuring ID 0x%02x with parameters %s' % (nid, self.cfg))
         node = self.p.pnas[nid]
         for name, val in self.cfg.iteritems():
             # Check for node id setting 
-            print name, val
+            if not opaque:
+              print name, val
             if name == 'ID':
-                sys.exit(" Setting ID through .yml file not allowed, see --help")
+                print " Setting ID through .yml file not allowed, see --help"
+                sys_exit(-7)
             # Check for baudrate change, if so, write baud last 
             if name == 'baud':
                 baud = val
                 continue
             # This is pulled out of DynamixelModule         
             if hasattr( node.mm, name ):
-                print "Writing %s to %s" % (repr(name), repr(val))
+                if opaque:
+                  print "Writing %s" % repr(name)
+                else:
+                  print "Writing %s to %s" % (repr(name), repr(val))
                 node.mem_write_sync( getattr( node.mm, name ), val )
             else:
                 raise KeyError("Unknown address '%s'" % name)
         # Write baudrate last 
-        node.mem_write_sync( getattr( node.mm, 'baud' ), baud )
+        if baud is not None:
+          print "Writing baud rate ",baud
+          node.mem_write_sync( getattr( node.mm, 'baud' ), baud )
 
     def read_type(self, nid):
         """
@@ -197,7 +218,7 @@ class dynamixelConfigurator:
             for b in self.p.bus.getSupportedBaudrates()
             if (b>=1200 and b<=1e6 and b != 57600) ]
         bauds.sort(reverse=True)
-        bauds.insert(0, 57600)
+        bauds.insert(0, 115200)
         return bauds
         
     def scan(self, nid, timeout=0.5, retries=1 ):
@@ -251,9 +272,10 @@ class dynamixelConfigurator:
             return 
         # Configure, if requested
         if self.cfg:
-          self.write_config( self.cur_nid )
+          self.write_config( self.cur_nid, self.opaque )
           # After changing configuration we may be at a new baudrate so rescan
-          self.scan( self.cur_nid )
+          if self.cfg.has_key('baud') and (self.new_nid != self.cur_nid):
+            self.scan( self.cur_nid )
         # If nid change requested --> do it
         if self.new_nid:
           self.write_nid( self.cur_nid, self.new_nid )
