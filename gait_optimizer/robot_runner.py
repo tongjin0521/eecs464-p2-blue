@@ -70,6 +70,7 @@ class state_pretrial_init(super_state):
         try:
             Q.connectOnNet("192.168.254.1")
             Q.command("Version 1.9" )
+			
             print(timestamp() + "Connected to Qualisys system")
         except socket.timeout:
             print(timestamp() + "Socket timeout when trying to reopen Qualisys connection")
@@ -82,14 +83,16 @@ class state_pretrial(super_state):
             if evt.type == 7:
                 if evt.axis == 1:
                     try:
-                        left.set_torque(-evt.value/2)
+                        left.set_torque(-evt.value)
+                        #print(-evt.value)
                     except:
-                        left.set_speed(-evt.value/2)
+                        left.set_speed(-evt.value)
                 if evt.axis == 3:
                     try:
-                        right.set_torque(evt.value/2)
+                        right.set_torque(evt.value)
+                        #print(-evt.value)
                     except:
-                        right.set_speed(evt.value/2)
+                        right.set_speed(evt.value)
     def transition_method(self,l):
         global modifier
         for evt in l:
@@ -222,9 +225,9 @@ if __name__=="__main__":
         c = ckbot.logical.Cluster()
         print(timestamp() + "Couldn't connect, using virtual modules as standin.")
 
-    c.populate(count=2,fillMissing=True,required=[ 0x08, 0x15 ])
-    right = c[8]
-    left = c[21]
+    c.populate(count=2,fillMissing=True,required=[ 0x01, 0x2 ])
+    right = c[1]
+    left = c[2]
 
     pygame.init()
     try:
