@@ -21,6 +21,9 @@ def inchworm(phi):
     res = (-ones(N)*pi*((crv-crv0)*b+crv0) + W*b*ass)    
   return res
 
+if __name__!="__main__":
+  raise "Don't run me"
+
 # Our modules are oriented in the [1,-1,1,1,-1] directions relative to each
 #   other but we've found that we want the first and last modules to
 #   counter-rotate to get the gait right.
