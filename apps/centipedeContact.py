@@ -25,11 +25,11 @@ from numpy import *
 sgn = lambda x : (x>0) - (x<0)
 
 class gaitParams:
-	rollThresh = -(33*pi/180)
+	rollThresh = -(23*pi/180)
 	yawThresh = -(12*pi/180)
-	maxRoll = (40*pi/180)
-	rollAmp = (40*pi/180)
-	yawAmp = (15*pi/180)
+	maxRoll = (30*pi/180)
+	rollAmp = (30*pi/180)
+	yawAmp = (13*pi/180)
 	stanceVel = 3
 	endRecovWindow = 0.2
 	
@@ -53,7 +53,7 @@ class contactGait:
 	y1 = 0
 	r1 = 0
 	phi0 = 0
-	phi1 = 0
+	phi1 = 0.25
 	frontLimit = 0
 	stanceLimit = 0
 	
@@ -61,7 +61,7 @@ class contactGait:
 	debug = False
 		
 	#init takes one argument: an instance of gaitParams	
-	def __init__(self, inParams, inLeg):
+	def __init__(self, inParams):
 		#initialize members
 		self.gaitState = 'front'
 		self.params = inParams
@@ -69,7 +69,7 @@ class contactGait:
 									#of the gait (can't have yaw = roll = 0)
 		
 		#set the leg on which we need to check the contact sensors
-		self.leg = inLeg
+		#self.leg = inLeg
 									
 		#should update do()'s (see below) w/ abs() if needed
 		assert abs(self.params.rollThresh) < self.params.rollAmp, "rollAmp < rollThresh"
@@ -214,7 +214,7 @@ class contactGait:
 
 	#determine contact state
 	def contact(self, phi):
-		if(cos(self.yaw) > 0.970):
+		if(cos(self.yaw) > 0.99):
 			return True
 		return False
 			
