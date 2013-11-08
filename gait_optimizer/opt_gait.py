@@ -48,7 +48,6 @@ class opt_UI( Cmd ):
         print("Parameters: "+str(params) + ", Score: " + str(score))
         self.writeparams(params)
         
-		
     def do_Run(self,line):
         """Open robot_runner.py as a new porcess and start the polling to monitor it"""
         self.roborun = subprocess.Popen(['python', 'robot_runner.py', str(self.n)], stdout=sys.stdout, stderr = self.RRstderr)
