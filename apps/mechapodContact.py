@@ -23,66 +23,6 @@ WARNING
 I refactored this to work with the flipnworm.py app.  FunctionCyclePlanApp needs to be fixed.
 
 """
-def dblStance( t, phi_s, t_s, phi_o, t_o, bend = 0):
-    """
-    Implements Buehler clock and returns phase as a function of time. It has 
-    two slow phases.
-
-    INPUTS:
-      t -- time -- between -0.5 to 0.5 
-      phi_s -- angle swept during stance
-      t_s -- total stance time of one leg
-      phi_o -- stance angle offset
-      t_o -- stance time offset
-      bend -- radians -- bend angle of the body
-
-    OUTPUT:
-      res -- phase -- from -pi to pi
-    """
-    t += t_o
-    t -= floor(t)
-    
-    flag = 1
-    if t >= 0.5:
-      t = 1.0-t
-      flag = -1
-
-    assert phi_s >= 0 and phi_s <= math.pi
-    assert t_s >= 0 and t_s <= 0.5
-
-    #calculate relative stance angles
-    M = 60
-    L = 150
-    if abs(bend) > 0.1:
-      r = (M/2 + M*math.cos(bend))/math.sin(bend)
-      phi_sb = r/(r-L)*phi_s
-      phi_st = r/(r+L)*phi_s
-    else:
-      phi_sb = phi_s
-      phi_st = phi_s
-
-    #calculate slopes
-    w_sb = phi_sb/t_s
-    w_st = phi_st/t_s
-    wf = (2.0*math.pi - phi_sb - phi_st)/(1.0-2*t_s)
-
-    if abs(t)<=(t_s/2):
-      res = w_sb*t
-    elif abs(t)>(t_s/2) and abs(t) <= (0.5 - t_s/2):
-      res = wf*(t-t_s/2)+phi_sb/2
-    elif abs(t)>(0.5 - t_s/2):
-      res = w_st*(t-(0.5-t_s/2)) + (math.pi-phi_st/2)
-
-    #if res < -math.pi:
-    #  res = res + 2*math.pi
-    return res*flag + phi_o   
-
-def dblStanceIterable(time,phi_sb,phi_st,t_s,phi_o,t_o):
-    assert np.iterable(time)
-    res = []
-    for t in time:
-        res.append(dblStance(t,phi_sb,phi_st,t_s,phi_o,t_o))
-    return np.asarray(res)
 
 class Struct(object):
   def __init__(self,**kw):
@@ -97,7 +37,7 @@ class Segment(object):
   def set_pos(self,yaw,bend,roll):
     A = matrix([[2,0.5,0],[-2,0.5,0],[0,0,1]],dtype='float')
     pos=A*matrix([[yaw],[bend],[roll]])
-    #progress("ROLL " + str(self)+" " + str(roll))
+    #progress("Commanded Roll " + str(self)+" " + str(pos[2]))
     if self.f!=None:
       self.f.set_pos(pos[0])
     if self.b!=None:
@@ -112,19 +52,6 @@ class FunctionCyclePlanApp( JoyApp ):
     self.turnInPlaceMode = 0
     self.gaitSpec = None
     
-    #setup parameters for contact gait - some reasonable values
-    initParams = gaitParams()
-    initParams.rollThresh = -(23*pi/180)
-    initParams.yawThresh = -(9*pi/180)
-    initParams.maxRoll = (30*pi/180)
-    initParams.rollAmp = (30*pi/180)
-    initParams.yawAmp = (10*pi/180)
-    initParams.stanceVel = 1.26
-    initParams.endRecovWindow = 0.2	
-    self.gait1 = contactGait(initParams)
-    self.gait2 = contactGait(initParams)
-    #self.gait3 = contactGait(initParams)
-    
     self.last = now()
 
   def fun( self, phase ):
@@ -132,20 +59,20 @@ class FunctionCyclePlanApp( JoyApp ):
     bend = 0
     g1 = self.gait1
     g2 = self.gait2
-    #g3 = self.gait3
-    phi = 1 - phase
+    g3 = self.gait3
     
-	#for leg 1
+    phi = 1 - phase
+        
+	#for legs 1 & 3
     g1.manageGait(phi)
     s1roll = degrees(g1.roll)
     s1yaw = degrees(g1.yaw)
-        
-    #for leg 3
-    #g3.manageGait(phi)
-    #s3roll = degrees(g3.roll)
-    #s3yaw = degrees(g3.yaw)
+    
+    g3.manageGait(phi)
+    s3roll = degrees(g3.roll)
+    s3yaw = degrees(g3.yaw)
 	
-	#for leg 2: give phase2 = (phase1 + 0.5) % 1
+	#for leg 2: give phi2 = (phi1 + 0.5) mod 1
     if(phi > 0.5):
         phi2 = phi - 0.5
     else:
@@ -155,31 +82,57 @@ class FunctionCyclePlanApp( JoyApp ):
     s2roll = degrees(g2.roll)
     s2yaw = degrees(g2.yaw)
     
-    if(0.5 < phi2 <= 1):	#correct for second half of gait
+    if(0.5 < phi2 <= 1):	#transform for second half of gait
         s2roll = -s2roll
         s2yaw = -s2yaw
     
-    if(0.5 < phi <= 1):	#correct for second half of gait
+    if(0.5 < phi <= 1):	#transform for second half of gait
         s1roll = -s1roll
         s1yaw = -s1yaw
-        #s3roll = -s3roll
-        #s3yaw = -s3yaw
+        s3roll = -s3roll
+        s3yaw = -s3yaw
     
-    progress("CONTACTGAIT S1, yaw:" + str(s1yaw) + ", roll:" + str(s1roll) + ", phi:" + str(phi) + ", stage:" + g1.gaitState)
-    progress("CONTACTGAIT S2, yaw:" + str(s2yaw) + ", roll:" + str(s2roll) + ", phi:" + str(phi2) + ", stage:" + g2.gaitState)
-    #progress("CONTACTGAIT S3, yaw:" + str(s3yaw) + ", roll:" + str(s3roll) + ", phi:" + str(phi) + ", stage:" + g3.gaitState)
+    #progress("CONTACTGAIT S1, yaw:" + str(s1yaw) + ", roll:" + str(s1roll) + ", phi:" + str(phi) + ", stage:" + g1.gaitState)
+    #progress("CONTACTGAIT S2, yaw:" + str(s2yaw) + ", roll:" + str(s2roll) + ", phi:" + str(phi2) + ", stage:" + g2.gaitState)
+    #progress("S2 get_pos:" + str(self.S2.l.get_pos()))
+	#roll/yaw are deg, need to convert to centidegrees
     
-	#roll/yaw are given in radians, need to convert to centidegrees
-    self.S1.set_pos(s1yaw*100, bend, s1roll*100+2453)
+    self.S1.set_pos(s1yaw*100, bend, s1roll*100+2322)  # offset for module 0x26
     self.S2.set_pos(s2yaw*100, bend, s2roll*100)
-    self.S3.set_pos(s1yaw*100, bend, -s1roll*100)
+    self.S3.set_pos(s3yaw*100, bend, -s3roll*100)
+    progress("contactgait, " + str(s1roll) + ", " + str(s3roll))
+    
+    #check load parameter of front leg's motor:
+    #frontLeg = self.S1.l
+    #frontLegLoadRaw = frontLeg.mem[frontLeg.mcu.present_load]
+    #loadDirection = frontLegLoadRaw >> 10
+    #frontLegLoad = frontLegLoadRaw & 0x3FF
+    #progress("load," + str(frontLegLoad) + "," + str(loadDirection))
 
   def onStart(self):
     self.S1 = Segment(None, self.robot.at.B1, self.robot.at.L1)
     self.S2 = Segment(self.robot.at.F2, self.robot.at.B2, self.robot.at.L2)
     self.S3 = Segment(self.robot.at.F3, None, self.robot.at.L3)
+    
+    #set the slope parameter for each motor:
+    for m in self.robot.itermodules():
+        m.mem[m.mcu.ccw_compliance_slope] = 64
+        m.mem[m.mcu.cw_compliance_slope] = 64
 
     self.last = 0
+    
+    #setup parameters for contact gait - some reasonable values
+    initParams = gaitParams()
+    initParams.rollThresh = -(29*pi/180)
+    initParams.yawThresh = -(9*pi/180)
+    initParams.maxRoll = (34*pi/180)
+    initParams.rollAmp = (34*pi/180)
+    initParams.yawAmp = (10*pi/180)
+    initParams.stanceVel = 1.26
+    #initParams.endRecovWindow = 0.2	
+    self.gait1 = contactGait(initParams, self.S1.l, 2322)
+    self.gait2 = contactGait(initParams, self.S2.l, 0)
+    self.gait3 = contactGait(initParams, self.S3.l, 0)
 
     self.gaitSpec = Struct(
       rollAmp = 0.4, 
@@ -187,10 +140,10 @@ class FunctionCyclePlanApp( JoyApp ):
       phi_s = 0.94,
       t_s = 0.23,
       turn = 0,
-      freq = 1,#2,
+      freq = 1,
       ecc =0,
 
-      maxFreq = 3.0,   #units in centi-degrees
+      maxFreq = 3.0,   
       maxYaw = 700,
       maxRoll = 7000,
       maxTurn = -500,
@@ -277,19 +230,17 @@ if __name__=="__main__":
   """
   robot = None
   
- # import cProfile
-  #import joy
-  #joy.DEBUG[:]=[]
-  #import ckbot.logical, ckbot.nobus, ckbot.dynamixel
-  #ckbot.logical.DEFAULT_BUS = ckbot.dynamixel
-  #ckbot.logical.DEFAULT_PORT = dict(TYPE="tty", baudrate=1000000, glob="/dev/ttyUSB*")
-  ckbot.logical.DEFAULT_BUS = ckbot.nobus
+  # for actual operation use w/ arch=DX & NO required line:  
+  ckbot.logical.DEFAULT_BUS = ckbot.dynamixel
+  ckbot.logical.DEFAULT_PORT = dict(TYPE="tty", baudrate=1000000, glob="/dev/ttyUSB*")
+  
+  # for simulation use w/ arch=NB & required line:
+  #ckbot.logical.DEFAULT_BUS = ckbot.nobus
+  
   app=FunctionCyclePlanApp(robot=dict(
-    arch=NB,count=7,fillMissing=True,
+    arch=DX,count=7,fillMissing=True,
     #required=[ 0x26, 0x08, 0x06, 0x2D, 0x31, 0x27, 0x22 ] 
     ))
   
-#  app=GaitTestPlanApp()
   app.run()
-#  cProfile.run(  app.run()  , 'centipede_profile_stats')
 
