@@ -1,5 +1,9 @@
 #stella's velocity demo code!
 
+if __name__!="__main__":
+  import sys
+  sys.exit()
+
 import ckbot.logical #need to make sure modules can populate and the pcan can recognise the node ID
 import joy  #used to call the feedbackrate function
 import time #used for all of the time related functions

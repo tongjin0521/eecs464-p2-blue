@@ -900,4 +900,5 @@ Module.Types['HitecMotorModule'] = hitec.MotorModule
 Module.Types['Dynamixel-006b'] = dynamixel.EX106Module
 Module.Types['Dynamixel-0040'] = dynamixel.RX64Module
 Module.Types['Dynamixel-0200'] = dynamixel.RX64Module
+Module.Types['Dynamixel-0136'] = dynamixel.MX64Module
 

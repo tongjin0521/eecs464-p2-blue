@@ -40,6 +40,8 @@ from collections import deque
 from ckmodule import Module, AbstractNodeAdaptor, AbstractProtocol, AbstractBus, progress, AbstractServoModule, AbstractProtocolError, AbstractBusError, MemInterface
 from port2port import newConnection
 
+DEFAULT_PORT = dict(TYPE='tty', baudrate=115200, timeout=0.01)
+
 class DynamixelServoError( AbstractBusError ):
   "(organizational) Error for Dynamixel Servo """
   def __init__(self,*arg,**kw):
@@ -136,6 +138,95 @@ class MemMapOpsMixin:
       """ Provide human readable representation of a value from address addr"""
       nm,fmt = cls._ADDR_DCR[addr]
       return "%s = %d" % (nm, unpack(fmt, val)[0])
+
+class MX64Mem( DynamixelMemMap):
+    """ 
+    DESCRIPTION: 
+      -- The MX64Mem class provides a mapping of the dynamixel control table: 
+         as per the MX-64 manual pp. 2-3, section title "Control Table"
+    """
+    _ADDR_DCR = {
+    '\x00' : ("model", "<H"),
+    '\x02' : ("version", "B"),
+    '\x03' : ("ID", "B"),
+    '\x04' : ("baud", "B"),
+    '\x05' : ("ret_delay", "B"),
+    '\x06' : ("cw_angle_limit", "<H"),
+    '\x08' : ("ccw_angle_limit", "<H"),
+    '\x0b' : ("max_temp", "B"),
+    '\x0c' : ("min_voltage", "B"),
+    '\x0d' : ("max_voltage", "B"),
+    '\x0e' : ("max_torque", "<H"),
+    '\x10' : ("status", "B"),
+    '\x11' : ("alarm_LED", "B"),
+    '\x12' : ("alarm_shutdown", "B"),
+    '\x18' : ("torque_en", "B"),
+    '\x19' : ("LED", "B"),
+    '\x1a' : ("D_gain", "B"),
+    '\x1b' : ("I_gain", "B"),
+    '\x1c' : ("P_gain", "B"),
+    '\x1e' : ("goal_position", "<H"),
+    '\x20' : ("moving_speed", "<H"),
+    '\x22' : ("torque_limit", "<H"),
+    '\x24' : ("present_position", "<H"),
+    '\x26' : ("present_speed", "<H"),
+    '\x28' : ("present_load", "<H"),
+    '\x2a' : ("present_voltage", "B"),
+    '\x2b' : ("present_temperature", "B"),
+    '\x2c' : ("registered_instruction", "B"),
+    '\x2e' : ("moving", "B"),
+    '\x2f' : ("lock", "B"),
+    '\x30' : ("punch", "<H"),
+    '\x44' : ("current", "<H"),
+    '\x46' : ("torque_control_mode_enable", "B"),
+    '\x47' : ("goal_torque", "<H"),
+    '\x49': ("goal_acceleration", "B"),
+    }
+MX64Mem._prepare()
+    
+class RX64Mem(DynamixelMemMap):
+    """ 
+    DESCRIPTION: 
+      -- The RX64Mem class provides a mapping of the dynamixel control table: 
+         as per the RX-64 manual pp. 1-2, section title "Control Table"
+    NOTES:
+      -- Similar to EX106+ but lacks drive mode (for dual module joints) and current sensing.
+    """
+    _ADDR_DCR = {
+    '\x00' : ("model", "<H"),
+    '\x02' : ("version", "B"),
+    '\x03' : ("ID", "B"),
+    '\x04' : ("baud", "B"),
+    '\x05' : ("ret_delay", "B"),
+    '\x06' : ("cw_angle_limit", "<H"),
+    '\x08' : ("ccw_angle_limit", "<H"),
+    '\x0b' : ("max_temp", "B"),
+    '\x0c' : ("min_voltage", "B"),
+    '\x0d' : ("max_voltage", "B"),
+    '\x0e' : ("max_torque", "<H"),
+    '\x10' : ("status", "B"),
+    '\x11' : ("alarm_LED", "B"),
+    '\x12' : ("alarm_shutdown", "B"),
+    '\x18' : ("torque_en", "B"),
+    '\x19' : ("LED", "B"),
+    '\x1a' : ("cw_compliance_margin", "B"),
+    '\x1b' : ("ccw_compliance_margin", "B"),
+    '\x1c' : ("cw_compliance_slope", "B"),
+    '\x1d' : ("ccw_compliance_slope", "B"),
+    '\x1e' : ("goal_position", "<H"),
+    '\x20' : ("moving_speed", "<H"),
+    '\x22' : ("torque_limit", "<H"),
+    '\x24' : ("present_position", "<H"),
+    '\x26' : ("present_speed", "<H"),
+    '\x28' : ("present_load", "<H"),
+    '\x2a' : ("present_voltage", "B"),
+    '\x2b' : ("present_temperature", "B"),
+    '\x2c' : ("registered_instruction", "B"),
+    '\x2e' : ("moving", "B"),
+    '\x2f' : ("lock", "B"),
+    '\x30' : ("punch", "<H"),
+    }
+RX64Mem._prepare()
       
 class EX106Mem( DynamixelMemMap ):
     """ 
@@ -184,7 +275,13 @@ class EX106Mem( DynamixelMemMap ):
 EX106Mem._prepare()
 
 class EX106MemWithOps( EX106Mem, MemMapOpsMixin ):
-  memMapParent = EX106Mem 
+  memMapParent = EX106Mem
+  
+class RX64MemWithOps( RX64Mem, MemMapOpsMixin ):
+  memMapParent = RX64Mem
+  
+class MX64MemWithOps( MX64Mem, MemMapOpsMixin ):
+  memMapParent = MX64Mem
 
 class Bus( AbstractBus ):
     """ ( concrete )
@@ -206,7 +303,7 @@ class Bus( AbstractBus ):
       -- requires valid baudrate setting for communication
       -- writes and reads limited by pyserial->termios 
     """
-    def __init__(self, port='tty={ "baudrate":115200, "timeout":0.01 }',*args,**kw):
+    def __init__(self, port=None,*args,**kw):
         """
         Initialize Dynamixel Bus
       
@@ -226,6 +323,8 @@ class Bus( AbstractBus ):
           txPkts -- a count of packets sent
         """
         AbstractBus.__init__(self,*args,**kw)
+        if port is None:
+          port = DEFAULT_PORT
         self.ser = newConnection(port)
         self.DEBUG = DEBUG
         self.reset()
@@ -1460,6 +1559,38 @@ class DynamixelModule( AbstractServoModule ):
         -- mem_read the present_voltage register and convert
         """      
         return self.dynamixel2voltage(self.mem_read(self.mcu.present_voltage))
+
+class MX64Module(DynamixelModule ):
+    """
+    DESCRIPTION: 
+    -- MX64 Specific constants
+    RESPONSIBILITIES: 
+    -- ...
+    """
+    #  Scale and offset for converting CKBot angles to and from dynamixel as per MX-64 e-Manual
+    MAX_POS = 0xFFF
+    MIN_POS = 0
+    MIN_ANG = 0 #Min, max angle are listed in centidegrees based on values from the manual
+    MAX_ANG = 36000
+       
+    # Scaling for Dynamixel continuous turn torque 
+    MAX_TORQUE = 0x3FF
+    DIRECTION_BIT = 1<<10
+    TORQUE_SCL = float(MAX_TORQUE/1.0)
+    
+    # Scaling for Dynamixel speed 
+    SPEED_SCL = 0.114
+    # Scaling for Dynamixel voltage
+    VOLTAGE_SCL = 0.1
+    
+    SCL = float(MAX_POS - MIN_POS)/(MAX_ANG - MIN_ANG)
+    OFS = (MAX_POS - MIN_POS)/2 + MIN_POS
+
+
+    def __init__( self, node_id, typecode, pna ): 
+        """
+        """
+        DynamixelModule.__init__( self, node_id, typecode, pna )
           
 class EX106Module( DynamixelModule ):
     """
@@ -1472,10 +1603,10 @@ class EX106Module( DynamixelModule ):
     #  Scale and offset for converting CKBot angles to and from dynamixel as per EX106+ manual section 3-4-2 pp. 29
     MAX_POS = 0xFFF
     MIN_POS = 0
-    MIN_ANG = 0
-    MAX_ANG = 28060
+    MIN_ANG = 0 #Min, max angle are listed in centidegrees based on values from the manual
+    MAX_ANG = 25092
        
-    # Scaling for Dynamixel continous turn torque 
+    # Scaling for Dynamixel continuous turn torque 
     MAX_TORQUE = 0x3FF
     DIRECTION_BIT = 1<<10
     TORQUE_SCL = float(MAX_TORQUE/1.0)
@@ -1504,8 +1635,8 @@ class RX64Module( DynamixelModule ):
     #  Scale and offset for converting CKBot angles to and from dynamixel as per RX64 manual section 3-4-2 pp. 28
     MAX_POS = 0x3FF
     MIN_POS = 0
-    MIN_ANG = 0
-    MAX_ANG = 28060
+    MIN_ANG = 0 #Min, max angle are listed in centidegrees based on values from the manual
+    MAX_ANG = 30000
        
     # Scaling for Dynamixel continous turn torque 
     MAX_TORQUE = 0x3FF
