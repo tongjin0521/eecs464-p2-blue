@@ -8,8 +8,8 @@ nodeNames: {
   0x06 : F2,
   0x2D : L2,
   0x31 : B2,
-  0x27 : F3,
-  0x22 : L3
+  0x22 : F3,
+  0x27 : L3
 }
 positionTolerance: 200000
 robotPollRate: 10000000

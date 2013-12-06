@@ -100,7 +100,7 @@ class FunctionCyclePlanApp( JoyApp ):
     self.S1.set_pos(s1yaw*100, bend, s1roll*100+2322)  # offset for module 0x26
     self.S2.set_pos(s2yaw*100, bend, s2roll*100)
     self.S3.set_pos(s3yaw*100, bend, -s3roll*100)
-    progress("contactgait, " + str(s1roll) + ", " + str(s3roll))
+    #progress("contactgait, " + str(s1roll) + ", " + str(s3roll))
     
     #check load parameter of front leg's motor:
     #frontLeg = self.S1.l
@@ -129,7 +129,7 @@ class FunctionCyclePlanApp( JoyApp ):
     initParams.rollAmp = (34*pi/180)
     initParams.yawAmp = (10*pi/180)
     initParams.stanceVel = 1.26
-    #initParams.endRecovWindow = 0.2	
+    
     self.gait1 = contactGait(initParams, self.S1.l, 2322)
     self.gait2 = contactGait(initParams, self.S2.l, 0)
     self.gait3 = contactGait(initParams, self.S3.l, 0)

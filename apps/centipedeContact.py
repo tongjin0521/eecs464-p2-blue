@@ -40,6 +40,7 @@
 	algorithm
 	
 	WHAT OTHER MODULES DOES IT DEPEND ON OR SUPPORT?
+	Depends on math and numpy modules for the trig functions and 
 	
 	
 """

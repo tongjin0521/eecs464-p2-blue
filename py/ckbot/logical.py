@@ -268,6 +268,9 @@ class Cluster(dict):
       m = self[nid]
       if hasattr(m,'go_slack') and callable(getattr(m,'go_slack')):
         m.go_slack()
+        
+    for m in self.itermodules():
+      m.go_slack()
 
   def who( self, t = 10 ):
     """
