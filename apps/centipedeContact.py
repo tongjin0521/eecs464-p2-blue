@@ -40,10 +40,13 @@
 	algorithm
 	
 	WHAT OTHER MODULES DOES IT DEPEND ON OR SUPPORT?
-	Depends on math and numpy modules for the trig functions and 
+	Depends on math and numpy modules for the trig functions
 	
 	
 """
+
+#TODO: Refactor for decreasing-phi (backwards) movement & general cleanup
+#TODO: add support for turn in place
 
 from math import *
 from numpy import *
@@ -62,38 +65,44 @@ class gaitParams:
 
 class contactGait:
 	#internal states are gaitState and status of ground contact
-	gaitState = 'front'
-	inContact = False
+    gaitState = 'front'
+    inContact = False
 	
-	#outputs are roll and yaw
-	roll = 0
-	yaw = 0
+	#additional state for strafing behavior -- need to be careful with this one
+    strafe = 0	#should stay as an int since we're only changing it by interger
+				#values
+	
+	#outputs are roll (deg) and yaw (deg) and bend
+    roll = 0
+    yaw = 0
+    bend = 0	# bend is kept in centidegrees the whole time for now
 	
 	#which leg to check the contact sensor on
-	leg = 1
-	legOffset = 0
+    leg = 1
+    legOffset = 0
 	
 	#parameters for tuning
-	params = gaitParams()
+    params = gaitParams()
 	
 	#internal variables
-	y1 = 0
-	r1 = 0
-	phi0 = 0
-	phi1 = 0.25
-	frontLimit = 0
-	stanceLimit = 0
+    y1 = 0
+    r1 = 0
+    phi0 = 0
+    phi1 = 0.25
+    frontLimit = 0
+    stanceLimit = 0
 	
 	#debug
-	debug = False
+    debug = False
 		
 	#init takes one argument: an instance of gaitParams	
-	def __init__(self, inParams, inLeg, legOffset):
+    def __init__(self, inParams, inLeg, legOffset):
 		#initialize members
 		self.gaitState = 'front'
 		self.params = inParams
 		self.yaw = inParams.yawAmp	#have to init yaw here to satisfy contraint
 									#of the gait (can't have yaw = roll = 0)
+		self.strafe = 0
 		
 		#set the leg on which we need to check the contact sensors
 		#or the leg on which to check the roll angle 
@@ -126,15 +135,15 @@ class contactGait:
 	#do stuff based on phi & contact
 	#this function should be the only one called from outside the class 
 	#unless debugging
-	def manageGait(self, phi):
-		#first find status of foot contact
-		self.inContact = self.__contact(phi)
-		
-		locPhi = phi
-		if(0.5 < phi <= 1):
-			locPhi -= 0.5
+    def manageGait(self, phi):
+        #first find status of foot contact
+        self.inContact = self.__contact(phi)
+        
+        locPhi = phi
+        if(0.5 < phi <= 1):
+            locPhi -= 0.5
 			
-		if(self.debug):
+        if(self.debug):
 			print('phi = ' + str(locPhi))
 			print('contact = ' + str(self.inContact))
 			print('frontLimit = ' + str(self.frontLimit))
@@ -146,28 +155,28 @@ class contactGait:
 		
 		
 		#determine state from phi & contact
-		if 0 <= locPhi < self.frontLimit:
+        if 0 <= locPhi < self.frontLimit:
 			if self.inContact:
 				self.gaitState = 'stance'
 			else:
 				self.gaitState = 'front'
-		elif self.frontLimit <= locPhi < self.stanceLimit:
+        elif self.frontLimit <= locPhi < self.stanceLimit:
 			#if ((not self.inContact) and self.__yawLessThanZero(locPhi)):
 			if ((not self.inContact) and (self.yaw < 0.0)):
 				self.gaitState = 'recovery'
 			else:
 				self.gaitState = 'stance'
-		else:
+        else:
 			self.gaitState = 'recovery'
 			
-		if(self.debug):
+        if(self.debug):
 			print('state = ' + self.gaitState)	
 		
 		#take appropriate action based on state, calculate roll/yaw
 		#may have still have some issues with skipping a phase of the gait
 		#i.e. going straight from 'recovery' to 'stance' and skipping a 'front'
 		#phase
-		if self.gaitState == 'front':
+        if self.gaitState == 'front':
 			#calculate roll/yaw
 			self.__doFront(locPhi)
 			
@@ -186,7 +195,7 @@ class contactGait:
 			self.y1 = 0
 			self.r1 = self.params.rollThresh
 			
-		elif self.gaitState == 'stance':
+        elif self.gaitState == 'stance':
 			#calculate roll/yaw
 			self.__doStance(locPhi)	
 			
@@ -200,17 +209,27 @@ class contactGait:
 			else:
 				self.y1 = self.yaw
 			
-		elif self.gaitState == 'recovery':
+        elif self.gaitState == 'recovery':
 			#calculate roll/yaw
 			self.__doRecovery(locPhi)
 			
-		else:
+        else:
 			#should never reach this code, must always be in
 			#front or stance or recovery
 			print("ERROR: invalid gaitState")
 			print("\tgaitState: '"  + "'")		
 			
-		if(self.debug):	
+        #augment gait for strafing if that is required
+        if(self.strafe > 0 or self.strafe < 0):
+            #slide to the left/right
+            strafeRad = radians(self.strafe)
+            self.yaw = 0
+            self.roll += strafeRad    #add the strafe offset to roll
+        else:
+            pass
+            #do not override normal gait if strafe == 0
+			
+        if(self.debug):	
 			print('roll (post-calc) = ' + str(self.roll*180/pi))
 			print('yaw (post-calc)= ' + str(self.yaw*180/pi))
 			print('\n')
@@ -218,7 +237,7 @@ class contactGait:
 		
 
 	#calculate roll/yaw when in 'front' state
-	def __doFront(self, phi):					
+    def __doFront(self, phi):					
 		self.yaw = cos(phi*2*pi) * self.params.yawAmp 
 		self.roll = -sin(phi*2*pi) * self.params.rollAmp
 
@@ -228,7 +247,7 @@ class contactGait:
 	#	zero when phi0=0
 	#CORRECTION: removed sgn(sin(phi0)) -- not required because of how we
 	#handle phi in the range [0.5, 1]
-	def __doStance(self, phi):
+    def __doStance(self, phi):
 		self.yaw = (self.params.yawAmp*cos(2*pi*self.phi0) - 
 				self.params.stanceVel*(phi - self.phi0))
 		self.roll = -sin(2*pi*self.phi0)*self.params.rollAmp
@@ -236,7 +255,7 @@ class contactGait:
 	#calculate roll/yaw when in 'recovery' state
 	#need to update the gait pdf with changes here, and assumptions about
 	#	the sign of yawAmp
-	def __doRecovery(self, phi):
+    def __doRecovery(self, phi):
 		#unlike phi, psi is a real angle that doesn't require *2*pi
 		psi = (pi/2)*(2*pi*phi - 2*pi*self.phi1)/(pi - 2*pi*self.phi1)
 		self.yaw = self.y1 - ((self.params.yawAmp + self.y1) * sin(psi))
@@ -244,7 +263,7 @@ class contactGait:
 
 	#determine contact state - dummy for now
 	#assumes contact at a given roll angle
-	def __contact(self, phi):
+    def __contact(self, phi):
 		#contactAtRoll = 1500.0	# centidegrees
         #if(0.5 < phi <= 1.0):
         #    contactAtRoll = -contactAtRoll		#other side of leg
@@ -254,15 +273,19 @@ class contactGait:
 		#	return True
 		#return False
 		
-		contactAtRoll = (20.0)*pi/180.0
+		#if we're strafing, we don't want to consider contact
+        if(self.strafe != 0):
+            return False
+		
+        contactAtRoll = (20.0)*pi/180.0
 		# fake contact using roll
-		if(abs(self.roll) >= contactAtRoll):
-		    return True
-		return False
+        if(abs(self.roll) >= contactAtRoll):
+            return True
+        return False
 			
 	#rearranges the condition (yaw < 0) to be a function of phi
 	#ATTN: something is wrong here... needs a little work... check notes/math
-	def __yawLessThanZero(self, phi):
+    def __yawLessThanZero(self, phi):
 		phi_0 = self.phi0
 		yaw_amp = self.params.yawAmp
 		vel = self.params.stanceVel
@@ -270,8 +293,8 @@ class contactGait:
 		phiLimit = (phi_0 + yaw_amp*cos(2*pi*phi_0)/vel)
 		print('phiLimit = ' + str(phiLimit))
 		
-		temp = phiLimit < phi
+		yawLTzero = phiLimit < phi
 		print('current yaw: ' + str(self.yaw))
-		print('yaw < 0 = ' + str(temp))
+		print('yaw < 0 = ' + str(yawLTzero))
 		
-		return temp
+		return yawLTzero

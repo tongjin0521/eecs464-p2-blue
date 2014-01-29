@@ -82,7 +82,7 @@ initParams.yawAmp = (15*pi/180)
 initParams.stanceVel = 3
 initParams.endRecovWindow = 0.2
 
-myGait = contactGait(initParams)
+myGait = contactGait(initParams, 1, 0)
 
 #set up phi
 numVals = 1024
