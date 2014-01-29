@@ -8,8 +8,9 @@ import ckbot.logical as logical
 import ckbot.nobus as NB
 import math
 
-#pull in contact gait module
+#pull in contact gait module and turn in place module
 from centipedeContact import *
+import centipedeTurnInPlace as centTIP
 
 # For plotting Buehler
 import matplotlib
@@ -50,18 +51,20 @@ class FunctionCyclePlanApp( JoyApp ):
   def __init__(self,*arg,**kw):
     JoyApp.__init__(self, confPath="$/cfg/JoyAppCentipede.yml", *arg,**kw)
     self.turnInPlaceMode = 0
+    self.backward = 0
     self.gaitSpec = None
     
     self.last = now()
 
   def fun( self, phase ):
   		  
-    bend = 0
+    bend = 0	# no longer used - change bend w/ controller
     g1 = self.gait1
     g2 = self.gait2
     g3 = self.gait3
     
-    phi = 1 - phase
+    #deal with forward/backward here?  Maybe with joystick? and bend?
+    phi = 1 - phase              
         
 	#for legs 1 & 3
     g1.manageGait(phi)
@@ -92,34 +95,46 @@ class FunctionCyclePlanApp( JoyApp ):
         s3roll = -s3roll
         s3yaw = -s3yaw
     
-    #progress("CONTACTGAIT S1, yaw:" + str(s1yaw) + ", roll:" + str(s1roll) + ", phi:" + str(phi) + ", stage:" + g1.gaitState)
-    #progress("CONTACTGAIT S2, yaw:" + str(s2yaw) + ", roll:" + str(s2roll) + ", phi:" + str(phi2) + ", stage:" + g2.gaitState)
-    #progress("S2 get_pos:" + str(self.S2.l.get_pos()))
-	#roll/yaw are deg, need to convert to centidegrees
+    #turn in place - overwrite normal roll/yaw
+    self.tipGait1.manageGait(phi)    
+    self.tipGait2.manageGait(phi2)
+    self.tipGait3.manageGait(phi)
     
-    self.S1.set_pos(s1yaw*100, bend, s1roll*100+2322)  # offset for module 0x26
-    self.S2.set_pos(s2yaw*100, bend, s2roll*100)
-    self.S3.set_pos(s3yaw*100, bend, -s3roll*100)
-    #progress("contactgait, " + str(s1roll) + ", " + str(s3roll))
-    
-    #check load parameter of front leg's motor:
-    #frontLeg = self.S1.l
-    #frontLegLoadRaw = frontLeg.mem[frontLeg.mcu.present_load]
-    #loadDirection = frontLegLoadRaw >> 10
-    #frontLegLoad = frontLegLoadRaw & 0x3FF
-    #progress("load," + str(frontLegLoad) + "," + str(loadDirection))
+    if(self.turnInPlaceMode == 1):
+      s1roll = self.tipGait1.roll
+      s1yaw = self.tipGait1.yaw
+      s2roll = self.tipGait2.roll
+      s2yaw = self.tipGait2.yaw
+      s3roll = self.tipGait3.roll
+      s3yaw = self.tipGait3.yaw
+      
+      self.S1.set_pos(s1yaw*100, 0, s1roll*100+2322)
+      self.S2.set_pos(s2yaw*100, 0, s2roll*100)
+      self.S3.set_pos(s3yaw*100, 0, s3roll*100)
+    else:
+      if(self.backward == 1): #transform if moving backwards (invert roll)
+        self.S1.set_pos(s1yaw*100, g1.bend, -1*(s1roll*100+2322))
+        self.S2.set_pos(s2yaw*100, g2.bend, -1*(s2roll*100))
+        self.S3.set_pos(s3yaw*100, g3.bend, s3roll*100)
+      else:
+        #roll/yaw are deg, need to convert to centidegrees
+        self.S1.set_pos(s1yaw*100, g1.bend, s1roll*100+2322)  # offset for module 0x26
+        self.S2.set_pos(s2yaw*100, g2.bend, s2roll*100)
+        self.S3.set_pos(s3yaw*100, g3.bend, -s3roll*100)      #rear module is facing the opp dir of the front      
 
   def onStart(self):
     self.S1 = Segment(None, self.robot.at.B1, self.robot.at.L1)
     self.S2 = Segment(self.robot.at.F2, self.robot.at.B2, self.robot.at.L2)
     self.S3 = Segment(self.robot.at.F3, None, self.robot.at.L3)
     
-    #set the slope parameter for each motor:
-    for m in self.robot.itermodules():
-        m.mem[m.mcu.ccw_compliance_slope] = 64
-        m.mem[m.mcu.cw_compliance_slope] = 64
+    
+      #set the slope parameter for each motor:
+    #for m in self.robot.itermodules():
+      #m.mem[m.mcu.ccw_compliance_slope] = 64
+      #m.mem[m.mcu.cw_compliance_slope] = 64
 
     self.last = 0
+    self.backward = 0
     
     #setup parameters for contact gait - some reasonable values
     initParams = gaitParams()
@@ -133,6 +148,10 @@ class FunctionCyclePlanApp( JoyApp ):
     self.gait1 = contactGait(initParams, self.S1.l, 2322)
     self.gait2 = contactGait(initParams, self.S2.l, 0)
     self.gait3 = contactGait(initParams, self.S3.l, 0)
+    
+    self.tipGait1 = centTIP.turnInPlaceGait(initParams)
+    self.tipGait2 = centTIP.turnInPlaceGait(initParams)
+    self.tipGait3 = centTIP.turnInPlaceGait(initParams)
 
     self.gaitSpec = Struct(
       rollAmp = 0.4, 
@@ -175,8 +194,8 @@ class FunctionCyclePlanApp( JoyApp ):
     if self.timeToShow():
       gs.turn = 0.5*self.sf.getValue("joy0axis2")
       gs.yawAmp = -0.5#self.sf.getValue("joy0axis3")
-      progress('freq: %g, roll: %g, yaw: %g, turn: %g, turn mode: %g' 
-               % (gs.freq, gs.rollAmp, gs.yawAmp, gs.turn, self.turnInPlaceMode))
+      progress('freq: %g, bend: %g, backwards: %g, strafe: %g, turn mode: %g' 
+               % (gs.freq, self.gait1.bend, self.backward, self.gait1.strafe, self.turnInPlaceMode))
 
     if evt.type==JOYBUTTONDOWN and evt.joy==0:
       progress( describeEvt(evt) )
@@ -195,14 +214,41 @@ class FunctionCyclePlanApp( JoyApp ):
       if evt.button==0: #decrease freq
         gs.freq -= 0.1
         self.plan.setFrequency( gs.freq )        
-      if evt.button==3: #increase roll
-        gs.rollAmp += 0.01
-      if evt.button==1: #decrease roll
-        gs.rollAmp -= 0.01
+      if evt.button==3: #increase bend
+        #gs.rollAmp += 0.01
+        g1 = self.gait1
+        g2 = self.gait2
+        g3 = self.gait3
+        
+        #bend in centidegrees
+        g1.bend += 100
+        g2.bend += 100
+        g3.bend += 100
+      if evt.button==1: #decrease bend
+        #gs.rollAmp -= 0.01
+        g1 = self.gait1
+        g2 = self.gait2
+        g3 = self.gait3
+        
+        g1.bend -= 100
+        g2.bend -= 100
+        g3.bend -= 100
       if evt.button==6: #turn in place mode = 1
         self.turnInPlaceMode = 1
       if evt.button==4: #turn in place mode = 0
         self.turnInPlaceMode = 0
+      if evt.button==8: #increase strafing
+        self.gait1.strafe += 10
+        self.gait2.strafe += 10
+        self.gait3.strafe += 10
+      if evt.button==9: #decrease strafing
+        self.gait1.strafe -= 10
+        self.gait2.strafe -= 10
+        self.gait3.strafe -= 10
+      if evt.button==10: #backward = 1
+        self.backward = 1
+      if evt.button==11: #backward = 0
+        self.backward = 0
       return
     if evt.type==KEYDOWN:
       if evt.key==ord('m'):#
