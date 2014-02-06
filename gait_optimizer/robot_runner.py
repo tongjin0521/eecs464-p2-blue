@@ -222,10 +222,12 @@ if __name__=="__main__":
         c = ckbot.logical.Cluster()
     except IOError:
         ckbot.logical.DEFAULT_BUS = ckbot.nobus
-        c = ckbot.logical.Cluster()
+        c = ckbot.logical.Cluster(arch=ckbot.nobus)
         print(timestamp() + "Couldn't connect, using virtual modules as standin.")
-
+		
+		
     c.populate(count=2,fillMissing=True,required=[ 0x01, 0x2 ])
+
     right = c[1]
     left = c[2]
 
