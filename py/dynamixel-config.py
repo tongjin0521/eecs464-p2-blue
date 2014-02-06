@@ -216,8 +216,9 @@ class dynamixelConfigurator:
           return [self.baud]
         bauds = [ b 
             for b in self.p.bus.getSupportedBaudrates()
-            if (b>=1200 and b<=1e6 and b != 57600) ]
+            if (b>=1200 and b<=1e6 and not b in [57600,115200]) ]
         bauds.sort(reverse=True)
+        bauds.insert(0, 57600)
         bauds.insert(0, 115200)
         return bauds
         
