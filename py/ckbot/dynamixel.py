@@ -742,7 +742,24 @@ class ProtocolNodeAdaptor( AbstractNodeAdaptor ):
         self.p = protocol
         self.nid = nid
         self.mm = mm
-      
+        self.model = None
+        self._adaptMem()
+    
+    def _adaptMem( self ):
+        """
+        Read the typecode and update the mm sub-object to one of the appropriate type
+        """
+        tc = self.get_typecode()
+        try:
+          self.mm = ({
+            'Dynamixel-006b' : EX106MemWithOps,
+            'Dynamixel-0040' : RX64MemWithOps,
+            'Dynamixel-0200' : RX64MemWithOps,
+            'Dynamixel-0136' : MX64MemWithOps
+          }[tc])
+        except KeyError, ke:
+          raise KeyError('Unknown module typecode "%s"' % tc)  
+            
     def mem_write_fast( self, addr, val ):
         """ 
         Send a memory write command expecting no response. 
@@ -784,11 +801,13 @@ class ProtocolNodeAdaptor( AbstractNodeAdaptor ):
         """
         TODO
         """
+        if self.model is not None:
+          return self.model
         mdl = self.mem_read_sync( self.mm.model )
         if isinstance(mdl,Exception):
           raise mdl
-        print "Dynamixel-%04x" % mdl
-        return "Dynamixel-%04x" % mdl
+        self.model = "Dynamixel-%04x" % mdl
+        return self.model
 
     def mem_read_async( self, addr ):
         """
