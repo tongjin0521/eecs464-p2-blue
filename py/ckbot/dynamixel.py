@@ -96,7 +96,9 @@ class DynamixelMemMap:
       -- create a dictionary _ADDR_DCR_ that holds the memory location, name, and type (B, >H)
          generate a set of properties with the commmand name and it equivalent location
     """
-    _ADDR_DCR = None #: PURE, subclasses must override
+    _ADDR_DCR = {
+    '\x00' : ("model", "<H") # superclass only knows where to find model number
+    }    
     MODEL_ADDR = pack('B',0) #: Address of model number, shared for all models
     MODEL_ADDR_LEN = 2 #: Length of model number
 
@@ -108,6 +110,7 @@ class DynamixelMemMap:
       """
       for adr,(nm,fmt) in cls._ADDR_DCR.iteritems():
           setattr(cls,nm,adr)
+DynamixelMemMap._prepare()
 
 class MemMapOpsMixin:
     """
@@ -273,6 +276,9 @@ class EX106Mem( DynamixelMemMap ):
     '\x38' : ("sense_current","<H"),
     }
 EX106Mem._prepare()
+
+class DynamixelMemWithOps( DynamixelMemMap, MemMapOpsMixin ):
+  memMapParent = DynamixelMemMap
 
 class EX106MemWithOps( EX106Mem, MemMapOpsMixin ):
   memMapParent = EX106Mem
@@ -737,7 +743,7 @@ class ProtocolError( AbstractProtocolError ):
     AbstractProtocolError.__init__(self,*arg, **kw)
     
 class ProtocolNodeAdaptor( AbstractNodeAdaptor ):
-    def __init__(self, protocol, nid = None, mm=EX106MemWithOps):
+    def __init__(self, protocol, nid = None, mm=DynamixelMemWithOps):
         AbstractNodeAdaptor.__init__(self)        
         self.p = protocol
         self.nid = nid
