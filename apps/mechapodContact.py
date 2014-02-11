@@ -49,7 +49,7 @@ class Segment(object):
 
 class FunctionCyclePlanApp( JoyApp ):
   def __init__(self,*arg,**kw):
-    JoyApp.__init__(self, confPath="$/cfg/JoyAppCentipede.yml", *arg,**kw)
+    JoyApp.__init__(self, confPath="$/cfg/JoyAppCentipedeV2.yml", *arg,**kw)
     self.turnInPlaceMode = 0
     self.backward = 0
     self.gaitSpec = None
@@ -95,32 +95,33 @@ class FunctionCyclePlanApp( JoyApp ):
         s3roll = -s3roll
         s3yaw = -s3yaw
     
-    #turn in place - overwrite normal roll/yaw
+    #turn in place
     self.tipGait1.manageGait(phi)    
     self.tipGait2.manageGait(phi2)
     self.tipGait3.manageGait(phi)
     
     if(self.turnInPlaceMode == 1):
-      s1roll = self.tipGait1.roll
-      s1yaw = self.tipGait1.yaw
-      s2roll = self.tipGait2.roll
-      s2yaw = self.tipGait2.yaw
-      s3roll = self.tipGait3.roll
-      s3yaw = self.tipGait3.yaw
+      #get turn-in-place gait values
+      s1roll = 0#degrees(self.tipGait1.roll)
+      s1yaw = 0#degrees(self.tipGait1.yaw)
+      s2roll = degrees(self.tipGait2.roll)
+      s2yaw = -degrees(self.tipGait2.yaw)
+      s3roll = 0#degrees(self.tipGait3.roll)
+      s3yaw = 0#degrees(self.tipGait3.yaw)
       
-      self.S1.set_pos(s1yaw*100, 0, s1roll*100+2322)
-      self.S2.set_pos(s2yaw*100, 0, s2roll*100)
-      self.S3.set_pos(s3yaw*100, 0, s3roll*100)
+      #progress("TURNINPLACE, " + str(s1roll) + ", " + str(s1yaw))
+  
+    if(self.backward == 1): #transform if moving backwards (invert roll)
+      s1roll = -s1roll
+      s2roll = -s2roll
+      s3roll = -s3roll       
     else:
-      if(self.backward == 1): #transform if moving backwards (invert roll)
-        self.S1.set_pos(s1yaw*100, g1.bend, -1*(s1roll*100+2322))
-        self.S2.set_pos(s2yaw*100, g2.bend, -1*(s2roll*100))
-        self.S3.set_pos(s3yaw*100, g3.bend, s3roll*100)
-      else:
-        #roll/yaw are deg, need to convert to centidegrees
-        self.S1.set_pos(s1yaw*100, g1.bend, s1roll*100+2322)  # offset for module 0x26
-        self.S2.set_pos(s2yaw*100, g2.bend, s2roll*100)
-        self.S3.set_pos(s3yaw*100, g3.bend, -s3roll*100)      #rear module is facing the opp dir of the front      
+      pass
+            
+    #roll/yaw are deg, need to convert to centidegrees
+    self.S1.set_pos(s1yaw*100, g1.bend, s1roll*100)  
+    self.S2.set_pos(s2yaw*100, g2.bend, s2roll*100)   
+    self.S3.set_pos(s3yaw*100, g3.bend, -s3roll*100)      #facing opposite     
 
   def onStart(self):
     self.S1 = Segment(None, self.robot.at.B1, self.robot.at.L1)
@@ -129,9 +130,9 @@ class FunctionCyclePlanApp( JoyApp ):
     
     
       #set the slope parameter for each motor:
-    #for m in self.robot.itermodules():
-      #m.mem[m.mcu.ccw_compliance_slope] = 64
-      #m.mem[m.mcu.cw_compliance_slope] = 64
+    for m in self.robot.itermodules():
+      m.mem[m.mcu.ccw_compliance_slope] = 64
+      m.mem[m.mcu.cw_compliance_slope] = 64
 
     self.last = 0
     self.backward = 0
@@ -149,9 +150,20 @@ class FunctionCyclePlanApp( JoyApp ):
     self.gait2 = contactGait(initParams, self.S2.l, 0)
     self.gait3 = contactGait(initParams, self.S3.l, 0)
     
-    self.tipGait1 = centTIP.turnInPlaceGait(initParams)
-    self.tipGait2 = centTIP.turnInPlaceGait(initParams)
-    self.tipGait3 = centTIP.turnInPlaceGait(initParams)
+    tipParamsFB = gaitParams()  # rollAmp and yawAmp are only params used for TIP
+    tipParamsFB.rollAmp = (33*pi/180)
+    tipParamsFB.yawThresh = -(40*pi/180)  
+    tipParamsFB.yawAmp = (10*pi/180)
+    
+    tipParamsMid = gaitParams()  # rollAmp and yawAmp are only params used for TIP
+    tipParamsMid.rollAmp = (33*pi/180)
+    tipParamsMid.yawThresh = -(40*pi/180)  
+    tipParamsMid.yawAmp = (10*pi/180)
+       
+    
+    self.tipGait1 = centTIP.turnInPlaceGait(tipParamsFB)
+    self.tipGait2 = centTIP.turnInPlaceGait(tipParamsMid)
+    self.tipGait3 = centTIP.turnInPlaceGait(tipParamsFB)
 
     self.gaitSpec = Struct(
       rollAmp = 0.4, 
