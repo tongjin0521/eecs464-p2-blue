@@ -112,7 +112,7 @@ class contactGait:
 									
 		#should update do()'s (see below) w/ abs() if needed
 		assert abs(self.params.rollThresh) < self.params.rollAmp, "rollAmp < rollThresh"
-		assert abs(self.params.yawThresh) < self.params.yawAmp, "yawAmp < yawThresh"
+		#assert abs(self.params.yawThresh) < self.params.yawAmp, "yawAmp < yawThresh"
 		assert self.params.rollAmp > 0, "rollAmp <= 0"
 		assert self.params.yawAmp > 0, "yawAmp <= 0"
 									
@@ -189,7 +189,7 @@ class contactGait:
 			#need to ask Prof Revzen			
 			self.stanceLimit = self.phi0 - (self.params.yawThresh - self.params.yawAmp*cos(2*pi*self.phi0))/(self.params.stanceVel)
 			
-			#reinitialize phi1 as 0.25, w/ corresponding y1/r1 in case we ski
+			#reinitialize phi1 as 0.25, w/ corresponding y1/r1 in case we skip
 			#the 'stance' portion of the gait
 			self.phi1 = 0.25
 			self.y1 = 0
