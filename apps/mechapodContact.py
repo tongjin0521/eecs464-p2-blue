@@ -1,5 +1,5 @@
 from joy import *
-from math import copysign,cos,sin,pi,degrees
+from math import copysign,cos,sin,pi,degrees,abs
 from numpy import matrix,floor
 from numpy import linalg
 from time import time as now
@@ -186,11 +186,13 @@ class FunctionCyclePlanApp( JoyApp ):
     self.plan.onStop = curry(progress,">>> STOP")
     self.plan.setFrequency(self.gaitSpec.freq)
     self.dir = 1
+    
     sf = StickFilter(self)
-    sf.setLowpass("joy0axis2",10)
-    sf.setLowpass("joy0axis3",10)
+    sf.setLowpass("joy0axis0",5)
+    sf.setLowpass("joy0axis1",5)
     sf.start()
     self.sf = sf
+    
     self.timeToShow = self.onceEvery(0.25)
     self.timeToPlot = self.onceEvery(0.5)
 
@@ -272,7 +274,32 @@ class FunctionCyclePlanApp( JoyApp ):
 
     if evt.type in [JOYAXISMOTION]:
       self.sf.push(evt)
+      #put joystick controls in here
+      #can get the value for freq and bend with:
+      #self.sf.getValue("joy0axis0") = freq, self.sf.getValue("joy0axis1")=bend
+      #then remove the button stuff? not necessary, but would be cleaner
+      
+      #update gait with joystick inputs
+      bend = self.sf.getValue("joy0axis1") #value range: [-1, 1]
+      freq = self.sf.getValue("joy0axis0") #value range: [-1, 1]
+      
+      maxFreq = 2
+      maxBend = 1500 #centi-degrees
+      
+      #handle negative frequency
+      if(freq < 0):
+        freq = abs(freq)
+        self.backward = 1
+      else:
+        self.backward = 0
+        
+      self.plan.setFrequency(maxFreq*freq)
+      self.gait1.bend = (maxBend*bend)
+      self.gait2.bend = (maxBend*bend)
+      self.gait3.bend = (maxBend*bend)
+      
       return
+      
     if evt.type!=TIMEREVENT:
       JoyApp.onEvent(self,evt)
 
