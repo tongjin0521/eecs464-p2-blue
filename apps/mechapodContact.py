@@ -1,5 +1,5 @@
 from joy import *
-from math import copysign,cos,sin,pi,degrees,abs
+from math import copysign,cos,sin,pi,degrees
 from numpy import matrix,floor
 from numpy import linalg
 from time import time as now
@@ -38,7 +38,6 @@ class Segment(object):
   def set_pos(self,yaw,bend,roll):
     A = matrix([[2,0.5,0],[-2,0.5,0],[0,0,1]],dtype='float')
     pos=A*matrix([[yaw],[bend],[roll]])
-    #progress("Commanded Roll " + str(self)+" " + str(pos[2]))
     if self.f!=None:
       self.f.set_pos(pos[0])
     if self.b!=None:
@@ -49,10 +48,11 @@ class Segment(object):
 
 class FunctionCyclePlanApp( JoyApp ):
   def __init__(self,*arg,**kw):
-    JoyApp.__init__(self, confPath="$/cfg/JoyAppCentipedeV2.yml", *arg,**kw)
+    JoyApp.__init__(self, confPath="$/cfg/JoyAppCentipede.yml", *arg,**kw)
     self.turnInPlaceMode = 0
     self.backward = 0
     self.gaitSpec = None
+    self.stickMode = False
     
     self.last = now()
 
@@ -63,7 +63,6 @@ class FunctionCyclePlanApp( JoyApp ):
     g2 = self.gait2
     g3 = self.gait3
     
-    #deal with forward/backward here?  Maybe with joystick? and bend?
     phi = 1 - phase              
         
 	#for legs 1 & 3
@@ -102,12 +101,12 @@ class FunctionCyclePlanApp( JoyApp ):
     
     if(self.turnInPlaceMode == 1):
       #get turn-in-place gait values
-      s1roll = 0#degrees(self.tipGait1.roll)
-      s1yaw = 0#degrees(self.tipGait1.yaw)
+      s1roll = degrees(self.tipGait1.roll)
+      s1yaw = degrees(self.tipGait1.yaw)
       s2roll = degrees(self.tipGait2.roll)
-      s2yaw = -degrees(self.tipGait2.yaw)
-      s3roll = 0#degrees(self.tipGait3.roll)
-      s3yaw = 0#degrees(self.tipGait3.yaw)
+      s2yaw = degrees(self.tipGait2.yaw)
+      s3roll = degrees(self.tipGait3.roll)
+      s3yaw = degrees(self.tipGait3.yaw)
       
       #progress("TURNINPLACE, " + str(s1roll) + ", " + str(s1yaw))
   
@@ -121,7 +120,7 @@ class FunctionCyclePlanApp( JoyApp ):
     #roll/yaw are deg, need to convert to centidegrees
     self.S1.set_pos(s1yaw*100, g1.bend, s1roll*100)  
     self.S2.set_pos(s2yaw*100, g2.bend, s2roll*100)   
-    self.S3.set_pos(s3yaw*100, g3.bend, -s3roll*100)      #facing opposite     
+    self.S3.set_pos(s3yaw*100, g3.bend, -s3roll*100+500)      #facing opposite     
 
   def onStart(self):
     self.S1 = Segment(None, self.robot.at.B1, self.robot.at.L1)
@@ -136,29 +135,30 @@ class FunctionCyclePlanApp( JoyApp ):
 
     self.last = 0
     self.backward = 0
+    self.stickMode = False
     
-    #setup parameters for contact gait - some reasonable values
+    #setup parameters for contact gait - some reasonable values for V1
     initParams = gaitParams()
-    initParams.rollThresh = -(29*pi/180)
-    initParams.yawThresh = -(9*pi/180)
-    initParams.maxRoll = (34*pi/180)
-    initParams.rollAmp = (34*pi/180)
-    initParams.yawAmp = (10*pi/180)
+    initParams.rollThresh = -(20*pi/180)
+    initParams.yawThresh = -(8*pi/180)
+    initParams.maxRoll = (22*pi/180)
+    initParams.rollAmp = (22*pi/180)
+    initParams.yawAmp = (9*pi/180)
     initParams.stanceVel = 1.26
     
-    self.gait1 = contactGait(initParams, self.S1.l, 2322)
+    self.gait1 = contactGait(initParams, self.S1.l, 0)
     self.gait2 = contactGait(initParams, self.S2.l, 0)
     self.gait3 = contactGait(initParams, self.S3.l, 0)
     
     tipParamsFB = gaitParams()  # rollAmp and yawAmp are only params used for TIP
     tipParamsFB.rollAmp = (33*pi/180)
-    tipParamsFB.yawThresh = -(40*pi/180)  
-    tipParamsFB.yawAmp = (10*pi/180)
+    tipParamsFB.yawThresh = -(18*pi/180)  
+    tipParamsFB.yawAmp = (20*pi/180)
     
     tipParamsMid = gaitParams()  # rollAmp and yawAmp are only params used for TIP
     tipParamsMid.rollAmp = (33*pi/180)
-    tipParamsMid.yawThresh = -(40*pi/180)  
-    tipParamsMid.yawAmp = (10*pi/180)
+    tipParamsMid.yawThresh = -(18*pi/180)  
+    tipParamsMid.yawAmp = (20*pi/180)
        
     
     self.tipGait1 = centTIP.turnInPlaceGait(tipParamsFB)
@@ -202,14 +202,9 @@ class FunctionCyclePlanApp( JoyApp ):
   def onEvent(self, evt):
     gs = self.gaitSpec
 
-    #if self.timeToPlot():
-    #  progress('time: %g' % (time.time()))
-
-    if self.timeToShow():
-      gs.turn = 0.5*self.sf.getValue("joy0axis2")
-      gs.yawAmp = -0.5#self.sf.getValue("joy0axis3")
-      progress('freq: %g, bend: %g, backwards: %g, strafe: %g, turn mode: %g' 
-               % (gs.freq, self.gait1.bend, self.backward, self.gait1.strafe, self.turnInPlaceMode))
+    if self.timeToShow():      
+      progress('freq: %g, bend: %g, stickMode: %g, strafe: %g, turn mode: %g' 
+               % (gs.freq, self.gait1.bend, self.stickMode, self.gait1.strafe, self.turnInPlaceMode))
 
     if evt.type==JOYBUTTONDOWN and evt.joy==0:
       progress( describeEvt(evt) )
@@ -217,36 +212,23 @@ class FunctionCyclePlanApp( JoyApp ):
       if evt.button==5:
         self.plan.start()
         progress('--> starting plan')
+        
       # stop
       if evt.button==7:
         self.robot.off()
         self.plan.stop()
         progress('STOP')
-      if evt.button==2: #increase freq
+        gs.freq = 0
+        
+
+      if evt.button==0: #toggle stickMode (control via left joystick)
+        self.stickMode = not self.stickMode   
+        
+      if evt.button==1:
         gs.freq += 0.1
-        self.plan.setFrequency( gs.freq )
-      if evt.button==0: #decrease freq
+      if evt.button==2:
         gs.freq -= 0.1
-        self.plan.setFrequency( gs.freq )        
-      if evt.button==3: #increase bend
-        #gs.rollAmp += 0.01
-        g1 = self.gait1
-        g2 = self.gait2
-        g3 = self.gait3
-        
-        #bend in centidegrees
-        g1.bend += 100
-        g2.bend += 100
-        g3.bend += 100
-      if evt.button==1: #decrease bend
-        #gs.rollAmp -= 0.01
-        g1 = self.gait1
-        g2 = self.gait2
-        g3 = self.gait3
-        
-        g1.bend -= 100
-        g2.bend -= 100
-        g3.bend -= 100
+
       if evt.button==6: #turn in place mode = 1
         self.turnInPlaceMode = 1
       if evt.button==4: #turn in place mode = 0
@@ -259,10 +241,6 @@ class FunctionCyclePlanApp( JoyApp ):
         self.gait1.strafe -= 10
         self.gait2.strafe -= 10
         self.gait3.strafe -= 10
-      if evt.button==10: #backward = 1
-        self.backward = 1
-      if evt.button==11: #backward = 0
-        self.backward = 0
       return
     if evt.type==KEYDOWN:
       if evt.key==ord('m'):#
@@ -274,29 +252,31 @@ class FunctionCyclePlanApp( JoyApp ):
 
     if evt.type in [JOYAXISMOTION]:
       self.sf.push(evt)
-      #put joystick controls in here
-      #can get the value for freq and bend with:
-      #self.sf.getValue("joy0axis0") = freq, self.sf.getValue("joy0axis1")=bend
-      #then remove the button stuff? not necessary, but would be cleaner
+
+      if(self.stickMode == True):
+        #update gait with joystick inputs
+        bend = self.sf.getValue("joy0axis0") #value range: [-1, 1]
+        freq = self.sf.getValue("joy0axis1") #value range: [-1, 1]
       
-      #update gait with joystick inputs
-      bend = self.sf.getValue("joy0axis1") #value range: [-1, 1]
-      freq = self.sf.getValue("joy0axis0") #value range: [-1, 1]
+        maxFreq = 1     #Hz
+        maxBend = 1000  #centi-degrees
       
-      maxFreq = 2
-      maxBend = 1500 #centi-degrees
-      
-      #handle negative frequency
-      if(freq < 0):
-        freq = abs(freq)
-        self.backward = 1
-      else:
-        self.backward = 0
+        #handle negative frequency
+        if(freq < 0):
+          freq = -1*freq
+          self.backward = 1
+        else:
+          self.backward = 0
         
-      self.plan.setFrequency(maxFreq*freq)
-      self.gait1.bend = (maxBend*bend)
-      self.gait2.bend = (maxBend*bend)
-      self.gait3.bend = (maxBend*bend)
+        self.gaitSpec.freq = maxFreq*freq #for plotting purposes
+        self.plan.setFrequency(maxFreq*freq)
+        
+        self.gait1.bend = (maxBend*bend)
+        self.gait2.bend = (maxBend*bend)
+        self.gait3.bend = (maxBend*bend)
+      else:
+        #return to button control
+        self.plan.setFrequency(self.gaitSpec.freq)
       
       return
       

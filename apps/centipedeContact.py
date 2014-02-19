@@ -112,7 +112,7 @@ class contactGait:
 									
 		#should update do()'s (see below) w/ abs() if needed
 		assert abs(self.params.rollThresh) < self.params.rollAmp, "rollAmp < rollThresh"
-		#assert abs(self.params.yawThresh) < self.params.yawAmp, "yawAmp < yawThresh"
+		assert abs(self.params.yawThresh) < self.params.yawAmp, "yawAmp < yawThresh"
 		assert self.params.rollAmp > 0, "rollAmp <= 0"
 		assert self.params.yawAmp > 0, "yawAmp <= 0"
 									
