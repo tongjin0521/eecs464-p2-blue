@@ -1,6 +1,6 @@
 from joy import *
 from math import copysign,cos,sin,pi,degrees
-from numpy import matrix,floor
+from numpy import matrix,floor,abs
 from numpy import linalg
 from time import time as now
 import ckbot.dynamixel as DX
@@ -48,7 +48,7 @@ class Segment(object):
 
 class FunctionCyclePlanApp( JoyApp ):
   def __init__(self,*arg,**kw):
-    JoyApp.__init__(self, confPath="$/cfg/JoyAppCentipede.yml", *arg,**kw)
+    JoyApp.__init__(self, confPath="$/cfg/JoyAppCentipedeV2.yml", *arg,**kw)
     self.turnInPlaceMode = 0
     self.backward = 0
     self.gaitSpec = None
@@ -120,7 +120,7 @@ class FunctionCyclePlanApp( JoyApp ):
     #roll/yaw are deg, need to convert to centidegrees
     self.S1.set_pos(s1yaw*100, g1.bend, s1roll*100)  
     self.S2.set_pos(s2yaw*100, g2.bend, s2roll*100)   
-    self.S3.set_pos(s3yaw*100, g3.bend, -s3roll*100+500)      #facing opposite     
+    self.S3.set_pos(s3yaw*100, g3.bend, -s3roll*100)      #facing opposite     
 
   def onStart(self):
     self.S1 = Segment(None, self.robot.at.B1, self.robot.at.L1)
@@ -137,33 +137,27 @@ class FunctionCyclePlanApp( JoyApp ):
     self.backward = 0
     self.stickMode = False
     
-    #setup parameters for contact gait - some reasonable values for V1
-    initParams = gaitParams()
-    initParams.rollThresh = -(20*pi/180)
-    initParams.yawThresh = -(8*pi/180)
-    initParams.maxRoll = (22*pi/180)
-    initParams.rollAmp = (22*pi/180)
-    initParams.yawAmp = (9*pi/180)
-    initParams.stanceVel = 1.26
+    #setup parameters for contact gait - reasonable vals for hexapod demo
+    initParamsDemo = gaitParams()
+    initParamsDemo.rollThresh = -(25*pi/180)
+    initParamsDemo.yawThresh = -(8*pi/180)
+    initParamsDemo.maxRoll = (26*pi/180)
+    initParamsDemo.rollAmp = (26*pi/180)
+    initParamsDemo.yawAmp = (9*pi/180)
+    initParamsDemo.stanceVel = 1.26
     
-    self.gait1 = contactGait(initParams, self.S1.l, 0)
-    self.gait2 = contactGait(initParams, self.S2.l, 0)
-    self.gait3 = contactGait(initParams, self.S3.l, 0)
+    self.gait1 = contactGait(initParamsDemo, self.S1.l, 0)
+    self.gait2 = contactGait(initParamsDemo, self.S2.l, 0)
+    self.gait3 = contactGait(initParamsDemo, self.S3.l, 0)
     
-    tipParamsFB = gaitParams()  # rollAmp and yawAmp are only params used for TIP
-    tipParamsFB.rollAmp = (33*pi/180)
-    tipParamsFB.yawThresh = -(18*pi/180)  
-    tipParamsFB.yawAmp = (20*pi/180)
+    tipParamsDemo = gaitParams()  # rollAmp/yawAmp are only params used for TIP
+    tipParamsDemo.rollAmp = (50*pi/180)
+    tipParamsDemo.yawThresh = -(34*pi/180)  
+    tipParamsDemo.yawAmp = (35*pi/180)
     
-    tipParamsMid = gaitParams()  # rollAmp and yawAmp are only params used for TIP
-    tipParamsMid.rollAmp = (33*pi/180)
-    tipParamsMid.yawThresh = -(18*pi/180)  
-    tipParamsMid.yawAmp = (20*pi/180)
-       
-    
-    self.tipGait1 = centTIP.turnInPlaceGait(tipParamsFB)
-    self.tipGait2 = centTIP.turnInPlaceGait(tipParamsMid)
-    self.tipGait3 = centTIP.turnInPlaceGait(tipParamsFB)
+    self.tipGait1 = centTIP.turnInPlaceGait(tipParamsDemo)
+    self.tipGait2 = centTIP.turnInPlaceGait(tipParamsDemo)
+    self.tipGait3 = centTIP.turnInPlaceGait(tipParamsDemo)
 
     self.gaitSpec = Struct(
       rollAmp = 0.4, 
@@ -233,11 +227,11 @@ class FunctionCyclePlanApp( JoyApp ):
         self.turnInPlaceMode = 1
       if evt.button==4: #turn in place mode = 0
         self.turnInPlaceMode = 0
-      if evt.button==8: #increase strafing
+      if evt.button==10: #increase strafing
         self.gait1.strafe += 10
         self.gait2.strafe += 10
         self.gait3.strafe += 10
-      if evt.button==9: #decrease strafing
+      if evt.button==11: #decrease strafing
         self.gait1.strafe -= 10
         self.gait2.strafe -= 10
         self.gait3.strafe -= 10
@@ -276,7 +270,10 @@ class FunctionCyclePlanApp( JoyApp ):
         self.gait3.bend = (maxBend*bend)
       else:
         #return to button control
-        self.plan.setFrequency(self.gaitSpec.freq)
+        self.plan.setFrequency(self.gaitSpec.freq)  
+        self.gait1.bend = 0
+        self.gait2.bend = 0
+        self.gait3.bend = 0
       
       return
       
