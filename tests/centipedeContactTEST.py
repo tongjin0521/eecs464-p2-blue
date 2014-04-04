@@ -1,7 +1,6 @@
 '''
 	centipedeContactTEST
-	by Nick Quinnell
-	last updated 2013-07-15
+	by Nick Quinnell	
 	nicq@umich.edu
 	
 	test harness for centipedeContact module
@@ -13,17 +12,10 @@ from centipedeContact import *
 from pylab import *
 from numpy import *
 
-	
-'''
-	need to incorporate the code into the rest of the centipede code
-	create/update a progress message for the contact gait
-	then grep/tee/cut the output and put in a .csv file for easy
-	plotting and analysis
-'''	
-
 def printGait(roll, yaw, gaitState, phi):
 
-	fig1 = False
+	#config variable to show the individual stages of the gait as diff colors
+	fig1 = True
 	
 	if(fig1):
 		
@@ -34,8 +26,7 @@ def printGait(roll, yaw, gaitState, phi):
 		#plot 'front'
 		endFrontIdx = gaitState.index('stance') - 1
 		rollFront = roll[0:endFrontIdx]
-		yawFront = yaw[0:endFrontIdx]
-		print(str(rollFront))
+		yawFront = yaw[0:endFrontIdx]		
 		plot(yawFront, rollFront,'bo')
 		hold(True)
 	
@@ -43,21 +34,17 @@ def printGait(roll, yaw, gaitState, phi):
 		endStanceIdx = gaitState.index('recovery') - 1
 		rollStance = roll[endFrontIdx+1:endStanceIdx]
 		yawStance = yaw[endFrontIdx+1:endStanceIdx]
-		print(str(rollStance))
 		plot(yawStance, rollStance, 'go')
 	
 		#plot 'recovery'
 		rollRecov = roll[endStanceIdx+1:]
 		yawRecov = yaw[endStanceIdx+1:]
-		print(str(rollRecov))
 		plot(yawRecov, rollRecov, 'ro')
-	
-	
+
 		grid(True)
 		title('Yaw v Roll for contact gait')
-		#xlim(-1.1, 1.1)
-		#ylim(-1.1, 1.1)
-	
+
+
 	figure(2)
 	xlabel('Yaw (deg)')
 	ylabel('Roll (deg)')
@@ -82,20 +69,22 @@ initParams.yawAmp = (15*pi/180)
 initParams.stanceVel = 3
 initParams.endRecovWindow = 0.2
 
-myGait = contactGait(initParams, 1, 0)
+myGait = contactGait(initParams, 1)
 
 #set up phi
-numVals = 1024
-phiVals = linspace(0, 0.5, numVals)
+numVals = 32
+phiVals = linspace(0, 1, numVals)
 
+#cut out the last value
 numVals -= 1
 phiVals = phiVals[:-1]
 
-#first half of gait
+#Set up placeholders for gait outputs
 rollVals = zeros(numVals, float)
 yawVals = zeros(numVals, float)
 gaitStates = list()
 
+#config variables for this test
 textDebug = False
 printGraphs = True
 
@@ -103,8 +92,8 @@ i=0
 for phi in phiVals:
 	myGait.manageGait(phi)
 	
-	rollVals[i] = myGait.roll*180/pi
-	yawVals[i] = myGait.yaw*180/pi
+	rollVals[i] = degrees(myGait.roll)
+	yawVals[i] = degrees(myGait.yaw)
 	gaitStates.append(myGait.gaitState)
 	
 	if textDebug:
@@ -115,15 +104,7 @@ for phi in phiVals:
 		print('cos(yaw) = ' + str(cos(myGait.yaw)))
 		print('\n')
 	
-	#this is just for graphing purposes
-	if(0.5 <= phi < 1):
-		rollVals[i] = -rollVals[i]
-		yawVals[i] = -yawVals[i]
-	
 	i += 1
-
-	
-
 
 if printGraphs:
 	printGait(rollVals, yawVals, gaitStates, phiVals)

@@ -56,9 +56,7 @@ class FunctionCyclePlanApp( JoyApp ):
     
     self.last = now()
 
-  def fun( self, phase ):
-  		  
-    bend = 0	# no longer used - change bend w/ controller
+  def fun( self, phase ):  		      
     g1 = self.gait1
     g2 = self.gait2
     g3 = self.gait3
@@ -83,17 +81,7 @@ class FunctionCyclePlanApp( JoyApp ):
     g2.manageGait(phi2) 
     s2roll = degrees(g2.roll)
     s2yaw = degrees(g2.yaw)
-    
-    if(0.5 < phi2 <= 1):	#transform for second half of gait
-        s2roll = -s2roll
-        s2yaw = -s2yaw
-    
-    if(0.5 < phi <= 1):	#transform for second half of gait
-        s1roll = -s1roll
-        s1yaw = -s1yaw
-        s3roll = -s3roll
-        s3yaw = -s3yaw
-    
+
     #turn in place
     self.tipGait1.manageGait(phi)    
     self.tipGait2.manageGait(phi2)
@@ -146,9 +134,9 @@ class FunctionCyclePlanApp( JoyApp ):
     initParamsDemo.yawAmp = (9*pi/180)
     initParamsDemo.stanceVel = 1.26
     
-    self.gait1 = contactGait(initParamsDemo, self.S1.l, 0)
-    self.gait2 = contactGait(initParamsDemo, self.S2.l, 0)
-    self.gait3 = contactGait(initParamsDemo, self.S3.l, 0)
+    self.gait1 = contactGait(initParamsDemo, self.S1.l)
+    self.gait2 = contactGait(initParamsDemo, self.S2.l)
+    self.gait3 = contactGait(initParamsDemo, self.S3.l)
     
     tipParamsDemo = gaitParams()  # rollAmp/yawAmp are only params used for TIP
     tipParamsDemo.rollAmp = (50*pi/180)
@@ -166,7 +154,7 @@ class FunctionCyclePlanApp( JoyApp ):
       t_s = 0.23,
       turn = 0,
       freq = 1,
-      ecc =0,
+      ecc = 0,
 
       maxFreq = 3.0,   
       maxYaw = 700,
