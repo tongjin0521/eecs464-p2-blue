@@ -216,9 +216,11 @@ class dynamixelConfigurator:
           return [self.baud]
         bauds = [ b 
             for b in self.p.bus.getSupportedBaudrates()
-            if (b>=1200 and b<=1e6 and b != 57600) ]
+            #if (b>=1200 and b<=1e6 and b != 57600) ]            
+            if (b>=1200 and b<=1e6 ) ]            
         bauds.sort(reverse=True)
-        bauds.insert(0, 115200)
+        #progress("bauds = " + str(bauds))
+        #bauds.insert(0, 115200)
         return bauds
         
     def scan(self, nid, timeout=0.5, retries=1 ):
@@ -235,6 +237,7 @@ class dynamixelConfigurator:
           self._defaultPort()
         progress("Scanning for 0x%02X" % nid)
         for baud in self._baudPlan():
+            progress("+++ baud = " + str(baud))
             self.p.bus.reconnect(baudrate = baud)
             self.p.reset()
             if self.p.pnas.has_key(nid):

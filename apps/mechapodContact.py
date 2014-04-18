@@ -139,7 +139,7 @@ class FunctionCyclePlanApp( JoyApp ):
     self.gait3 = contactGait(initParamsDemo, self.S3.l)
     
     tipParamsDemo = gaitParams()  # rollAmp/yawAmp are only params used for TIP
-    tipParamsDemo.rollAmp = (50*pi/180)
+    tipParamsDemo.rollAmp = (35*pi/180)
     tipParamsDemo.yawThresh = -(34*pi/180)  
     tipParamsDemo.yawAmp = (35*pi/180)
     
@@ -170,8 +170,8 @@ class FunctionCyclePlanApp( JoyApp ):
     self.dir = 1
     
     sf = StickFilter(self)
-    sf.setLowpass("joy0axis0",5)
-    sf.setLowpass("joy0axis1",5)
+    sf.setLowpass("joy0axis0",10)
+    sf.setLowpass("joy0axis1",10)
     sf.start()
     self.sf = sf
     
@@ -241,7 +241,7 @@ class FunctionCyclePlanApp( JoyApp ):
         freq = self.sf.getValue("joy0axis1") #value range: [-1, 1]
       
         maxFreq = 1     #Hz
-        maxBend = 1000  #centi-degrees
+        maxBend = 900  #centi-degrees
       
         #handle negative frequency
         if(freq < 0):
@@ -282,7 +282,7 @@ if __name__=="__main__":
   
   # for actual operation use w/ arch=DX & NO required line:  
   ckbot.logical.DEFAULT_BUS = ckbot.dynamixel
-  ckbot.logical.DEFAULT_PORT = dict(TYPE="tty", baudrate=1000000, glob="/dev/ttyUSB*")
+  ckbot.logical.DEFAULT_PORT = dict(TYPE="tty", baudrate=57600, glob="/dev/ttyUSB*")
   
   # for simulation use w/ arch=NB & required line:
   #ckbot.logical.DEFAULT_BUS = ckbot.nobus

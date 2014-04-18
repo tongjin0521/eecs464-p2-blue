@@ -4,7 +4,7 @@ import centipedeContact as centCont
 class turnInPlaceGait(centCont.contactGait):
     
     def __init__(self, params):
-        centCont.contactGait.__init__(self, params, 1, 0)
+        centCont.contactGait.__init__(self, params, 1)
         
         
     def manageGait(self, phi):
