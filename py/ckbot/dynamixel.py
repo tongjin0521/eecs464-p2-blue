@@ -358,6 +358,7 @@ class Bus( AbstractBus ):
         self.rxPkts = 0
         self.rxEcho = 0
         self.txPkts = 0
+        self.txBytes = 0
         self.suppress = {}
         self.ser.flush()
 
@@ -379,6 +380,7 @@ class Bus( AbstractBus ):
         """
         return [
             'bytes in %d' % self.count,
+            'bytes out %d' % self.txBytes,
             'packets out %d' % self.txPkts,
             'packets in %d' % self.rxPkts,
             'echos in %d' % self.rxEcho,
@@ -619,6 +621,7 @@ class Bus( AbstractBus ):
           progress('[Dynamixel] send --> %s\n' % repr(msg))
         self.ser.write(msg)
         self.txPkts+=1
+        self.txBytes+=len(msg)
         self.suppress[msg] = self.txPkts
         return msg[2:]
 
@@ -651,6 +654,7 @@ class Bus( AbstractBus ):
         self.ser.write(msg)
         self.suppress[msg] = self.txPkts
         self.txPkts+=1
+        self.txBytes+=len(msg)
         return msg[2:]
 
     def ping( self, nid ):
