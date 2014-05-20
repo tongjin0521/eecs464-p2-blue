@@ -3,13 +3,13 @@ clockInterval: 3
 keyboardRepeatDelay: 500
 keyboardRepeatInterval: 50
 nodeNames: { 
-  0x26 : L1,
-  0x08 : B1,
-  0x06 : F2,
-  0x2D : L2,
-  0x31 : B2,
-  0x22 : F3,
-  0x27 : L3
+  0x20 : L1,
+  0x02 : B1,
+  0x13 : F2,
+  0x22 : L2,
+  0x01 : B2,
+  0x18 : F3,
+  0x0A : L3
 }
 positionTolerance: 200000
 robotPollRate: 10000000

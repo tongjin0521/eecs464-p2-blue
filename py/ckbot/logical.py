@@ -263,8 +263,8 @@ class Cluster(dict):
     return nids
 
   def off( self ):
-    """Make all servo or motor modules currently live go slack"""
-    for nid in self.getLive():
+    """Make all servo or motor modules go slack"""
+    for nid in self.itermodules():
       m = self[nid]
       if hasattr(m,'go_slack') and callable(getattr(m,'go_slack')):
         m.go_slack()
