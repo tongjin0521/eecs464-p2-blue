@@ -217,7 +217,8 @@ if __name__=="__main__":
         print(timestamp() + "robot_runner.py not invoked with an argument")
         raise
     temp = open("temp",'w')
-    Q = qs.QTM(0.01)
+    #Q = qs.QTM(0.01) #QTM ctor doesn't take any args
+    Q = qs.QTM()
     try:
         c = ckbot.logical.Cluster()
     except IOError:

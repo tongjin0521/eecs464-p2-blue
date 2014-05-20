@@ -236,6 +236,7 @@ class dynamixelConfigurator:
           self._defaultPort()
         progress("Scanning for 0x%02X" % nid)
         for baud in self._baudPlan():
+            progress("+++ baud = " + str(baud))
             self.p.bus.reconnect(baudrate = baud)
             self.p.reset()
             if self.p.pnas.has_key(nid):

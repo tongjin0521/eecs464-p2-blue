@@ -1,7 +1,6 @@
 '''
 	centipedeContactTEST
-	by Nick Quinnell
-	last updated 2013-06-11
+	by Nick Quinnell	
 	nicq@umich.edu
 	
 	test harness for centipedeContact module
@@ -13,84 +12,102 @@ from centipedeContact import *
 from pylab import *
 from numpy import *
 
-	
-'''
-	put in code to plot different parts of gait in diff colors
-	prolly use find() to get the range of indexes for each part
-	of the gait, then plot the parts separately on the same graph
-'''	
+def printGait(roll, yaw, gaitState, phi):
 
-def printGait(roll, yaw, gaitState):
-	figure(1)
-	xlabel('Yaw')
-	ylabel('Roll')
+	#config variable to show the individual stages of the gait as diff colors
+	fig1 = True
+	
+	if(fig1):
+		
+		figure(1)
+		xlabel('Yaw (deg)')
+		ylabel('Roll (deg)')
 
-	#plot 'front'
-	endFrontIdx = gaitState.index('stance') - 1
-	rollFront = roll[0:endFrontIdx]
-	yawFront = yaw[0:endFrontIdx]
-	plot(yawFront, rollFront, color='blue')
-	hold(True)
+		#plot 'front'
+		endFrontIdx = gaitState.index('stance') - 1
+		rollFront = roll[0:endFrontIdx]
+		yawFront = yaw[0:endFrontIdx]		
+		plot(yawFront, rollFront,'bo')
+		hold(True)
 	
-	#plot 'stance'
-	endStanceIdx = gaitState.index('recovery') - 1
-	rollStance = roll[endFrontIdx+1:endStanceIdx]
-	yawStance = yaw[endFrontIdx+1:endStanceIdx]
-	plot(yawStance, rollStance, color='green')
+		#plot 'stance'
+		endStanceIdx = gaitState.index('recovery') - 1
+		rollStance = roll[endFrontIdx+1:endStanceIdx]
+		yawStance = yaw[endFrontIdx+1:endStanceIdx]
+		plot(yawStance, rollStance, 'go')
 	
-	#plot 'recovery'
-	rollRecov = roll[endStanceIdx+1:]
-	yawRecov = yaw[endStanceIdx+1:]
-	plot(yawRecov, rollRecov, color='red')
-	
+		#plot 'recovery'
+		rollRecov = roll[endStanceIdx+1:]
+		yawRecov = yaw[endStanceIdx+1:]
+		plot(yawRecov, rollRecov, 'ro')
+
+		grid(True)
+		title('Yaw v Roll for contact gait')
+
+
+	figure(2)
+	xlabel('Yaw (deg)')
+	ylabel('Roll (deg)')
+	plot(yaw, roll, 'ko')
 	grid(True)
 	title('Yaw v Roll for contact gait')
-	xlim(-1.1, 1.1)
-	ylim(-1.1, 1.1)
+	xlim(-17, 17)
+	ylim(-42, 42)
+	
 	show()
+	
 
 	
 
 #set up parameters for the gait
 initParams = gaitParams()
-initParams.rollThresh = -0.7
-initParams.yawThresh = -0.8
-initParams.maxRoll = 1
-initParams.rollAmp = 1
-initParams.yawAmp = 1
-initParams.stanceVel = 10
+initParams.rollThresh = -(33*pi/180)
+initParams.yawThresh = -(12*pi/180)
+initParams.maxRoll = (40*pi/180)
+initParams.rollAmp = (40*pi/180)
+initParams.yawAmp = (15*pi/180)
+initParams.stanceVel = 3
+initParams.endRecovWindow = 0.2
 
-myGait = contactGait(initParams)
-#print('myGait.gaitState = ' + myGait.gaitState + '\n\n')
+myGait = contactGait(initParams, 1)
 
-numVals = 16
-phiVals = linspace(0, 0.5, numVals)
+#set up phi
+numVals = 32
+phiVals = linspace(0, 1, numVals)
+
+#cut out the last value
+numVals -= 1
+phiVals = phiVals[:-1]
+
+#Set up placeholders for gait outputs
 rollVals = zeros(numVals, float)
 yawVals = zeros(numVals, float)
 gaitStates = list()
 
-textDebug = True
+#config variables for this test
+textDebug = False
+printGraphs = True
 
 i=0
 for phi in phiVals:
 	myGait.manageGait(phi)
-
-	rollVals[i] = myGait.roll
-	yawVals[i] = myGait.yaw
+	
+	rollVals[i] = degrees(myGait.roll)
+	yawVals[i] = degrees(myGait.yaw)
 	gaitStates.append(myGait.gaitState)
-	i += 1
-
+	
 	if textDebug:
-		#should use matplotlib to visualize roll/yaw instead of printing
 		print('phi = ' + str(phi))
 		print('gaitState = ' + myGait.gaitState)
 		print('myGait.roll = ' + str(myGait.roll))
 		print('myGait.yaw = ' + str(myGait.yaw))
 		print('cos(yaw) = ' + str(cos(myGait.yaw)))
 		print('\n')
+	
+	i += 1
 
-
-printGait(rollVals, yawVals, gaitStates)
+if printGraphs:
+	printGait(rollVals, yawVals, gaitStates, phiVals)
 
 	
 
