@@ -203,14 +203,16 @@ class TagReceiverUDP(object):
         nm = dic['i']
         if dic['i'] not in allow:
           continue
-        p = asarray(d['p'])/100.0
+        p = asarray(dic['p'])/100.0
         pts[nm,:,:2] = p
         pts[nm,:,2] = 1
 
-args = iter(argv)
+args = [ x.strip() for x in raw_input("Options: ").split(" ") ]
 #WAYPOINT_DEST = None
 logfile = None
 for arg in args:
+  if not arg:
+      continue
 #  if arg is '-d' or arg is '--dest':
 #    WAYPOINT_DEST = args.next()
 #    print "::: Destination set to '%s'" % WAYPOINT_DEST
@@ -241,6 +243,7 @@ for arg in args:
 ### MAIN LOOP ###
 #
 tru = TagReceiverUDP()
+tru.openSock()
 # We piggyback on this socket for sending multicasts, so we need to configure it
 tru.sock.setsockopt(IPPROTO_IP, IP_MULTICAST_TTL, 4)
 
@@ -266,7 +269,7 @@ try: # Error trap for cleaning up files and sockets
         pts[lidx,...] *= (1-alpha)
         pts[lidx,...] += alpha * h[lidx,...]
       # Print indicator telling operator what we did
-      print "\r%7.2f %5d  "% (now()-T0,tsu.nmsg),
+      print "\r%7.2f %5d  "% (now()-T0,tru.nmsg),
       print lbl[didx+2*lidx+4*fidx].tostring(),
       #
       # Collect the corner tags and estimate homography
@@ -401,7 +404,7 @@ try: # Error trap for cleaning up files and sockets
         )
         lastWay = now()
       # Send sensor reading out
-      # (we piggyback on tsu socket because why bother creating another one?)
+      # (we piggyback on tru socket because why bother creating another one?)
       tru.sock.sendto( json_dumps(pkt), (WAYPOINT_LISTENER_GROUP, WAYPOINT_MSG_PORT) )
       # If logging data --> put into log
       if logfile is not None:
