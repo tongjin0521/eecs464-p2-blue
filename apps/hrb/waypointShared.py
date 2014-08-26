@@ -3,6 +3,9 @@
 
 ## April tags associations ##########################################
 
+from numpy import array, inf, asarray, uint8, empty
+from numpy.random import randn
+from pylab import plot, text
 # Port for TagStreamer data
 APRIL_DATA_PORT = 0xB00
 
