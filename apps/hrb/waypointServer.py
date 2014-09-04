@@ -7,21 +7,21 @@ from time import time as now
 from gzip import open as opengz
 # Uses UDP sockets to communicate
 from socket import (
-  socket, AF_INET,SOCK_DGRAM, SOCK_STREAM, IPPROTO_IP, IP_MULTICAST_TTL, 
+  socket, AF_INET,SOCK_DGRAM, IPPROTO_IP, IP_MULTICAST_TTL, 
   error as SocketError 
   )
 # Packets are JSON enocoded
 from json import loads as json_loads, dumps as json_dumps
 # Uses numpy arrays for the math
 from numpy import (
-  array,asarray,zeros, exp,sign,linspace, uint8,
+  array,asarray,zeros, exp,linspace,
   zeros_like,kron, pi, empty_like, nan, isnan,
-  concatenate,newaxis, mean, median, dot, inf
+  concatenate, mean, dot
   )
-from numpy.linalg import lstsq, svd, inv
-from numpy.random import rand, randn
+from numpy.linalg import svd
+
 # Visualizes the state using matplotlib 2D figures
-from pylab import figure, subplot, gcf, plot, axis, text, find, draw
+from pylab import figure, subplot, gcf, plot, axis, text, draw
 # Uses the joy framework's speech synthesis interface for announcing state
 from joy import speak
 # Include all the modeling functions provided to the teams
@@ -405,7 +405,8 @@ try: # Error trap for cleaning up files and sockets
         lastWay = now()
       # Send sensor reading out
       # (we piggyback on tru socket because why bother creating another one?)
-      tru.sock.sendto( json_dumps(pkt), (WAYPOINT_LISTENER_GROUP, WAYPOINT_MSG_PORT) )
+      for dst in WAYPOINT_LISTENERS:
+        tru.sock.sendto( json_dumps(pkt), (dst, WAYPOINT_MSG_PORT) )
       # If logging data --> put into log
       if logfile is not None:
         lo = [ now(), zc[ROBOT_TAGID].real, zc[ROBOT_TAGID].imag, ang,
