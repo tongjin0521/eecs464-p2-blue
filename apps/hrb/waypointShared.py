@@ -9,6 +9,9 @@ from pylab import plot, text
 # Port for TagStreamer data
 APRIL_DATA_PORT = 0xB00
 
+# Host for waypointServer
+WAYPOINT_HOST = "10.0.0.1"
+
 # Port for Waypoint messages
 WAYPOINT_MSG_PORT = 0xBAA
 WAYPOINT_LISTENERS = [ "224.0.1.133" ] + [ "10.0.0.%d" % h for h in xrange(2,12) ]
