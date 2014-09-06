@@ -67,7 +67,6 @@ import pygame
 import pygame.joystick
 import pygame.event 
 from pygame.locals import *
-import pygame.locals as decl
 
 # YAML for configuration file parsing and formatting
 import yaml
