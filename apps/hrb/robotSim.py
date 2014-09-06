@@ -4,10 +4,15 @@ Created on Thu Sep  4 20:31:13 2014
 
 @author: shrevzen-home
 """
+from gzip import open as opengz
 from json import dumps as json_dumps
-from numpy import asfarray, dot
+from numpy import asfarray, dot, c_, newaxis, mean, exp, sum, sqrt
+from numpy.linalg import svd
 from numpy.random import randn
 from waypointShared import *
+
+from pdb import set_trace as DEBUG
+
 
 MSG_TEMPLATE = {
        0: [[502, 251], [479, 272], [508, 296], [530, 274]],
@@ -59,7 +64,9 @@ def findXing(a,b):
   # The nullspace of this matrix is the projective representation
   # of the intersection of the lines. Each column's nullspace is
   # one of the lines
-  X = concatenate([a[1]-a[0],b[0]-b[1],a[0]-b[0]],0)
+  X = c_[a[1]-a[0],b[0]-b[1],a[0]-b[0]].T
+  if X.ndim is not 2:
+    DEBUG()
   Q = svd(X)[0]
   # Last singular vector is basis for nullspace; convert back from
   # projective to Cartesian representation
@@ -74,10 +81,10 @@ class RobotSimInterface( object ):
   
   Subclasses of this class must implement all of the methods
   """
-  def __init__(self, lln=None):
+  def __init__(self, fn=None):
     """
     INPUT:
-      lln -- filename / None -- laser log name to use for logging simulated 
+      fn -- filename / None -- laser log name to use for logging simulated 
           laser data. None logged if name is None
           
     ATTRIBUTES:
@@ -86,10 +93,20 @@ class RobotSimInterface( object ):
       waypoints -- dict -- maps waypoint tag numbers to 4x2 float 
           arrays of the tag corners
     """
+    # Initialize dummy values into robot and arena state
     self.tagPos = asfarray(MSG_TEMPLATE[ ROBOT_TAGID[0]])
     self.laserAxis = dot([[1,1,0,0],[0,0,1,1]],self.tagPos)/2
     self.waypoints = { tid : asfarray(MSG_TEMPLATE[tid]) for tid in waypoints }
+    ### Initialize internal variables
+    # Two points on the laser screen
+    self.laserScreen = asfarray([[-1,-1],[1,-1]])
+    # Cache for simulated TagStreamer messages
     self._msg = None
+    # Output for simulated laser data
+    if not fn:
+      self.out = None
+    else:
+      self.out = opengz(fn,"w")
     
   def refreshState( self ):
     """<<pure>> refresh the value of self.tagPos and self.laserAxis"""
@@ -111,15 +128,23 @@ class RobotSimInterface( object ):
     # Serialize
     return json_dumps(msg)
 
-  def getLaserValue( self ):
+  def logLaserValue( self, now ):
     """
     Using the current state, generate a fictitious laser pointer reading
+    INPUT:
+      now -- float -- timestamp to include in the message
+    
+    OUTPUT: string of human readable message (not what is in log)      
     """
-    <<< TODO >>>
+    x = findXing( self.laserScreen, self.laserAxis )
+    if self.out:
+      self.out.write("%.2f, 1, %d, %d\n" % (now,n+1,x[0],x[1]))          
+    return "Laser: %d,%d " % tuple(x)
+    
     
 class DummyRobotSim( RobotSimInterface ):
-  def __init__(self):
-    RobotSimInterface.__init__(self)
+  def __init__(self, *args, **kw):
+    RobotSimInterface.__init__(self, *args, **kw)
     self.dNoise = 0.1
     self.aNoise = 0.1
     
@@ -128,7 +153,7 @@ class DummyRobotSim( RobotSimInterface ):
     Move forward some distance
     """
     # Compute a vector along the forward direction
-    fwd = dot([[1,-1,1,-1],[1,-1,1,-1]],self.tagPos)/2
+    fwd = dot([1,-1,-1,1],self.tagPos)/2
     # Move all tag corners forward by distance, with some noise
     self.tagPos = self.tagPos + fwd[newaxis,:] * dist * (1+randn()*self.dNoise)
 
@@ -138,7 +163,7 @@ class DummyRobotSim( RobotSimInterface ):
     """
     z = dot(self.tagPos,[1,1j])
     c = mean(z)
-    zr = c + (z-c) * exp(1j * (angle+randn()*self.aNoise)
+    zr = c + (z-c) * exp(1j * (angle+randn()*self.aNoise))
     self.tagPos[:,0] = zr.real
     self.tagPos[:,1] = zr.imag
     
@@ -151,4 +176,6 @@ class DummyRobotSim( RobotSimInterface ):
     robot tag corners, update the laser axis from the robot tag location 
     """
     self.laserAxis = dot([[1,1,0,0],[0,0,1,1]],self.tagPos)/2
+    da = dot([1,-1],self.laserAxis)
+    self.laserAxis[1] += randn(2) * sqrt(sum(da*da)) * 0.01
     
