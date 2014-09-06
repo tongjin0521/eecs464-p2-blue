@@ -16,6 +16,9 @@ WAYPOINT_LISTENERS = [ "224.0.1.133" ] + [ "10.0.0.%d" % h for h in xrange(2,12)
 # Corners of the arena, in order
 corners = [26,23,27,22,29,24,28,25]
 
+# Tag ID for robot
+ROBOT_TAGID = [ 4 ]
+
 # Reference locations of corners, with 1 in the last coordinate
 ref = array([
     [-1,0,1,1,1,0,-1,-1],
