@@ -31,9 +31,6 @@ from waypointShared import *
 
 #### CONFIGURATION ##################################################
 
-# Tag ID for robot
-ROBOT_TAGID = [ 4 ]
-
 # Rate (seconds) at which to send waypoint updates
 # NOTE: waypoints are sent as integer coordinates. Set ref accordingly
 WAY_RATE = 10

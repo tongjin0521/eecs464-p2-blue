@@ -23,44 +23,9 @@ from pylab import figure, subplot, gcf, plot, axis, text, find, draw
 #  to students during the development process
 from waypointShared import *
 # The main program is a JoyApp
-from joy import JoyApp, Plan
-
-class SimTagPlan( Plan ):
-  def __init__( self, app, robotSim, *arg, **kw ):
-    Plan.__init__(self, app, *arg, **kw )
-    self.sock = None
-    self.lastSensorReading = None
-  def behavior( self ):
-    q = self.app.remote
-    # Allow sensor data in via the RemoteSink
-    q.flushMisc()
-    while True:
-      for t,dic in q.queueIter():
-        dic = dic.items()
-        dic.sort()
-        progress("Received update:")
-        for k,v in dic:
-          progress("   %s : %s" % (k,repr(v)))
-      yield self.forDuration(0.3)
+from joy import JoyApp, Plan, progress
 
 class SensorPlan( Plan ):
-  """
- import socket
-import struct
-
-MCAST_GRP = '224.1.1.1'
-MCAST_PORT = 5007
-
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-sock.bind(('', MCAST_PORT))
-mreq = struct.pack("4sl", socket.inet_aton(MCAST_GRP), socket.INADDR_ANY)
-
-sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
-
-while True:
-  print sock.recv(10240)
-  """
   """
   SensorPlan is a concrete Plan subclass that uses a UDP socket to 
   and decode WayPoint messages
@@ -68,14 +33,13 @@ while True:
   def __init__( self, app, *arg, **kw ):
     Plan.__init__(self, app, *arg, **kw )
     self.sock = None
-    self.lastSensorReading = None
+    self.lastSensor = (0,None,None)
+    self.lastWaypoints = (0,[])
           
   def _connect( self ):
     """Set up the socket"""
-    s = socket(AF_INET, SOCK_STREAM, IPPROTO_UDP)
-    mreq = pack("4sl", inet_aton(WAYPOINT_LISTENER_GROUP), INADDR_ANY)
-    s.setsockopt(IPPROTO_IP, IP_ADD_MEMBERSHIP, mreq)
-    s.bind("0.0.0.0",WAYPOINT_MSG_PORT)
+    s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+    s.bind(("",WAYPOINT_MSG_PORT))
     s.setblocking(0)
     self.sock = s
 
@@ -131,7 +95,9 @@ while True:
       # Parse the message
       dic = json_loads(msg)
       ts = self.app.now
-      self.lastSensorReading = (ts, dic['f'], dic['b'])
+      self.lastSensor = (ts, dic['f'], dic['b'])
+      if dic.has_key("w"):
+        self.lastWaypoints = (ts,dic['w'])
       # Make sure to allow others to get the CPU
       yield
 
@@ -145,11 +111,23 @@ class WaypointSensorApp( JoyApp ):
     # Set up the sensor receiver plan
     self.sensor = SensorPlan(self)
     self.sensor.start()
+    self.timeForStatus = self.onceEvery(1)
 
   def onEvent( self, evt ):
-    # Punt to superclass
+    if self.timeForStatus():
+      ts,f,b = self.sensor.lastSensor
+      if ts:
+        progress( "Sensor: %d f %d b %d" % (ts,f,b)  )
+      else:
+        progress( "Sensor: << no reading >>" )
+      ts,w = self.sensor.lastWaypoints
+      if ts:
+        progress( "Waypoints: %d " % ts + str(w))
+      else:
+        progress( "Waypoints: << no reading >>" )
+          # Punt to superclass
     # this is here to remind you to override it
-    return JoyApp.onEvent(evt)
+    return JoyApp.onEvent(self,evt)
 
 
 if __name__=="__main__":
