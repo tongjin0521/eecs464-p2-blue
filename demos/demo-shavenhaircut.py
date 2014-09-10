@@ -6,7 +6,7 @@ class ShaveNHaircutPlan( Plan ):
   its behavior is to run the shave plan followed by the haircut plan.
   """
   def __init__(self,app,shave,haircut,*arg,**kw):
-    Plan.__init__(self,*arg,**kw)
+    Plan.__init__(self,app,*arg,**kw)
     self.shave = shave
     self.haircut = haircut
     
