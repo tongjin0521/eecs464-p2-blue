@@ -5,4 +5,5 @@ epydoc \
   --graph all \
   --html \
   py/ckbot/*.py py/*.py py/joy/*.py \
-  apps/*.py demos/*.py
+  apps/*.py demos/*.py apps/hrb/*.py
+
