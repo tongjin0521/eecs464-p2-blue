@@ -205,24 +205,23 @@ class TagReceiverUDP(object):
         pts[nm,:,:2] = p
         pts[nm,:,2] = 1
 
-args = [ x.strip() for x in raw_input("Options: ").split(" ") ]
-#WAYPOINT_DEST = None
+args = iter([ x.strip() for x in raw_input("Options: ").split(" ") ])
 logfile = None
 for arg in args:
   if not arg:
       continue
-#  if arg is '-d' or arg is '--dest':
-#    WAYPOINT_DEST = args.next()
-#    print "::: Destination set to '%s'" % WAYPOINT_DEST
-#    continue
-  if arg is '-l' or arg is '--log':
+  if arg == '-d' or arg == '--dest':
+    WAYPOINT_LISTENERS = args.next().split(",")
+    print "::: Destination(s) set to '%s'" % WAYPOINT_LISTENERS
+    continue
+  if arg == '-l' or arg == '--log':
     lfn = args.next()
     if not lfn.endswith('.gz'):
       lfn = lfn + ".gz"
     logfile = opengz(lfn)
     print "::: Logging to '%s' " % lfn
     continue
-  if arg is not '-h' and arg is not '--help':
+  if arg != '-h' and arg != '--help':
     print "Unrecognized argument '%s'" % arg
     # Fall through to help message  
   print """
@@ -232,9 +231,10 @@ for arg in args:
             this help message
        ( '-l' | '--log' ) <filename>
             filename for logging data
+       ( '-d' | '--dest' ) <destination-list>
+            destinations for waypoint messages, as comma separated list
+            of DNS names or IP addresses. 
     """ % argv[0]
-#       ( '-d' | '--dest' ) <hostname-or-IP-address> 
-#            destination for UDP messages, e.g. "localhost"
   exit(-1)
 
 #
