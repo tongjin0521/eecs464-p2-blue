@@ -200,6 +200,8 @@ f1 = None
 #
 ### MAIN LOOP ###
 #
+if __name__ != "__main__":
+  raise RuntimeError("Run this as a script")
 while len(waypoints)>M: # continue until goal is reached
   #
   ### Read data from April

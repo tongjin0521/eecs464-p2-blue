@@ -20,5 +20,8 @@ sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_IF, socket.inet_aton(IF_A
 mreq = socket.inet_aton(MCAST_GRP) + socket.inet_aton("0.0.0.0") #IF_ADDR)
 sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
 
+if __name__ != "__main__":
+  raise RuntimeError("Run this as a script")
+
 while True:
   print sock.recv(10240)
