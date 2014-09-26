@@ -157,6 +157,7 @@ class TagReceiverUDP(object):
     def __init__( self ):
       self.nmsg = 0
       self.sock = None
+      self.peer = "<NO MSG>"
 
     def close( self ):
       if self.sock:
@@ -175,7 +176,7 @@ class TagReceiverUDP(object):
       try:
         while True:
           # read data as fast as possible
-          msg = self.sock.recv(1<<16)
+          msg,self.peer = self.sock.recvfrom(1<<16)
           self.nmsg += 1
       except SocketError, se:
         # until we've run out; last message remains in m
@@ -243,6 +244,9 @@ tru = TagReceiverUDP()
 tru.openSock()
 # We piggyback on this socket for sending multicasts, so we need to configure it
 tru.sock.setsockopt(IPPROTO_IP, IP_MULTICAST_TTL, 4)
+
+if __name__ != "__main__":
+  raise RuntimeError("Run this as a script")
 
 try: # Error trap for cleaning up files and sockets
   while len(waypoints)>M: # continue until goal is reached
@@ -321,6 +325,7 @@ try: # Error trap for cleaning up files and sockets
       # Mark the waypoints
       c = zc[waypoints]
       vc = ~isnan(c)
+      title(tru.peer)
       plot( c[vc].real, c[vc].imag,'-k',lw=3,alpha=0.3)
       plot( c[[M,M+1]].real, c[[M,M+1]].imag, '--r', lw=4)
       axis('equal')
