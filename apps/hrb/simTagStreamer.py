@@ -7,11 +7,19 @@ from joy.decl import *
 from waypointShared import WAYPOINT_HOST, APRIL_DATA_PORT
 
 class RobotSimulatorApp( JoyApp ):
-  def __init__(self,*arg,**kw):
+  """Concrete class RobotSimulatorApp <<singleton>>
+     A JoyApp which runs the DummyRobotSim robot model in simulation, and
+     emits regular simulated tagStreamer message to the desired waypoint host.
+     
+     Used in conjection with waypointServer.py to provide a complete simulation
+     environment for Project 1
+  """    
+  def __init__(self,wphAddr=WAYPOINT_HOST,*arg,**kw):
     JoyApp.__init__( self,
       confPath="$/cfg/JoyApp.yml",
       ) 
-
+    self.srvAddr = (wphAddr, APRIL_DATA_PORT)
+    
   def onStart( self ):
     # Set up the sensor receiver plan
     self.sensor = SensorPlan(self)
@@ -20,6 +28,7 @@ class RobotSimulatorApp( JoyApp ):
     self.timeForStatus = self.onceEvery(1)
     self.timeForLaser = self.onceEvery(1/15.0)
     self.timeForFrame = self.onceEvery(1/20.0)
+    progress("Using %s:%d as the waypoint host" % self.srvAddr)
 
   def showSensors( self ):
     ts,f,b = self.sensor.lastSensor
@@ -39,7 +48,7 @@ class RobotSimulatorApp( JoyApp ):
     # Get the simulated tag message
     msg = self.robSim.getTagMsg()
     # Use the sensor socket (dual-use) to send to waypointServer
-    self.sensor.sendto(msg, (WAYPOINT_HOST, APRIL_DATA_PORT))
+    self.sensor.sendto(msg, self.srvAddr)
     
   def onEvent( self, evt ):
     # periodically, show the sensor reading we got from the waypointServer
@@ -71,17 +80,16 @@ class RobotSimulatorApp( JoyApp ):
 
 if __name__=="__main__":
   print """
-  Running the waypoint sensor demo
+  Running the robot simulator
 
-  Listens on local port 0xBAA (2986) for incoming waypoint sensor
-  information.
-
-  The waypoint sensor send JSON maps with keys:
-  'f', 'b' : front and back sensor values
-  'w' : list of lists. Each sub-list is of length 2. List of waypoint
-    coordinates, including the next waypoint. Each time the next
-    waypoint changes, it means the previous waypoint was reached.
+  Listens on local port 0xBAA (2986) for incoming waypointServer
+  information, and also transmits simulated tagStreamer messages to
+  the waypointServer. 
   """
-  app=RobotSimulatorApp()
+  import sys
+  if len(sys.argv)>1:
+      app=RobotSimulatorApp(wphAddr=sys.argv[1])
+  else:
+      app=RobotSimulatorApp(wphAddr=WAYPOINT_HOST)
   app.run()
 
