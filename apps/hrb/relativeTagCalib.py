@@ -3,6 +3,9 @@ from numpy import asarray
 from json import loads as json_loads, dumps as json_dumps
 from sys import stdout
 
+if __name__ != "__main__":
+  raise RuntimeError("Run this as a script")
+
 try:
   s.close()
 except Exception:

@@ -3,6 +3,9 @@ from socket import socket, AF_INET, SOCK_DGRAM, error as SocketError
 from numpy import asarray, array, mean
 from json import loads as json_loads
 
+if __name__ != "__main__":
+  raise RuntimeError("Run this as a script")
+
 try:
   s.close()
 except Exception:
