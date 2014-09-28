@@ -1,12 +1,18 @@
 from joy.decl import *
 from joy import JoyApp, FunctionCyclePlan, progress, DEBUG
 from numpy import nan
+from time import sleep
 
+'''
 SERVO_NAMES = {
-   0x01: 'FL', 0x02 : 'ML', 0x03 : 'HL',
-   0x04: 'FR', 0x05 : 'MR', 0x06 : 'HR'
+   0x13: 'FL', 0x1E : 'ML', 0x15 : 'HL',
+   0x0C: 'FR', 0x14 : 'MR', 0x07 : 'HR'
 }
-
+'''
+SERVO_NAMES = {
+   0x0F: 'FL', 0x12 : 'ML', 0x16 : 'HL',
+   0x17: 'FR', 0x0A : 'MR', 0x11 : 'HR'
+}
 class ServoWrapper( object ):
     def __init__( self, servo, **kw ):
         self.servo = servo
@@ -16,8 +22,8 @@ class ServoWrapper( object ):
         self.ori = 1
         self.isInDZ = None
         self.__dict__.update(kw)
-        self._ensure_motor = lambda : None
-        self._ensure_servo = lambda : None
+        self._ensure_motor = self._set_motor
+        self._ensure_servo = self._set_servo
         print "DEBUG = ", repr(DEBUG)
    
     def _set_servo( self ):
@@ -25,10 +31,11 @@ class ServoWrapper( object ):
 
             also configures the _ensure_* callbacks        
         """
-        self.servo.set_mode('Servo')
+        self.servo.set_mode(0)
         if "h" in DEBUG:
             progress("%s.set_mode('Servo')" % (self.servo.name) )
-        self._ensure_servo = lambda : None
+        if self.servo.get_mode() == 0:
+            self._ensure_servo = lambda : None
         self._ensure_motor = self._set_motor
     
     def _set_motor( self ):
@@ -36,33 +43,34 @@ class ServoWrapper( object ):
 
             also configures the _ensure_* callbacks        
         """
-        self.servo.set_mode('Motor')
+        self.servo.set_mode(1)
         if "h" in DEBUG:
             progress("%s.set_mode('Motor')" % (self.servo.name) )
-        self._ensure_motor = lambda : None
+        if self.servo.get_mode() == 1:
+            self._ensure_motor = lambda : None
         self._ensure_servo = self._set_servo
                     
     def set_ang( self, ang ):
         self._ensure_servo()
         pos = self.posOfs + self.ori * self.aScl * ang
-        if pos < -16000:
-            pos = -16000
-        elif pos > 16000:
-            pos = 16000
+        if pos < -9000:
+            pos = -9000
+        elif pos > 9000:
+            pos = 9000
         self.isInDZ = False
-        self.servo.set_pos(pos)
         if "h" in DEBUG:
             progress("%s.set_angle(%g) <-- angle %g" % (self.servo.name,pos,ang) )
+        self.servo.set_pos(pos)
     
     def get_ang( self ):
+        if "h" in DEBUG:
+            progress("%s.get_angle --> %g (%s)" % (self.servo.name,ang,self.isInDZ) )
         pos = self.servo.get_pos()
-        if pos > 16600 or pos < -16600:
+        if pos > 10000 or pos < -10000:
             self.isInDZ = True
             return nan # in dead zone
         ang = (pos - self.posOfs) / self.aScl / self.ori
         self.isInDZ = False
-        if "h" in DEBUG:
-            progress("%s.get_angle --> %g (%s)" % (self.servo.name,ang,self.isInDZ) )
         return ang
     
     def set_rpm( self, rpm ):
@@ -76,7 +84,6 @@ class ServoWrapper( object ):
             progress("%s.set_torque(%g) <-- rpm %g" % (self.servo.name,tq, rpm) )
         self.servo.set_torque(tq)
         
-    
 class SCMHexApp( JoyApp ):
   def __init__(self,*arg,**kw):
     JoyApp.__init__(self,*arg,**kw)
@@ -85,10 +92,10 @@ class SCMHexApp( JoyApp ):
     DEBUG.append('h')
     self.leg = [
       ServoWrapper(self.robot.at.FL, ori = -1),
-      ServoWrapper(self.robot.at.ML, ori = -1, tqScl = 0.65/64),
+      ServoWrapper(self.robot.at.ML, ori = -1),
       ServoWrapper(self.robot.at.HL, ori = -1),
       ServoWrapper(self.robot.at.FR),
-      ServoWrapper(self.robot.at.MR, tqScl = 0.65/64),
+      ServoWrapper(self.robot.at.MR),
       ServoWrapper(self.robot.at.HR),
     ]
     self.triL = self.leg[ 0::2 ]
@@ -97,8 +104,9 @@ class SCMHexApp( JoyApp ):
         leg.set_ang(9000)
     for leg in self.triR:
         leg.set_ang(-9000)
-    self.fcp = FunctionCyclePlan(self, self._fcp_fun, 24)
-    self.freq = 1.0
+
+    self.fcp = FunctionCyclePlan(self, self._fcp_fun, 24, maxFreq = 0.5)
+    self.freq = 0.25
     self.rate = 0.05
     self.limit = 1/0.45
 
@@ -122,7 +130,6 @@ class SCMHexApp( JoyApp ):
           leg.set_rpm( rpm )
           
   def _fcp_fun( self, phase ):
-      progress('fun')
       for leg in self.triL:
             self._leg_to_phase( leg, phase )
       phase = (phase + 0.5) % 1.0
@@ -187,12 +194,9 @@ if __name__=="__main__":
   import ckbot.nobus as NB
   import joy
 
-  if 0: # 1 to run code; 0 for simulation
+  if 1: # 1 to run code; 0 for simulation
       # for actual operation use w/ arch=DX & NO required line:  
       L.DEFAULT_BUS = DX
-      L.DEFAULT_PORT = dict(
-          TYPE="tty", baudrate=57600, glob="/dev/ttyUSB*"
-      )
       app=SCMHexApp(
           robot=dict(arch=DX,count=len(SERVO_NAMES), names=SERVO_NAMES)
       )
