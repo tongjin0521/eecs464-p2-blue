@@ -531,6 +531,12 @@ class MissingModule( Module ):
     self.speed = val
     if self.msg is not None:
       self.msg("%s.set_speed(%d)" % (self.name,val))  
+
+  def set_torque( self, val ):
+    self.slack = False
+    self.speed = val
+    if self.msg is not None:
+      self.msg("%s.set_torque(%d) [alias for speed]" % (self.name,val))  
   
   def get_pos(self):
     if self.msg is not None:
