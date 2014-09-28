@@ -1,8 +1,8 @@
 from joy.decl import *
 from joy import JoyApp, FunctionCyclePlan, progress, DEBUG
-from numpy import nan, asfarray, prod, isnan
+from numpy import nan, asfarray, prod, isnan, pi, clip, sign
 from time import sleep, time as now
-
+from ckbot.dynamixel import MX64Module
 '''
 SERVO_NAMES = {
    0x13: 'FL', 0x1E : 'ML', 0x15 : 'HL',
@@ -13,21 +13,42 @@ SERVO_NAMES = {
    0x0F: 'FL', 0x12 : 'ML', 0x16 : 'HL',
    0x17: 'FR', 0x0A : 'MR', 0x11 : 'HR'
 }
-class ServoWrapper( object ):
+class ServoWrapperMX( object ):
     def __init__( self, servo, **kw ):
+        assert isinstance( servo, MX64Module ), "only works with MX"
         self.servo = servo
-        self.aScl = 1.0
+        self.aScl = 36000.0 # servo units per rotation
         self.rpmScl = 1/64.0
         self.posOfs = 0
         self.ori = 1
-        self.isInDZ = None
+        self.desAng = 0
+        self.desRPM = 0.1
+        self.Kp = 1
+        self.Kv = 0.03
         self._clearV()
         self._v = nan
         self.__dict__.update(kw)
         self._ensure_motor = self._set_motor
         self._ensure_servo = self._set_servo
-        print "DEBUG = ", repr(DEBUG)
-   
+    
+    def _doCtrl( self ):
+        """execute an interation of the controller update loop"""
+        a = exp(1j * self.get_ang())
+        a0 = exp(1j * self.desAng)
+        lead = a/a0
+        if lead.real < 0.7:
+            # outside of capture range; ignore
+            return
+        pFB = clip( self.Kp * lead.imag, -0.5, 0.5 )
+        if isnan(self._v):
+            vFB = 0
+        else:
+            vFB = self.Kv * (self._v - self.desRPM)
+        rpm = self.desRPM - pFB - vFB
+        progress( "FB desRPM %g p %g v %g" % (self.desRPM , pFB , vFB))
+        # Push into the motor
+        self._set_rpm(rpm)
+       
     def _set_servo( self ):
         """(private) set module in servo mode
 
@@ -53,27 +74,16 @@ class ServoWrapper( object ):
         self._ensure_servo = self._set_servo
                     
     def set_ang( self, ang ):
-        self._ensure_servo()
-        pos = self.posOfs + self.ori * self.aScl * ang
-        if pos < -9000:
-            pos = -9000
-        elif pos > 9000:
-            pos = 9000
-        self.isInDZ = False
+        self.desAng = ang
+        self._doCtrl()
         if "s" in DEBUG:
-            progress("%s.set_angle(%g) <-- angle %g" % (self.servo.name,pos,ang) )
-        self.servo.set_pos(pos)
+            progress("%s.set_angle(%g)" % (self.servo.name,ang) )
     
     def get_ang( self ):
         pos = self.servo.get_pos()
-        if pos > 10000 or pos < -10000:
-            self.isInDZ = True
-            self._clearV()
-            return nan # in dead zone
         ang = (pos - self.posOfs) / self.aScl / self.ori
-        self.isInDZ = False        
         if "g" in DEBUG:
-            progress("%s.get_angle --> %g (%s)" % (self.servo.name,ang,self.isInDZ) )
+            progress("%s.get_angle --> %g" % (self.servo.name,ang) )
         self._updateV(ang)
         return ang
 
@@ -90,37 +100,32 @@ class ServoWrapper( object ):
         if self._lastA is not None:
             da = ang - self._lastA
             dt = t - self._lastT
+            vNew = da/dt*60.0 # angle is in rotations, dt seconds
             # If no previous estimate --> use current estimate
             if isnan(self._v):
-                self._v = da/dt
+                self._v = vNew 
             else: # Use first order lowpass to smooth velocity update
                 a = 0.2
-                self._v = self._v * (1-a) + da/dt * a
+                self._v = self._v * (1-a) + vNew * a
         self._lastA = ang
         self._lastT = t
         
     def adjustV( self, ratio ):
         """adjust scaling of the velocity to make motors match up"""
-        s = self.rpmScl * ratio
-        if s>3.0/64:
-            s = 3.0/64
-        elif s<0.3/64:
-            s = 0.3/64
-        self.rpmScl = s        
-            
+        self.rpmScl = clip(self.rpmScl * ratio, 0.3/64, 3.0/64 )        
+        
     def set_rpm( self, rpm ):
+        self.desRPM = rpm
+        return self._set_rpm( rpm )
+        
+    def _set_rpm( self, rpm ):
+        """Push an RPM setting to the motor"""
         self._ensure_motor()
-        tq = self.rpmScl * self.ori * rpm
-        if tq<-1:
-            tq = -1
-        elif tq>1:
-            tq = 1
+        tq = clip(self.rpmScl * self.ori * rpm, -0.92, 0.92)
         if "r" in DEBUG:
             progress("%s.set_torque(%g) <-- rpm %g" % (self.servo.name,tq, rpm) )
-        self.servo.set_torque(tq)
+        self.servo.set_torque(tq + sign(tq)*0.08)
         
-        
-PAUSE = lambda : sleep(0.03)
 
 class SCMHexApp( JoyApp ):
   def __init__(self,*arg,**kw):
@@ -144,9 +149,9 @@ class SCMHexApp( JoyApp ):
     self.limit = 1/0.45
     # set motors at initial position
     for leg in self.triL:
-        leg.set_ang(9000)
+        leg.set_ang(0.25)
     for leg in self.triR:
-        leg.set_ang(-9000)
+        leg.set_ang(-0.25)
 
   def _leg_to_phase( self, leg, phase ):
       """
@@ -245,7 +250,7 @@ class SCMHexApp( JoyApp ):
     if evt.type not in [TIMEREVENT, JOYAXISMOTION, MOUSEMOTION]:
       JoyApp.onEvent(self,evt)
       
-if __name__=="__main__":
+if __name__=="__mai``n__":
   print """
   SCM Hexapod controller
   ----------------------
