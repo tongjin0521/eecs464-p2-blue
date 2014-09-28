@@ -338,7 +338,7 @@ class JoyApp( object ):
       self.cfg.load(pth)
       progress("Loaded %s" % pth)
     else:
-      progress("Path not found '%s'" % pth )
+      progress("Path not found '%s' (this error can be safely ignored)" % pth )
     if confPath is not None:
       if confPath.startswith("$/"):
         confPath =  PYCKBOTPATH + confPath[2:]
