@@ -264,8 +264,7 @@ class Cluster(dict):
 
   def off( self ):
     """Make all servo or motor modules go slack"""
-    for nid in self.itermodules():
-      m = self[nid]
+    for m in self.itermodules():
       if hasattr(m,'go_slack') and callable(getattr(m,'go_slack')):
         m.go_slack()
 
