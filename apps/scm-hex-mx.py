@@ -29,7 +29,6 @@ class ServoWrapperMX(object):
         self.desRPM = 00
         self.Kp = 30
         self.Kv = 0
-        self.Kt = 0.1
         self.logger = logger
         self._clearV()
         self._v = nan
@@ -37,7 +36,7 @@ class ServoWrapperMX(object):
         self._ensure_motor = self._set_motor
         self._ensure_servo = self._set_servo
 
-    def _doCtrl(self):
+    def doCtrl(self):
         """execute an interaction of the controller update loop"""
         a = exp(1j * self.get_ang()*2*pi)
         a0 = exp(1j * self.desAng*2*pi)
@@ -92,7 +91,6 @@ class ServoWrapperMX(object):
 
     def set_ang(self, ang):
         self.desAng = ang
-        self._doCtrl()
         if "s" in DEBUG:
             progress("%s.set_angle(%g)" % (self.servo.name, ang))
         if self.logger:
@@ -165,31 +163,41 @@ class SCMHexApp(JoyApp):
         ]
         self.triL = self.leg[0::2]
         self.triR = self.leg[1::2]
-        self.fcp = FunctionCyclePlan(self, self._fcp_fun, 32, maxFreq=0.75, interval=0.05)
+        self.fcp = FunctionCyclePlan(self, self._fcp_fun, 128, maxFreq=0.75, interval=0.05)
         #self.fcp = FunctionCyclePlan(self, lambda ignore : None, 256, maxFreq=0.5, interval=0.01)
-        self.freq = 45/60.0
+        self.freq = 5/60.0
         self.turn = 0
+        self.Kturn = 0.1
         self.rate = 0.05
         self.limit = 1 / 0.45
         # set motors at initial position
-        for leg in self.leg:
-            leg.set_ang(.25)
-
+        for leg in self.triL:
+            leg.set_ang(0)
+        for leg in self.triR:
+            leg.set_ang(.5)
+        self.isCtrlTime = self.onceEvery(0.02)
+        self.ctrlQueue = [ l for l in self.leg ]
+        
     def _fcp_fun(self, phase): 
         # Desired angle for left and right tripods
         aL = phase - 0.5
         aR = ((phase + 0.5) % 1.0) - 0.5
-        aDes = [aL, aL, aL, aR, aR, aR]
+        aDes = asfarray([aL, aL, aL, aR, aR, aR])
         # radii of the leg midstance from centre of rotation
         radii = asfarray([1.2, 1, 1.2, -1.2, -1, -1.2])
         # Turning influence
-        tInf = self.Kturn * radii * sin(aDes * pi)
+        tInf = 0 #self.Kturn * radii * abs(self.freq) * sin(aDes * pi)
         for leg, des in zip(self.triL + self.triR, aDes+tInf):
             leg.set_ang(des)
 
     def onEvent(self, evt):
-        if self.now-self.T0 > 10:
+        if self.now-self.T0 > 30:
             self.stop()
+        # If time for controller, do round-robin on leg control
+        if self.isCtrlTime():
+            l = self.ctrlQueue.pop(0)
+            l.doCtrl()
+            self.ctrlQueue.append(l)
         if evt.type == KEYDOWN:
             if evt.key in [ord('q'), 27]:  # 'q' and [esc] stop program
                 self.stop()
@@ -227,8 +235,8 @@ class SCMHexApp(JoyApp):
                     "HELP: UP/DOWN arrow for speed; ' ' stop; 'q' end program; 'h' this help; other keys start Plan")
                 #
             else:  # any other key
-                progress("Starting cycles....")
-                self.fcp.setPeriod(1 / self.freq)
+                self.fcp.setFrequency(self.freq)
+                progress("Starting cycles with period " + str(self.fcp.getPeriod()))
                 self.fcp.start()
             return  # (from all keypress handlers)
         if evt.type not in [TIMEREVENT, JOYAXISMOTION, MOUSEMOTION]:
