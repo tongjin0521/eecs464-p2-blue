@@ -29,6 +29,7 @@ class ServoWrapperMX(object):
         self.desRPM = 00
         self.Kp = 30
         self.Kv = 0
+        self.Kt = 0.1
         self.logger = logger
         self._clearV()
         self._v = nan
@@ -167,6 +168,7 @@ class SCMHexApp(JoyApp):
         self.fcp = FunctionCyclePlan(self, self._fcp_fun, 32, maxFreq=0.75, interval=0.05)
         #self.fcp = FunctionCyclePlan(self, lambda ignore : None, 256, maxFreq=0.5, interval=0.01)
         self.freq = 45/60.0
+        self.turn = 0
         self.rate = 0.05
         self.limit = 1 / 0.45
         # set motors at initial position
@@ -178,7 +180,11 @@ class SCMHexApp(JoyApp):
         aL = phase - 0.5
         aR = ((phase + 0.5) % 1.0) - 0.5
         aDes = [aL, aL, aL, aR, aR, aR]
-        for leg, des in zip(self.triL + self.triR, aDes):
+        # radii of the leg midstance from centre of rotation
+        radii = asfarray([1.2, 1, 1.2, -1.2, -1, -1.2])
+        # Turning influence
+        tInf = self.Kturn * radii * sin(aDes * pi)
+        for leg, des in zip(self.triL + self.triR, aDes+tInf):
             leg.set_ang(des)
 
     def onEvent(self, evt):
@@ -192,10 +198,10 @@ class SCMHexApp(JoyApp):
                 self.fcp.setPeriod(0)
                 progress('Period changed to %s' % str(self.fcp.period))
                 #
-            elif evt.key in (K_COMMA, K_PERIOD):
+            elif evt.key in (K_UP, K_DOWN):
                 f = self.freq
                 # Change frequency up/down in range -limit..limit hz
-                if evt.key == K_COMMA:
+                if evt.key == K_UP:
                     f = (1 - self.rate) * f - self.rate * self.limit
                 else:
                     f = (1 - self.rate) * f + self.rate * self.limit
@@ -206,9 +212,19 @@ class SCMHexApp(JoyApp):
                 self.freq = f
                 progress('Period changed to %g, %.2f Hz' % (self.fcp.period, f))
                 #
+            elif evt.key in (K_LEFT, K_RIGHT):
+                tn = self.turn
+                # Change frequency up/down in range -limit..limit hz
+                if evt.key == K_LEFT:
+                    tn = (1 - self.rate) * tn - self.rate
+                else:
+                    tn = (1 - self.rate) * tn + self.rate 
+                self.turn = tn                    
+                progress('Turn changed to %.2f' % (self.turn))
+                #
             elif evt.key == K_h:
                 progress(
-                    "HELP: ',' to decrease/reverse period; '.' opposite; ' ' stop; 'q' end program; 'h' this help; other keys start Plan")
+                    "HELP: UP/DOWN arrow for speed; ' ' stop; 'q' end program; 'h' this help; other keys start Plan")
                 #
             else:  # any other key
                 progress("Starting cycles....")
@@ -231,7 +247,7 @@ if __name__ == '__main__':
   
   h -- help
   q -- quit
-  , and . -- change rate
+  arrow keys -- speed/slow and turn
   SPACE -- pause / resume
   any other key -- start 
   
