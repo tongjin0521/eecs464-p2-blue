@@ -27,7 +27,7 @@ class ServoWrapperMX(object):
         self.ori = 1
         self.desAng = 0
         self.desRPM = 00
-        self.Kp = 30
+        self.Kp = 25.0
         self.Kv = 0
         self.logger = logger
         self._clearV()
@@ -143,7 +143,7 @@ class ServoWrapperMX(object):
         tq = clip(self.rpmScl * self.ori * rpm, -0.999, 0.999)
         if "r" in DEBUG:
             progress("%s.set_torque(%g) <-- rpm %g" % (self.servo.name, tq, rpm))
-        self.servo.set_torque(tq + sign(tq) * 0.08)
+        self.servo.set_torque(tq ) #+ sign(tq) * 0.08)
 
 
 class SCMHexApp(JoyApp):
@@ -196,7 +196,7 @@ class SCMHexApp(JoyApp):
             self.stop()
         # If time for controller, do round-robin on leg control
         if self.isCtrlTime():
-            for i in xrange(6):
+            for i in xrange(3):
                 l = self.ctrlQueue.pop(0)
                 l.doCtrl()
                 self.ctrlQueue.append(l)
