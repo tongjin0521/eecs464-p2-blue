@@ -52,7 +52,8 @@ def debugMsg(obj,msg):
   nm = dbgId(obj)
   progress(("DBG %s " % nm)+msg.replace("\n","\n   : "))    
 
-def progress(msg):
+__NEED_NL = False
+def progress(msg,sameLine=False):
   """
   Print a progress message to standard output. The message will have a 
   pre-pended timestamp showing seconds elapsed from the moment the joy
@@ -64,9 +65,20 @@ def progress(msg):
   Progress messages flush standard output, so they display immediately.
   
   A copy of progress messages is write()n to every logger in PROGRESS_LOG
+  
+  if sameLine is True, message is prefixed by a "\r" instead of ending with
+  a "\n" -- showing it on the same line in the terminal
   """
+  global __NEED_NL
   t = time()-T0
-  stdout.write("%6.2f: %s\n" % (t,msg))
+  if sameLine:
+      stdout.write("\r%6.2f: %s" % (t,msg))
+      __NEED_NL = True
+  else:
+      if __NEED_NL:
+          stdout.write("\n")
+      stdout.write("%6.2f: %s\n" % (t,msg))
+      __NEED_NL = False
   stdout.flush()
   if msg[:6]=="(say) ":
     say(msg[6:])
