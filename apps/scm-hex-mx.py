@@ -1,6 +1,6 @@
 from joy.decl import *
 from joy import JoyApp, FunctionCyclePlan, progress, DEBUG
-from numpy import nan, asfarray, prod, isnan, pi, clip, sin, angle, sign
+from numpy import nan, asfarray, prod, isnan, pi, clip, sin, angle, sign, round
 from cmath import exp
 from time import sleep, time as now
 from ckbot.dynamixel import MX64Module
@@ -167,7 +167,7 @@ class SCMHexApp(JoyApp):
         #self.fcp = FunctionCyclePlan(self, lambda ignore : None, 256, maxFreq=0.5, interval=0.01)
         self.freq = 5/60.0
         self.turn = 0
-        self.Kturn = 0.5
+        self.Kturn = 0.12
         self.rate = 0.05
         self.limit = 1 / 0.45
         # set motors at initial position
@@ -177,6 +177,8 @@ class SCMHexApp(JoyApp):
             leg.set_ang(.5)
         self.isCtrlTime = self.onceEvery(0.1)
         self.ctrlQueue = [ l for l in self.leg ]
+        self.fcp.setPeriod(1/self.freq)
+        self.fcp.start()
         
     def _fcp_fun(self, phase): 
         # Desired angle for left and right tripods
@@ -186,10 +188,13 @@ class SCMHexApp(JoyApp):
         # radii of the leg midstance from centre of rotation
         radii = asfarray([1.2, 1, 1.2, -1.2, -1, -1.2])
         # Turning influence
-        tInf = clip(self.Kturn * radii * sin(aDes * 2* pi),-0.1,0.1)
+        tInf = self.turn * self.Kturn * radii * sin(aDes * 2* pi)
+        assert all(abs(tInf)<0.15), "Sanity check on turn influence"
         # progress("inf "+str(tInf))
-        for leg, des in zip(self.triL + self.triR, (aDes+tInf) % 1.0):
+        goal = (aDes + tInf) % 1.0
+        for leg, des in zip(self.triL + self.triR, goal):
             leg.set_ang(des)
+        progress( "goal "+"\t".join([ "%+4.2f" % v for v in goal]), sameLine = True)
 
     def onEvent(self, evt):
         if self.now-self.T0 > 120: # Controller time limit
@@ -214,16 +219,20 @@ class SCMHexApp(JoyApp):
                 progress('Period changed to %s' % str(self.fcp.period))
                 #
             elif event in (K_UP, K_DOWN) or event in (12, 14):
-                f = self.freq
-                # Change frequency up/down in range -limit..limit hz
+                f = self.freq                
                 if event == K_UP or event == 12:
                     f = (1 - self.rate) * f + self.rate * self.limit
                 else:
                     f = (1 - self.rate) * f - self.rate * self.limit
                 if abs(f) < 1.0 / self.limit:
                     self.fcp.setPeriod(0)
+                    progress('(say) stop')
                 else:
                     self.fcp.setPeriod(1 / f)
+                    if f>0:
+                        progress('(say) advance')
+                    else:
+                        progress('(say) retreat')                    
                 self.freq = f
                 progress('Period changed to %g, %.2f Hz' % (self.fcp.period, f))
                 #
@@ -231,11 +240,24 @@ class SCMHexApp(JoyApp):
                 tn = self.turn
                 # Change frequency up/down in range -limit..limit hz
                 if event == K_LEFT or event == 13 :
+                    tn += 0.34
+                else:
+                    tn -= 0.34
+                self.turn = clip(tn,-1,1)
+                if self.turn>0.1:
+                    progress('(say) turn left')
+                elif self.turn<-0.1:
+                    progress('(say) turn right')
+                else: # enforce a dead zone
+                    self.turn = 0
+                    progress('(say) stop turning')
+                '''
                     tn = (1 - self.rate) * tn + self.rate
                 else:
                     tn = (1 - self.rate) * tn - self.rate
                 self.turn = tn                    
                 progress('Turn changed to %.2f' % (self.turn))
+                '''
                 #
             elif event == K_h:
                 progress(
@@ -279,7 +301,8 @@ if __name__ == '__main__':
         L.DEFAULT_BUS = DX
         app = SCMHexApp(
             cfg = dict( logFile = "/tmp/log" ),
-            robot=dict(arch=DX, count=len(SERVO_NAMES), names=SERVO_NAMES, port=dict(TYPE='tty', baudrate=1000000, timeout = 1))
+            robot=dict(arch=DX, count=len(SERVO_NAMES), names=SERVO_NAMES, 
+                       port=dict(TYPE='tty', baudrate=1000000, timeout = 1))
         )
     else:
         L.DEFAULT_BUS = NB
