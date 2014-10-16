@@ -1,6 +1,6 @@
 from joy.decl import *
 from joy import JoyApp, FunctionCyclePlan, progress, DEBUG
-from numpy import nan, asfarray, prod, isnan, pi, clip, sign, angle
+from numpy import nan, asfarray, prod, isnan, pi, clip, sin, angle, sign
 from cmath import exp
 from time import sleep, time as now
 from ckbot.dynamixel import MX64Module
@@ -167,7 +167,7 @@ class SCMHexApp(JoyApp):
         #self.fcp = FunctionCyclePlan(self, lambda ignore : None, 256, maxFreq=0.5, interval=0.01)
         self.freq = 5/60.0
         self.turn = 0
-        self.Kturn = 0.1
+        self.Kturn = 0.5
         self.rate = 0.05
         self.limit = 1 / 0.45
         # set motors at initial position
@@ -175,7 +175,7 @@ class SCMHexApp(JoyApp):
             leg.set_ang(0)
         for leg in self.triR:
             leg.set_ang(.5)
-        self.isCtrlTime = self.onceEvery(0.02)
+        self.isCtrlTime = self.onceEvery(0.1)
         self.ctrlQueue = [ l for l in self.leg ]
         
     def _fcp_fun(self, phase): 
@@ -186,33 +186,40 @@ class SCMHexApp(JoyApp):
         # radii of the leg midstance from centre of rotation
         radii = asfarray([1.2, 1, 1.2, -1.2, -1, -1.2])
         # Turning influence
-        tInf = 0 #self.Kturn * radii * abs(self.freq) * sin(aDes * pi)
-        for leg, des in zip(self.triL + self.triR, aDes+tInf):
+        tInf = clip(self.Kturn * radii * sin(aDes * 2* pi),-0.1,0.1)
+        # progress("inf "+str(tInf))
+        for leg, des in zip(self.triL + self.triR, (aDes+tInf) % 1.0):
             leg.set_ang(des)
 
     def onEvent(self, evt):
-        if self.now-self.T0 > 30:
+        if self.now-self.T0 > 120: # Controller time limit
             self.stop()
         # If time for controller, do round-robin on leg control
         if self.isCtrlTime():
-            l = self.ctrlQueue.pop(0)
-            l.doCtrl()
-            self.ctrlQueue.append(l)
-        if evt.type == KEYDOWN:
-            if evt.key in [ord('q'), 27]:  # 'q' and [esc] stop program
+            for i in xrange(6):
+                l = self.ctrlQueue.pop(0)
+                l.doCtrl()
+                self.ctrlQueue.append(l)
+        if evt.type == KEYDOWN or evt.type == JOYBUTTONDOWN:
+            if evt.type == KEYDOWN:
+                event = evt.key
+            else:
+                event = evt.button
+            if event in [ord('q'), 27] or event == 8:  # 'q' and [esc] stop program
                 self.stop()
                 #
-            elif evt.key == K_SPACE:  # [space] stops cycles
+            elif event == K_SPACE or event == 2:  # [space] stops cycles
                 self.fcp.setPeriod(0)
+                self.turn = 0
                 progress('Period changed to %s' % str(self.fcp.period))
                 #
-            elif evt.key in (K_UP, K_DOWN):
+            elif event in (K_UP, K_DOWN) or event in (12, 14):
                 f = self.freq
                 # Change frequency up/down in range -limit..limit hz
-                if evt.key == K_UP:
-                    f = (1 - self.rate) * f - self.rate * self.limit
-                else:
+                if event == K_UP or event == 12:
                     f = (1 - self.rate) * f + self.rate * self.limit
+                else:
+                    f = (1 - self.rate) * f - self.rate * self.limit
                 if abs(f) < 1.0 / self.limit:
                     self.fcp.setPeriod(0)
                 else:
@@ -220,17 +227,17 @@ class SCMHexApp(JoyApp):
                 self.freq = f
                 progress('Period changed to %g, %.2f Hz' % (self.fcp.period, f))
                 #
-            elif evt.key in (K_LEFT, K_RIGHT):
+            elif event in (K_LEFT, K_RIGHT) or event in (13, 15):
                 tn = self.turn
                 # Change frequency up/down in range -limit..limit hz
-                if evt.key == K_LEFT:
-                    tn = (1 - self.rate) * tn - self.rate
+                if event == K_LEFT or event == 13 :
+                    tn = (1 - self.rate) * tn + self.rate
                 else:
-                    tn = (1 - self.rate) * tn + self.rate 
+                    tn = (1 - self.rate) * tn - self.rate
                 self.turn = tn                    
                 progress('Turn changed to %.2f' % (self.turn))
                 #
-            elif evt.key == K_h:
+            elif event == K_h:
                 progress(
                     "HELP: UP/DOWN arrow for speed; ' ' stop; 'q' end program; 'h' this help; other keys start Plan")
                 #
@@ -272,7 +279,7 @@ if __name__ == '__main__':
         L.DEFAULT_BUS = DX
         app = SCMHexApp(
             cfg = dict( logFile = "/tmp/log" ),
-            robot=dict(arch=DX, count=len(SERVO_NAMES), names=SERVO_NAMES)
+            robot=dict(arch=DX, count=len(SERVO_NAMES), names=SERVO_NAMES, port=dict(TYPE='tty', baudrate=1000000, timeout = 1))
         )
     else:
         L.DEFAULT_BUS = NB
