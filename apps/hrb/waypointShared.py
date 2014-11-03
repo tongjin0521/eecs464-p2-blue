@@ -3,7 +3,7 @@
 
 ## April tags associations ##########################################
 
-from numpy import array, inf, asarray, uint8, empty
+from numpy import array, inf, asarray, uint8, empty, mean, newaxis, dot
 from numpy.random import randn
 from pylab import plot, text
 # Port for TagStreamer data
@@ -23,10 +23,15 @@ corners = [26,23,27,22,29,24,28,25]
 ROBOT_TAGID = [ 4 ]
 
 # Reference locations of corners, with 1 in the last coordinate
-ref = array([
-    [-1,0,1,1,1,0,-1,-1],
-    [1,1,1,0,-1,-1,-1,0],
-    [1.0/100]*8]).T * 100
+ref0 = array([
+    [66, 66, 66.1, 31.9, 0, 0, 0, 32.5 ],
+    [0, 49.1, 86, 86.15, 89.35, 50.75, 0, 0],
+    [0]*8 ])
+ref0 *= 2.56
+ref0 = ref0 - mean(ref0,1)[:,newaxis]
+ref0[2,:] = 1
+ref = dot([[0,-1,0],[-1,0,0],[0,0,1]],ref0)
+ref = ref.T
 
 # Tag IDs for waypoints
 waypoints = range(4)

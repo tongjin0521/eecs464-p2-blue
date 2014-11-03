@@ -218,7 +218,7 @@ for arg in args:
     lfn = args.next()
     if not lfn.endswith('.gz'):
       lfn = lfn + ".gz"
-    logfile = opengz(lfn)
+    logfile = opengz(lfn,"w")
     print "::: Logging to '%s' " % lfn
     continue
   if arg != '-h' and arg != '--help':
@@ -306,7 +306,7 @@ try: # Error trap for cleaning up files and sockets
       # display it
       if f1 is None:
         f1 = figure(1)
-        fig_geom(f1,"Wx1000+0+64")
+        fig_geom(f1,"800x400+0+64")
       f1.set_visible(False)
       f1.clf()
       subplot(121)
