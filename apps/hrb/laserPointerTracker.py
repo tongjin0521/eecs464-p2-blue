@@ -6,14 +6,16 @@ from time import time as now
 
 class LaserTracker( object ):
   def __init__(self, fn=None):
-    self.cam = JpegStreamCamera("http://admin:hrb2012@172.19.19.7/video.mjpg")
+    self.cam = JpegStreamCamera("http://admin:admin@192.168.1.148/video.mjpg")
     self.win = Display((800,600))
     self.clearBG()
     if not fn:
       self.out = None
     else:
       self.out = opengz(fn,"w")
-      
+      img = self.cam.getImage()
+      img.save(fn+'first.png')
+ 
   def clearBG( self ):
     self.bgN = 5
     self.bgQ = None
@@ -77,8 +79,9 @@ class LaserTracker( object ):
       while not self.win.isDone():
         self.work()
         time.sleep(0.05)
-    except Exception, exc:
+    except KeyboardInterrupt:
       self.out.close()
+      print "\n"+"*"*40+"\nSafely terminated\n"+"*"*40
       raise
 
 if __name__=="__main__":
