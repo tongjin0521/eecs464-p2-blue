@@ -12,8 +12,8 @@ SERVO_NAMES = {
 }
 '''
 SERVO_NAMES = {
-    0x0F: 'FL', 0x12: 'ML', 0x16: 'HL',
-    0x17: 'FR', 0x0A: 'MR', 0x11: 'HR'
+    0x16: 'FL', 0x12: 'ML', 0x0A: 'HL',
+    0x11: 'FR', 0x0F: 'MR', 0x17: 'HR'
 }
 
 
@@ -27,7 +27,7 @@ class ServoWrapperMX(object):
         self.ori = 1
         self.desAng = 0
         self.desRPM = 00
-        self.Kp = 30
+        self.Kp = 25.0
         self.Kv = 0
         self.logger = logger
         self._clearV()
@@ -143,7 +143,7 @@ class ServoWrapperMX(object):
         tq = clip(self.rpmScl * self.ori * rpm, -0.999, 0.999)
         if "r" in DEBUG:
             progress("%s.set_torque(%g) <-- rpm %g" % (self.servo.name, tq, rpm))
-        self.servo.set_torque(tq + sign(tq) * 0.08)
+        self.servo.set_torque(tq ) #+ sign(tq) * 0.08)
 
 
 class SCMHexApp(JoyApp):
@@ -169,7 +169,7 @@ class SCMHexApp(JoyApp):
         self.turn = 0
         self.Kturn = 0.12
         self.rate = 0.05
-        self.limit = 1 / 0.45
+        self.limit = 1 / 0.30
         # set motors at initial position
         for leg in self.triL:
             leg.set_ang(0)
@@ -201,7 +201,7 @@ class SCMHexApp(JoyApp):
             self.stop()
         # If time for controller, do round-robin on leg control
         if self.isCtrlTime():
-            for i in xrange(6):
+            for i in xrange(3):
                 l = self.ctrlQueue.pop(0)
                 l.doCtrl()
                 self.ctrlQueue.append(l)
@@ -221,9 +221,12 @@ class SCMHexApp(JoyApp):
             elif event in (K_UP, K_DOWN) or event in (12, 14):
                 f = self.freq                
                 if event == K_UP or event == 12:
-                    f = (1 - self.rate) * f + self.rate * self.limit
+                    #f = (1 - self.rate) * f + self.rate * self.limit
+                    f += 0.35
                 else:
-                    f = (1 - self.rate) * f - self.rate * self.limit
+                    #f = (1 - self.rate) * f - self.rate * self.limit
+                    f -= 0.35
+                f = clip(f, -.7, .7)
                 if abs(f) < 1.0 / self.limit:
                     self.fcp.setPeriod(0)
                     progress('(say) stop')
@@ -239,7 +242,7 @@ class SCMHexApp(JoyApp):
             elif event in (K_LEFT, K_RIGHT) or event in (13, 15):
                 tn = self.turn
                 # Change frequency up/down in range -limit..limit hz
-                if event == K_LEFT or event == 13 :
+                if event == K_LEFT or event == 15 :
                     tn += 0.34
                 else:
                     tn -= 0.34

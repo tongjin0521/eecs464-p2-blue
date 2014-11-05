@@ -12,8 +12,10 @@ class LaserTracker( object ):
     if not fn:
       self.out = None
     else:
-      self.out = open(fn,"w")
-      
+      self.out = opengz(fn,"w")
+      img = self.cam.getImage()
+      img.save(fn+'first.png')
+ 
   def clearBG( self ):
     self.bgN = 5
     self.bgQ = None
@@ -78,8 +80,9 @@ class LaserTracker( object ):
       while not self.win.isDone():
         self.work()
         time.sleep(0.05)
-    except Exception, exc:
+    except KeyboardInterrupt:
       self.out.close()
+      print "\n"+"*"*40+"\nSafely terminated\n"+"*"*40
       raise
 
 if __name__=="__main__":
