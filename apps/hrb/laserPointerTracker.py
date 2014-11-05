@@ -6,13 +6,13 @@ from time import time as now
 
 class LaserTracker( object ):
   def __init__(self, fn=None):
-    self.cam = JpegStreamCamera("http://admin:hrb2012@172.19.19.7/video.mjpg")
+    self.cam = JpegStreamCamera("http://admin:admin@192.168.1.148/video.mjpg")
     self.win = Display((800,600))
     self.clearBG()
     if not fn:
       self.out = None
     else:
-      self.out = opengz(fn,"w")
+      self.out = open(fn,"w")
       
   def clearBG( self ):
     self.bgN = 5
@@ -42,6 +42,7 @@ class LaserTracker( object ):
     else:
       for n,(x,y) in enumerate(b.coordinates()):
         self.out.write("%.2f, %d, %d, %d\n" % (t,n+1,x,y))          
+    self.out.flush()
 
   def _showBlobs( self, b ):
     raw = self.raw
@@ -85,11 +86,12 @@ if __name__=="__main__":
   import sys
   if len(sys.argv) != 2:
     sys.stderr.write("Usage: %s <filename>\n" % sys.argv[0])
-    fn = 'foo.csv.gz'
+    #fn = 'foo.csv.gz'
+    fn = "foo.csv"
   else:
     fn = sys.argv[1]
-    if not fn.endswith('.gz'):
-      fn = fn + ".gz"
+    #if not fn.endswith('.gz'):
+    #  fn = fn + ".gz"
   sys.stderr.write("  output to %s\n" % fn)
   lt = LaserTracker(fn)
   lt.run()
