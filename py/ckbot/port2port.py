@@ -59,6 +59,9 @@ class Connection( object ):
     """Try to reconnect with some configuration changes"""
     pass
 
+class WixelTDMAConnection (Connection):
+    pass
+    
 class SerialConnection( Serial, Connection ):
   """
   Concrete Connection subclass representing a serial port
