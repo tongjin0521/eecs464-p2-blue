@@ -1,5 +1,5 @@
 from joy.decl import *
-from joy import JoyApp, FunctionCyclePlan, progress, DEBUG
+from joy import JoyApp, FunctionCyclePlan, progress, DEBUG, Plan
 from numpy import nan, asfarray, prod, isnan, pi, clip, sin, angle, sign, round
 from cmath import exp
 from time import sleep, time as now
@@ -12,8 +12,8 @@ SERVO_NAMES = {
 }
 '''
 SERVO_NAMES = {
-    0x16: 'FL', 0x12: 'ML', 0x0A: 'HL',
-    0x11: 'FR', 0x0F: 'MR', 0x17: 'HR'
+    0x17: 'FL', 0x11: 'ML', 0x0A: 'HL',
+    0x12: 'FR', 0x16: 'MR', 0x0F: 'HR'
 }
 
 
@@ -145,6 +145,40 @@ class ServoWrapperMX(object):
             progress("%s.set_torque(%g) <-- rpm %g" % (self.servo.name, tq, rpm))
         self.servo.set_torque(tq ) #+ sign(tq) * 0.08)
 
+class TurnInPlace(Plan):
+    def __init__(self,app,legs):
+        Plan.__init__(self,app)
+        self.legs = legs
+        self.turn = 0.2
+
+    def behavior2(self):
+        # radii of the leg midstance from centre of rotation
+        tDir = asfarray([1,1,1,-1,-1,-1])
+        ang = asfarray([0,0,0,1,1,1])
+        dur = 1.0
+        steps = 10
+        for k in xrange(steps):
+            ang += tDir / steps
+            for leg,a in zip(self.legs,ang):
+                leg.set_ang(a)
+            yield self.forDuration(dur/steps)
+
+    def behavior(self):
+        bias = asfarray([0,0.1,0,0,0.1,0])
+        liftCoef = asfarray([-1,0,1,-1,0,1])
+        for leg,c,b in zip(self.legs,liftCoef, bias):
+            leg.set_ang(c*-0.3+b)
+        yield self.forDuration(0.5)
+        self.legs[1].set_ang(self.turn * 0.5 + bias[1])
+        self.legs[4].set_ang(-self.turn * 0.5 + bias[4])
+        yield self.forDuration(0.2)
+        self.legs[1].set_ang(self.turn+bias[1])
+        self.legs[4].set_ang(-self.turn+bias[4])
+        yield self.forDuration(0.2)
+        for leg,c in zip(self.legs,liftCoef):
+            leg.set_ang(0)
+        yield self.forDuration(0.5)
+
 
 class SCMHexApp(JoyApp):
     def __init__(self, *arg, **kw):
@@ -170,6 +204,8 @@ class SCMHexApp(JoyApp):
         self.Kturn = 0.12
         self.rate = 0.05
         self.limit = 1 / 0.30
+        self.moving = asfarray([1] * 6)
+        self.halt = 1
         # set motors at initial position
         for leg in self.triL:
             leg.set_ang(0)
@@ -179,19 +215,25 @@ class SCMHexApp(JoyApp):
         self.ctrlQueue = [ l for l in self.leg ]
         self.fcp.setPeriod(1/self.freq)
         self.fcp.start()
-        
+        self.tip = TurnInPlace(self, self.leg)
+
     def _fcp_fun(self, phase): 
         # Desired angle for left and right tripods
         aL = phase - 0.5
         aR = ((phase + 0.5) % 1.0) - 0.5
         aDes = asfarray([aL, aL, aL, aR, aR, aR])
+        if self.halt:
+            # elements close to zero angle stop moving
+            self.moving[(aDes<.1)|(aDes>.9)]=0
+        else:
+            self.moving[:]=1
         # radii of the leg midstance from centre of rotation
         radii = asfarray([1.2, 1, 1.2, -1.2, -1, -1.2])
         # Turning influence
         tInf = self.turn * self.Kturn * radii * sin(aDes * 2* pi)
         assert all(abs(tInf)<0.15), "Sanity check on turn influence"
         # progress("inf "+str(tInf))
-        goal = (aDes + tInf) % 1.0
+        goal = self.moving * (aDes + tInf) % 1.0
         for leg, des in zip(self.triL + self.triR, goal):
             leg.set_ang(des)
         progress( "goal "+"\t".join([ "%+4.2f" % v for v in goal]), sameLine = True)
@@ -205,6 +247,10 @@ class SCMHexApp(JoyApp):
                 l = self.ctrlQueue.pop(0)
                 l.doCtrl()
                 self.ctrlQueue.append(l)
+            # also piggyback some housekeeping
+            if not self.fcp.isRunning():
+                if not self.tip.isRunning():
+                    self.fcp.start()
         if evt.type == KEYDOWN or evt.type == JOYBUTTONDOWN:
             if evt.type == KEYDOWN:
                 event = evt.key
@@ -218,6 +264,14 @@ class SCMHexApp(JoyApp):
                 self.turn = 0
                 progress('Period changed to %s' % str(self.fcp.period))
                 #
+            elif event == K_h:
+                self.halt = (self.halt == 0)
+            elif event == K_z or event == K_x:
+                if any(self.moving):
+                    halt = 1
+                else:
+                    self.fcp.stop()
+                    self.tip.start()
             elif event in (K_UP, K_DOWN) or event in (12, 14):
                 f = self.freq                
                 if event == K_UP or event == 12:
@@ -296,7 +350,7 @@ if __name__ == '__main__':
 
     import ckbot.dynamixel as DX
     import ckbot.logical as L
-    import ckbot.nobus as NB
+    #import ckbot.nobus as NB
     import joy
 
     if 1:  # 1 to run code; 0 for simulation
@@ -304,16 +358,16 @@ if __name__ == '__main__':
         L.DEFAULT_BUS = DX
         app = SCMHexApp(
             cfg = dict( logFile = "/tmp/log" ),
-            robot=dict(arch=DX, count=len(SERVO_NAMES), names=SERVO_NAMES, 
-                       port=dict(TYPE='tty', baudrate=1000000, timeout = 1))
+            robot=dict(arch=DX, count=len(SERVO_NAMES), names=SERVO_NAMES,
+                       port="/dev/ttyACM*")
         )
-    else:
-        L.DEFAULT_BUS = NB
-        app = SCMHexApp(
-            robot=dict(
-                arch=NB, count=len(SERVO_NAMES), fillMissing=True,
-                required=SERVO_NAMES.keys(), names=SERVO_NAMES
-            ))
+    #else:
+    #    L.DEFAULT_BUS = NB
+    #    app = SCMHexApp(
+    #        robot=dict(
+    #            arch=NB, count=len(SERVO_NAMES), fillMissing=True,
+    #            required=SERVO_NAMES.keys(), names=SERVO_NAMES
+    #        ))
 
     joy.DEBUG[:] = []
     app.run()
