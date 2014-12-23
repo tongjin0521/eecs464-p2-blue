@@ -179,6 +179,9 @@ class TurnInPlace(Plan):
             leg.set_ang(0)
         yield self.forDuration(0.5)
 
+    def setTurn(self, t):
+        self.turn = t
+
 
 class SCMHexApp(JoyApp):
     def __init__(self, *arg, **kw):
@@ -271,6 +274,10 @@ class SCMHexApp(JoyApp):
                     halt = 1
                 else:
                     self.fcp.stop()
+                    if event == K_z:
+                        self.tip.setTurn(-0.2)
+                    else:
+                        self.tip.setTurn(0.2)
                     self.tip.start()
             elif event in (K_UP, K_DOWN) or event in (12, 14):
                 f = self.freq                
