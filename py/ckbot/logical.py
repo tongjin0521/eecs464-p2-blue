@@ -147,7 +147,8 @@ class Cluster(dict):
             testing of code.
           
       port -- specification of the communication port to use, as per
-        ckbot.port2port.newConnection. Defaults to DEFAULT_PORT
+        ckbot.port2port.newConnection. port defaults to DEFAULT_PORT, and
+        is ignored if arch is an initialized AbstractProtocol instance.
         
         This can be used to specify serial devices and baudrates, e.g.
         port = 'tty={glob="/dev/ttyACM1",baudrate=115200}'
