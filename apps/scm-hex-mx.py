@@ -200,7 +200,7 @@ class SCMHexApp(JoyApp):
         ]
         self.triL = self.leg[0::2]
         self.triR = self.leg[1::2]
-        self.fcp = FunctionCyclePlan(self, self._fcp_fun, 128, maxFreq=0.75, interval=0.05)
+        self.fcp = FunctionCyclePlan(self, self._fcp_fun, 128, maxFreq=1.75, interval=0.05)
         #self.fcp = FunctionCyclePlan(self, lambda ignore : None, 256, maxFreq=0.5, interval=0.01)
         self.freq = 5/60.0
         self.turn = 0
@@ -241,7 +241,13 @@ class SCMHexApp(JoyApp):
             leg.set_ang(des)
         progress( "goal "+"\t".join([ "%+4.2f" % v for v in goal]), sameLine = True)
 
-    def onEvent(self, evt):
+    def onEvent(self,evt):
+        try:
+            return self._onEvent(evt)
+        except Exception,ex:
+            progress(str(ex))
+            
+    def _onEvent(self, evt):
         if self.now-self.T0 > 120: # Controller time limit
             self.stop()
         # If time for controller, do round-robin on leg control
@@ -283,11 +289,11 @@ class SCMHexApp(JoyApp):
                 f = self.freq                
                 if event == K_UP or event == 12:
                     #f = (1 - self.rate) * f + self.rate * self.limit
-                    f += 0.35
+                    f += 0.2
                 else:
                     #f = (1 - self.rate) * f - self.rate * self.limit
-                    f -= 0.35
-                f = clip(f, -.7, .7)
+                    f -= 0.2
+                f = clip(f, -1.5, 1.5)
                 if abs(f) < 1.0 / self.limit:
                     self.fcp.setPeriod(0)
                     progress('(say) stop')
@@ -301,37 +307,8 @@ class SCMHexApp(JoyApp):
                 progress('Period changed to %g, %.2f Hz' % (self.fcp.period, f))
                 #
             elif event in (K_LEFT, K_RIGHT) or event in (13, 15):
-                tn = self.turn
-                # Change frequency up/down in range -limit..limit hz
-                if event == K_LEFT or event == 15 :
-                    tn += 0.34
-                else:
-                    tn -= 0.34
-                self.turn = clip(tn,-1,1)
-                if self.turn>0.1:
-                    progress('(say) turn left')
-                elif self.turn<-0.1:
-                    progress('(say) turn right')
-                else: # enforce a dead zone
-                    self.turn = 0
-                    progress('(say) stop turning')
-                '''
-                    tn = (1 - self.rate) * tn + self.rate
-                else:
-                    tn = (1 - self.rate) * tn - self.rate
-                self.turn = tn                    
-                progress('Turn changed to %.2f' % (self.turn))
-                '''
-                #
-            elif event == K_h:
-                progress(
-                    "HELP: UP/DOWN arrow for speed; ' ' stop; 'q' end program; 'h' this help; other keys start Plan")
-                #
-            else:  # any other key
-                self.fcp.setFrequency(self.freq)
-                progress("Starting cycles with period " + str(self.fcp.getPeriod()))
-                self.fcp.start()
-            return  # (from all keypress handlers)
+                progress('Turning is currently disabled')
+            
         if evt.type not in [TIMEREVENT, JOYAXISMOTION, MOUSEMOTION]:
             JoyApp.onEvent(self, evt)
 
