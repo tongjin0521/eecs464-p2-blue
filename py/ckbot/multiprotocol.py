@@ -144,6 +144,22 @@ class MultiProtocol( AbstractProtocol ):
         return p.generatePNA(inid)
   
 
+class WixelTDMAProtocol( MultiProtocol ):
+    """
+    Concrete MultiProtocol subclass for Wixel TDMA connections
+    """
+    def update( self ):
+        """Update all sub-protocols and collect heartbeats"""
+        hb = {}
+        # Loop over all protocols contained in this one
+        for p in self.nim.iterowners():
+            p.update()
+            # Collect heartbeats from the protocols
+            for inid,val in p.heartbeats.iteritems():
+                xnid = self.nim.mapI2X(p,inid)
+                hb[xnid] = val
+        self.heartbeats = hb
+
 if __name__=="__main__":
     # Unit test
     import nobus as NB
