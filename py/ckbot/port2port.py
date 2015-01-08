@@ -59,9 +59,54 @@ class Connection( object ):
     """Try to reconnect with some configuration changes"""
     pass
 
-class WixelTDMAConnection (Connection):
-    pass
+class WixelTDMAConnection( Connection ):
+  """
+  Concrete Connection subclass representing a Wixel TDMA port
+  """
+  def __init__(self, nid, glob=None, *args, **kw):
+    self.nid = nid
+
+    # Try to resolve user globs
+    port_path = None
+    if glob is not None:
+      port_path = (GLOB_GLOB(glob)+[None])[0]
+    if port_path is None:
+      # Determine port name for current operating system
+      plat = platform.lower()
+      if "linux" in plat: # Linux
+        port_path = (GLOB_GLOB("/dev/ttyUSB*")+[None])[0]        
+      elif "win32" in plat: # Windows
+        # Grab first serial port from windows machine
+        path = 'HARDWARE\\DEVICEMAP\\SERIALCOMM'
+        key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, path)
+        port_path = winreg.EnumValue(key,0)[1]
+      elif "darwin" in plat: # Mac
+        # Grab the first usbserial, failing that the first usbmodem
+        port_path = (GLOB_GLOB("/dev/tty.usbserial*")+GLOB_GLOB("/dev/tty.usbmodem*")+[None])[0]        
+      else: # Unhandled OS
+        raise IOError('Unknown OS -- cannot auto-configure serial')
     
+    if port_path is None:
+      raise IOError("No serial port found and no glob hint given")
+    Serial.__init__(self, port_path, *args, **kw)
+    Connection.__init__(self)
+    if self.isOpen():
+      self.path = port_path
+    else:
+      self.path = "<<COULD-NOT-OPEN>>"
+
+  def write( self, msg ):
+    if len(msg) > 18:
+      raise KeyError("Message length over limit")
+    msg = chr( self.nid ) + msg
+    Connection.write( self, msg )
+
+    # TODO: write boardcasting message to get the feedback
+
+  def __repr__(self):
+    r = object.__repr__(self)
+    return "%s %s %d:%d%s>" % (r[:-1],self.path, self.baudrate,self.stopbits,self.parity )   
+
 class SerialConnection( Serial, Connection ):
   """
   Concrete Connection subclass representing a serial port
