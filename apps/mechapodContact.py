@@ -118,6 +118,8 @@ class FunctionCyclePlanApp( JoyApp ):
     
       #set the slope parameter for each motor:
     for m in self.robot.itermodules():
+      if isinstance( m, DX.MX64Module ):
+        continue
       m.mem[m.mcu.ccw_compliance_slope] = 64
       m.mem[m.mcu.cw_compliance_slope] = 64
 
@@ -188,6 +190,13 @@ class FunctionCyclePlanApp( JoyApp ):
       progress('freq: %g, bend: %g, stickMode: %g, strafe: %g, turn mode: %g' 
                % (gs.freq, self.gait1.bend, self.stickMode, self.gait1.strafe, self.turnInPlaceMode))
 
+    if evt.type==KEYDOWN:
+      if evt.key==K_m:#
+          self.plan.start()#
+      elif evt.key==K_s:
+          self.plan.stop()#
+    return
+    
     if evt.type==JOYBUTTONDOWN and evt.joy==0:
       progress( describeEvt(evt) )
       # start
@@ -206,7 +215,7 @@ class FunctionCyclePlanApp( JoyApp ):
       if evt.button==0: #toggle stickMode (control via left joystick)
         self.stickMode = not self.stickMode   
         
-      if evt.button==1:
+      if evt.button==1: # circle
         gs.freq += 0.1
       if evt.button==2:
         gs.freq -= 0.1
