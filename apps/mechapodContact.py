@@ -45,7 +45,6 @@ class Segment(object):
     if self.l!=None:
       self.l.set_pos(pos[2])
 
-
 class FunctionCyclePlanApp( JoyApp ):
   def __init__(self,*arg,**kw):
     JoyApp.__init__(self, confPath="$/cfg/JoyAppCentipedeV2.yml", *arg,**kw)
@@ -63,7 +62,7 @@ class FunctionCyclePlanApp( JoyApp ):
     
     phi = 1 - phase              
         
-	#for legs 1 & 3
+    #for legs 1 & 3
     g1.manageGait(phi)
     s1roll = degrees(g1.roll)
     s1yaw = degrees(g1.yaw)
@@ -150,7 +149,7 @@ class FunctionCyclePlanApp( JoyApp ):
     self.tipGait3 = centTIP.turnInPlaceGait(tipParamsDemo)
 
     self.gaitSpec = Struct(
-      rollAmp = 0.4, 
+      rollAmp = 0.7, 
       yawAmp = 0,
       phi_s = 0.94,
       t_s = 0.23,
@@ -159,6 +158,7 @@ class FunctionCyclePlanApp( JoyApp ):
       ecc = 0,
 
       maxFreq = 3.0,   
+      maxBend = 900,
       maxYaw = 700,
       maxRoll = 7000,
       maxTurn = -500,
@@ -189,24 +189,66 @@ class FunctionCyclePlanApp( JoyApp ):
     if self.timeToShow():      
       progress('freq: %g, bend: %g, stickMode: %g, strafe: %g, turn mode: %g' 
                % (gs.freq, self.gait1.bend, self.stickMode, self.gait1.strafe, self.turnInPlaceMode))
+    if evt.type==TIMEREVENT:
+	return
 
-    if evt.type==KEYDOWN:
-      if evt.key==K_m:#
+    if ((evt.type==KEYDOWN and evt.key==K_m)
+	or (evt.type==JOYBUTTONDOWN and evt.button==5)): # r2 button
           self.plan.start()#
-      elif evt.key==K_s:
-          self.plan.stop()#
-    return
-    
+	  progress("(say) Starting motion")
+    elif ((evt.type==KEYDOWN and evt.key==K_s)
+	or (evt.type==JOYBUTTONDOWN and evt.button==7)): # r1 button
+          self.plan.stop()
+	  progress("(say) Stopping")
+	  self.gaitSpec.freq = 0
+	  self.robot.off()
+
+    elif (evt.type==JOYBUTTONDOWN and evt.button==0):
+        self.stickMode = not self.stickMode   
+    elif evt.type == JOYAXISMOTION:
+      self.sf.push(evt)
+      if self.stickMode:
+        #update gait with joystick inputs
+        bend = self.sf.getValue("joy0axis0") #value range: [-1, 1]
+        freq = self.sf.getValue("joy0axis1") #value range: [-1, 1]
+      
+        #handle negative frequency
+        if(freq < 0):
+          freq = -1*freq
+          self.backward = 1
+        else:
+          self.backward = 0
+        
+
+        gs.freq = gs.maxFreq*freq #for plotting purposes
+        self.plan.setFrequency(gs.freq)
+        b = gs.maxBend * bend
+        self.gait1.bend = b 
+	self.gait2.bend = b
+        self.gait3.bend = b
+      else:
+        #return to button control
+        self.plan.setFrequency(gs.freq)  
+        self.gait1.bend = 0
+        self.gait2.bend = 0
+        self.gait3.bend = 0
+      
+      return
+      
+    # Cut off the rest of the event handling code and punt to superclass
+    return JoyApp.onEvent(self,evt)
+      
+    # ------------- DEAD CODE ----------------
     if evt.type==JOYBUTTONDOWN and evt.joy==0:
       progress( describeEvt(evt) )
       # start
-      if evt.button==5:
+      if evt.button==5: #r2
         self.plan.start()
         progress('--> starting plan')
         
       # stop
       if evt.button==7:
-        self.robot.off()
+        self.robot.off() #r1
         self.plan.stop()
         progress('STOP')
         gs.freq = 0
@@ -240,42 +282,6 @@ class FunctionCyclePlanApp( JoyApp ):
           gs.ecc += 0.1
       if evt.key==ord('d'): # 'd' decreases eccentricity
           gs.ecc -= 0.1
-
-    if evt.type in [JOYAXISMOTION]:
-      self.sf.push(evt)
-
-      if(self.stickMode == True):
-        #update gait with joystick inputs
-        bend = self.sf.getValue("joy0axis0") #value range: [-1, 1]
-        freq = self.sf.getValue("joy0axis1") #value range: [-1, 1]
-      
-        maxFreq = 1     #Hz
-        maxBend = 900  #centi-degrees
-      
-        #handle negative frequency
-        if(freq < 0):
-          freq = -1*freq
-          self.backward = 1
-        else:
-          self.backward = 0
-        
-        self.gaitSpec.freq = maxFreq*freq #for plotting purposes
-        self.plan.setFrequency(maxFreq*freq)
-        
-        self.gait1.bend = (maxBend*bend)
-        self.gait2.bend = (maxBend*bend)
-        self.gait3.bend = (maxBend*bend)
-      else:
-        #return to button control
-        self.plan.setFrequency(self.gaitSpec.freq)  
-        self.gait1.bend = 0
-        self.gait2.bend = 0
-        self.gait3.bend = 0
-      
-      return
-      
-    if evt.type!=TIMEREVENT:
-      JoyApp.onEvent(self,evt)
 
 
 if __name__=="__main__":
