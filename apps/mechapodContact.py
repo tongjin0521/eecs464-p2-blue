@@ -73,12 +73,12 @@ class FunctionCyclePlanApp( JoyApp ):
 	
 	#for leg 2: give phi2 = (phi1 + 0.5) mod 1
     if(phi > 0.5):
-        phi2 = phi - 0.5
+        phi2 = phi -0.5
     else:
         phi2 = phi + 0.5
         
     g2.manageGait(phi2) 
-    s2roll = degrees(g2.roll)
+    s2roll = -degrees(g2.roll)
     s2yaw = degrees(g2.yaw)
 
     #turn in place
