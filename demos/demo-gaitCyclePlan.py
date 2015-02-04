@@ -1,7 +1,7 @@
 from joy import *
 
 class GaitCyclePlanApp( JoyApp ):
-  SHEET = loadCSV("demos/M4ModLab.csv")
+  SHEET = loadCSV("M4ModLab.csv")
   
   def __init__(self,*arg,**kw):
     JoyApp.__init__(self,scr={},*arg,**kw)
