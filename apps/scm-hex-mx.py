@@ -230,12 +230,15 @@ class SCMHexApp(JoyApp):
             self.moving[(aDes<.1)|(aDes>.9)]=0
         else:
             self.moving[:]=1
+		'''	
         # radii of the leg midstance from centre of rotation
         radii = asfarray([1.2, 1, 1.2, -1.2, -1, -1.2])
         # Turning influence
         tInf = self.turn * self.Kturn * radii * sin(aDes * 2* pi)
         assert all(abs(tInf)<0.15), "Sanity check on turn influence"
         # progress("inf "+str(tInf))
+		'''
+        tInf = self.turn * self.Kturn * asfarray([1,1,1,-1,-1,-1])
         goal = self.moving * (aDes + tInf) % 1.0
         for leg, des in zip(self.triL + self.triR, goal):
             leg.set_ang(des)
@@ -265,7 +268,7 @@ class SCMHexApp(JoyApp):
                 event = evt.key
             else:
                 event = evt.button
-            if event in [ord('q'), 27] or event == 8:  # 'q' and [esc] stop program
+            if event in [K_q, K_ESC] or event == 8:  # 'q' and [esc] stop program
                 self.stop()
                 #
             elif event == K_SPACE or event == 2:  # [space] stops cycles
@@ -305,10 +308,11 @@ class SCMHexApp(JoyApp):
                         progress('(say) retreat')                    
                 self.freq = f
                 progress('Period changed to %g, %.2f Hz' % (self.fcp.period, f))
-                #
             elif event in (K_LEFT, K_RIGHT) or event in (13, 15):
-                progress('Turning is currently disabled')
-            
+				dTurn = 1 if event in (K_LEFT,13) else -1
+				self.turn = clip(self.turn + dTurn * 0.1, -1, 1)
+				progress('Turn is %.2f' % self.turn)
+			return
         if evt.type not in [TIMEREVENT, JOYAXISMOTION, MOUSEMOTION]:
             JoyApp.onEvent(self, evt)
 
