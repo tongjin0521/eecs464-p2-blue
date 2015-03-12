@@ -227,7 +227,7 @@ class SCMHexApp(JoyApp):
         aDes = asfarray([aL, aL, aL, aR, aR, aR])
         if self.halt:
             # elements close to zero angle stop moving
-            self.moving[(aDes<.1)|(aDes>.9)]=0
+            self.moving[abs(aDes<.1)]=0
         else:
             self.moving[:]=1
 		'''	
@@ -238,7 +238,7 @@ class SCMHexApp(JoyApp):
         assert all(abs(tInf)<0.15), "Sanity check on turn influence"
         # progress("inf "+str(tInf))
 		'''
-        tInf = self.turn * self.Kturn * asfarray([1,1,1,-1,-1,-1])
+        tInf = self.turn * self.Kturn * asfarray([1,-1,1,-1,1,-1])
         goal = self.moving * (aDes + tInf) % 1.0
         for leg, des in zip(self.triL + self.triR, goal):
             leg.set_ang(des)
