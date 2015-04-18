@@ -325,7 +325,7 @@ class JoyApp( object ):
       keyboardRepeatInterval = 50,
       clockInterval = 20,
       voltagePollRate = 1.0,
-      minimalVoltage = 10,
+      minimalVoltage = 13,
       windowSize = [320,240],
       nodeNames = {},
       logFile = None,
