@@ -1,20 +1,27 @@
-from joy.decl import *
+#from joy.decl import *
 from joy import JoyApp, FunctionCyclePlan, progress, DEBUG, Plan
 from numpy import nan, asfarray, prod, isnan, pi, clip, sin, angle, sign, round
 from cmath import exp
 from time import sleep, time as now
 from ckbot.dynamixel import MX64Module
 
-'''
+
+#v07
 SERVO_NAMES = {
-   0x13: 'FL', 0x1E : 'ML', 0x15 : 'HL',
-   0x0C: 'FR', 0x14 : 'MR', 0x07 : 'HR'
+   0x92: 'FL', 0x0A : 'ML', 0x23 : 'HL',
+   0x1D: 'FR', 0x03 : 'MR', 0x0F : 'HR'
 }
-'''
-SERVO_NAMES = {
-    0x17: 'FL', 0x11: 'ML', 0x0A: 'HL',
-    0x12: 'FR', 0x16: 'MR', 0x0F: 'HR'
-}
+
+#v05
+#SERVO_NAMES = {
+#   0x0A: 'FL', 0x1E : 'ML', 0x02 : 'HL',
+#   0x03: 'FR', 0x92 : 'MR', 0x2D : 'HR'
+#}
+
+#SERVO_NAMES = {
+#    0x17: 'FL', 0x11: 'ML', 0x0A: 'HL',
+#    0x12: 'FR', 0x16: 'MR', 0x0F: 'HR'
+#}
 
 
 class ServoWrapperMX(object):
@@ -230,7 +237,7 @@ class SCMHexApp(JoyApp):
             self.moving[abs(aDes<.1)]=0
         else:
             self.moving[:]=1
-		'''	
+        '''	
         # radii of the leg midstance from centre of rotation
         radii = asfarray([1.2, 1, 1.2, -1.2, -1, -1.2])
         # Turning influence
@@ -255,7 +262,7 @@ class SCMHexApp(JoyApp):
             self.stop()
         # If time for controller, do round-robin on leg control
         if self.isCtrlTime():
-            for i in xrange(3):
+            for i in xrange(1):
                 l = self.ctrlQueue.pop(0)
                 l.doCtrl()
                 self.ctrlQueue.append(l)
@@ -312,7 +319,7 @@ class SCMHexApp(JoyApp):
 				dTurn = 1 if event in (K_LEFT,13) else -1
 				self.turn = clip(self.turn + dTurn * 0.1, -1, 1)
 				progress('Turn is %.2f' % self.turn)
-			return
+	    return
         if evt.type not in [TIMEREVENT, JOYAXISMOTION, MOUSEMOTION]:
             JoyApp.onEvent(self, evt)
 
@@ -347,7 +354,8 @@ if __name__ == '__main__':
         app = SCMHexApp(
             cfg = dict( logFile = "/tmp/log" ),
             robot=dict(arch=DX, count=len(SERVO_NAMES), names=SERVO_NAMES,
-                       port="/dev/ttyACM*")
+                       port=dict(TYPE='TTY', glob="/dev/ttyUSB*", baudrate=115200)
+)
         )
     #else:
     #    L.DEFAULT_BUS = NB
