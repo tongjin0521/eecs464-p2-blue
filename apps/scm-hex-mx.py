@@ -1,4 +1,4 @@
-#from joy.decl import *
+from joy.decl import *
 from joy import JoyApp, FunctionCyclePlan, progress, DEBUG, Plan
 from numpy import nan, asfarray, prod, isnan, pi, clip, sin, angle, sign, round
 from cmath import exp
@@ -171,7 +171,7 @@ class TurnInPlace(Plan):
             yield self.forDuration(dur/steps)
 
     def behavior(self):
-        bias = asfarray([0,0.1,0,0,0.1,0])
+        bias = asfarray([0,-0.1,0,0,-0.1,0])
         liftCoef = asfarray([-1,0,1,-1,0,1])
         for leg,c,b in zip(self.legs,liftCoef, bias):
             leg.set_ang(c*-0.3+b)
@@ -195,6 +195,8 @@ class SCMHexApp(JoyApp):
         JoyApp.__init__(self, *arg, **kw)
 
     def onStart(self):
+        global off
+        off = self.robot.off
         #DEBUG.extend(list('Fr'))
         self.T0 = self.now
         self.leg = [
@@ -254,6 +256,9 @@ class SCMHexApp(JoyApp):
     def onEvent(self,evt):
         try:
             return self._onEvent(evt)
+	except KeyboardInterrupt:
+            progress('(say) EMERGENCY STOP')
+            self.stop()
         except Exception,ex:
             progress(str(ex))
             
@@ -262,7 +267,7 @@ class SCMHexApp(JoyApp):
             self.stop()
         # If time for controller, do round-robin on leg control
         if self.isCtrlTime():
-            for i in xrange(1):
+            for i in xrange(3):
                 l = self.ctrlQueue.pop(0)
                 l.doCtrl()
                 self.ctrlQueue.append(l)
@@ -275,7 +280,7 @@ class SCMHexApp(JoyApp):
                 event = evt.key
             else:
                 event = evt.button
-            if event in [K_q, K_ESC] or event == 8:  # 'q' and [esc] stop program
+            if event in [K_q, K_ESCAPE] or event == 8:  # 'q' and [esc] stop program
                 self.stop()
                 #
             elif event == K_SPACE or event == 2:  # [space] stops cycles
@@ -354,7 +359,7 @@ if __name__ == '__main__':
         app = SCMHexApp(
             cfg = dict( logFile = "/tmp/log" ),
             robot=dict(arch=DX, count=len(SERVO_NAMES), names=SERVO_NAMES,
-                       port=dict(TYPE='TTY', glob="/dev/ttyUSB*", baudrate=115200)
+                       port=dict(TYPE='TTY', glob="/dev/ttyACM*", baudrate=57600)
 )
         )
     #else:

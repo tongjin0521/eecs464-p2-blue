@@ -33,7 +33,7 @@ while time.time() - t < 10:
  for i in c.itermodules():
   dat[i.name] = (i.get_pos())
 
- time.sleep(0.75) 
+ time.sleep(0.5) 
  print str(time.time() - t)
 
  for keys,value in dat.iteritems():
@@ -42,7 +42,7 @@ while time.time() - t < 10:
    if (value < -5000):
     getattr(c.at, keys).set_torque(0.1)
 
- time.sleep(0.75)
+ time.sleep(0.2)
 
 
  

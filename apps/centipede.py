@@ -137,9 +137,9 @@ class CentipedeGaitApp( JoyApp ):
     self.S3.set_pos(yaw1,bend,roll1)
 
   def onStart(self):
-    self.S1 = Segment(None, self.robot.at.B1, self.robot.at.L1)
-    self.S2 = Segment(self.robot.at.F2, self.robot.at.B2, self.robot.at.L2)
-    self.S3 = Segment(self.robot.at.F3, None, self.robot.at.L3)
+    self.S1 = Segment(None, self.robot.at.Nx90, self.robot.at.Nx14)
+    self.S2 = Segment(self.robot.at.Nx20, self.robot.at.Nx02, self.robot.at.Nx19)
+    self.S3 = Segment(self.robot.at.Nx0C, None, self.robot.at.Nx1E)
 
     self.last = 0
 
