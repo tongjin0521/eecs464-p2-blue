@@ -8,8 +8,8 @@ from ckbot.dynamixel import MX64Module
 
 #v07
 SERVO_NAMES = {
-   0x92: 'FL', 0x0A : 'ML', 0x23 : 'HL',
-   0x1D: 'FR', 0x03 : 'MR', 0x0F : 'HR'
+   0x92: 'FL', 0x12: 'FL', 0x0A: 'ML', 0x15: 'ML', 0x23: 'HL', 0x13: 'HL',
+   0x1D: 'FR', 0x16: 'FR', 0x14: 'MR', 0x03: 'MR', 0x0F: 'HR', 0x11: 'HR'
 }
 
 #v05
@@ -213,7 +213,7 @@ class SCMHexApp(JoyApp):
         #self.fcp = FunctionCyclePlan(self, lambda ignore : None, 256, maxFreq=0.5, interval=0.01)
         self.freq = 5/60.0
         self.turn = 0
-        self.Kturn = 0.12
+        self.Kturn = 0.24  #0.12 original
         self.rate = 0.05
         self.limit = 1 / 0.30
         self.moving = asfarray([1] * 6)
@@ -229,10 +229,10 @@ class SCMHexApp(JoyApp):
         self.fcp.start()
         self.tip = TurnInPlace(self, self.leg)
 
-    def _fcp_fun(self, phase): 
+    def _fcp_fun(self, phase):
         # Desired angle for left and right tripods
         aL = phase - 0.5
-        aR = ((phase + 0.5) % 1.0) - 0.5
+        aR = ((phase + 0.5) % 1.0) - 0.5  #((phase + 0.5) % 1.0) - 0.5 original
         aDes = asfarray([aL, aL, aL, aR, aR, aR])
         if self.halt:
             # elements close to zero angle stop moving
@@ -247,7 +247,7 @@ class SCMHexApp(JoyApp):
         assert all(abs(tInf)<0.15), "Sanity check on turn influence"
         # progress("inf "+str(tInf))
 		'''
-        tInf = self.turn * self.Kturn * asfarray([1,-1,1,-1,1,-1])
+        tInf = self.turn * self.Kturn * asfarray([-1,-1,-1,0,0,0])#1,-1,1,-1,1,-1
         goal = self.moving * (aDes + tInf) % 1.0
         for leg, des in zip(self.triL + self.triR, goal):
             leg.set_ang(des)
@@ -275,11 +275,23 @@ class SCMHexApp(JoyApp):
             if not self.fcp.isRunning():
                 if not self.tip.isRunning():
                     self.fcp.start()
-        if evt.type == KEYDOWN or evt.type == JOYBUTTONDOWN:
-            if evt.type == KEYDOWN:
-                event = evt.key
-            else:
-                event = evt.button
+        event = None
+        if evt.type == KEYDOWN:
+           event = evt.key
+        elif evt.type == JOYAXISMOTION:
+           if evt.axis == 0:
+             if evt.value < -0.5:
+               event = K_LEFT
+             elif evt.value > 0.5:
+               event = K_RIGHT
+           elif evt.axis == 1:
+             if evt.value < -0.5:
+               event = K_DOWN
+             elif evt.value > 0.5:
+               event = K_UP
+        elif evt.type == JOYBUTTONDOWN:
+           event = evt.button
+        if event is not None:
             if event in [K_q, K_ESCAPE] or event == 8:  # 'q' and [esc] stop program
                 self.stop()
                 #
@@ -358,8 +370,9 @@ if __name__ == '__main__':
         L.DEFAULT_BUS = DX
         app = SCMHexApp(
             cfg = dict( logFile = "/tmp/log" ),
-            robot=dict(arch=DX, count=len(SERVO_NAMES), names=SERVO_NAMES,
-                       port=dict(TYPE='TTY', glob="/dev/ttyACM*", baudrate=57600)
+            robot=dict(arch=DX, count=6, names=SERVO_NAMES,
+#                       port=dict(TYPE='TTY', glob="/dev/ttyACM*", baudrate=115200)
+                       port=dict(TYPE='TTY', glob="/dev/ttyUSB*", baudrate=115200)
 )
         )
     #else:
