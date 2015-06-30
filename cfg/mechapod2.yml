@@ -1,0 +1,19 @@
+# YAML configuration for mechapodContact.py
+minimalVoltage: 8
+clockInterval: 3
+keyboardRepeatDelay: 500
+keyboardRepeatInterval: 50
+nodeNames: { 
+  0x14 : L1,
+  0x20 : B1,
+  0x0C : F2,
+  0x1A : L2,
+  0x1C : B2,
+  0x02 : F3,
+  0x1E : L3 
+}
+positionTolerance: 200000
+robotPollRate: 10000000
+windowSize: [320, 240]
+freq: 1,
+maxFreq: 3
