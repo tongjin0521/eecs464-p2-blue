@@ -1,0 +1,16 @@
+# tab seperated values parser
+# created for BIRDS Lab at the University of Michigan
+# for use with floquet analysis tools by
+# Shai Revzen Phd.
+#
+# Chad Schaffer
+# cmschaf@umich.edu
+# 5/7/2015
+from itertools import repeat
+import csv
+
+with open('sample.tsv', 'rb') as tsvin:
+    tsvin = csv.reader(tsvin, delimiter='\t')
+
+    
+
