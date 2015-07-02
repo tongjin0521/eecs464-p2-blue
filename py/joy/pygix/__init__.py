@@ -93,7 +93,7 @@ except ImportError: # pygame import failed
     global _EVENT_Q
     _EVENT_Q.append(evt)
   
-  class Event( dict ):
+  class Event( object ):
     def __init__(self, typecode, attr={}):
       self.type=typecode
       if attr:
@@ -120,8 +120,8 @@ except ImportError: # pygame import failed
     16 : 'TIMEREVENT',     
     17 : 'MIDIEVENT'
   }
-  def event_name(evt):
-    return EVENT_NAMES.get(evt.type, None)
+  def event_name(evType):
+    return EVENT_NAMES.get(evType, None)
     
   def iterEvents():
     global _EVENT_Q,_TNEXT
@@ -136,7 +136,7 @@ except ImportError: # pygame import failed
   def get_impl():
     return True
 
-  EventType = dict
+  EventType = type(Event(0))
 
 ############################################################################
 # These constants are defined for both implementations

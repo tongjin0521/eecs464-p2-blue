@@ -8,6 +8,7 @@ class RemoteSinkApp( JoyApp ):
     
   def onStart( self ):
     self.rs = RemoteSink(self)
+    self.rs.start() # in case of running with no pygame
   
   def onEvent( self, evt ):
     if evt.type == ACTIVEEVENT:
