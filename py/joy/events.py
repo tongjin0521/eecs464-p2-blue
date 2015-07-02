@@ -49,7 +49,7 @@ def describeEvt( evt, parseOnly = False ):
   >>> print joy.events.describeEvt(evt,1)
   {'buttons': (0, 0, 0), 'type': 'MouseMotion', 'pos': (176, 140), 'rel': (0, 1)}
   """
-  assert type(evt) is pygame.event.EventType
+  assert type(evt) is pygix.EventType
   plan = pygix.EVENT_STRUCTURE[evt.type]
   if evt.type<pygix.USEREVENT:
     nm = pygix.event_name(evt.type)
