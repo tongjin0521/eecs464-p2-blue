@@ -1,7 +1,6 @@
 import types, sys
 
-from pygame.locals import *
-import pygame
+from pygix.constants import *
 
 from math import pi,exp,floor
 from warnings import warn
@@ -11,7 +10,7 @@ from loggit import progress, debugMsg, dbgId
 
 from misc import curry,printExc
 
-from events import TIMEREVENT, CKBOTPOSITION, MIDIEVENT, describeEvt
+from events import describeEvt
 DEBUG = []
 
 class Plan( object ):
@@ -114,7 +113,7 @@ class Plan( object ):
     if not self.isRunning():
       return
     for evt in evts:
-      assert type(evt) is pygame.event.EventType
+      assert type(evt) is pygix.EventType
       self.__evts.append(evt)
   
   def onEvent( self, evt ):
@@ -930,11 +929,11 @@ class StickFilter( Plan ):
       func -- callable -- input mapping applied to channel values before filtering
     """
     # Identify the event class
-    if isinstance(evt,pygame.event.EventType):
+    if isinstance(evt,pygix.EventType):
       evt,_ = self.nameValFor(evt)
     if type(evt) != str:
       raise TypeError(
-        "Event '%s' must be string / pygame.event.Event" % repr(evt))
+        "Event '%s' must be string / pygix.Event" % repr(evt))
     # Make sure parameters are lists of floats with matching lengths
     if x0 is None: x0 = [0.0]*len(B)
     else: x0 = [float(x0i) for x0i in x0] 
@@ -959,7 +958,7 @@ class StickFilter( Plan ):
     Retrieves value and puts it on input queue for filter 
     
     INPUT:
-      evt -- pygame.events.EventType object      
+      evt -- pygix.EventType object      
     """
     # Search for key name of this event
     key,val = self.nameValFor(evt)
@@ -976,7 +975,7 @@ class StickFilter( Plan ):
     Sets all previous state variables (X, Y) to zero
     
     INPUT:
-      evt -- pygame.events.EventType object or string name of event channel
+      evt -- pygix.EventType object or string name of event channel
     """
     # Search for key name of this event
     key,val = self.nameValFor(evt)
@@ -1031,11 +1030,11 @@ class StickFilter( Plan ):
     object or the string name of the event.
     """
     # Identify the event class
-    if isinstance(evt,pygame.event.EventType):
+    if isinstance(evt,pygix.EventType):
       evt,_ = self.nameValFor(evt)
     if type(evt) != str:
       raise TypeError(
-        "Event '%s' must be string / pygame.event.Event" % repr(evt))
+        "Event '%s' must be string / pygix.Event" % repr(evt))
     # Retrieve last value from filter
     flt = self.flt[evt]
     return flt[3][0]
