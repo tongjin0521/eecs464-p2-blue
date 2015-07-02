@@ -8,7 +8,7 @@ between processes that may even be running on different machines
 
 from plans import Plan
 from joy.events import JoyEvent, describeEvt
-from pygix import TIMEREVENT, KEYUP, KEYDOWN, postEvent
+from pygix import TIMEREVENT, KEYUP, KEYDOWN, JOYBUTTONUP, JOYBUTTONDOWN, postEvent
 from socket import socket, AF_INET, SOCK_DGRAM, error as SocketError
 from errno import EAGAIN
 from json import loads as json_loads, dumps as json_dumps
@@ -57,7 +57,7 @@ class Sink( Plan ):
     if convert is None:
       def default_convert( dic ):
         tc = dic['type_code']
-        if tc == KEYUP or tc == KEYDOWN:
+        if tc in {KEYUP,KEYDOWN,JOYBUTTONUP,JOYBUTTONDOWN} :
           return dic
         return None
       self.convert = default_convert
