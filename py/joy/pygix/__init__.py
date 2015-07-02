@@ -80,7 +80,7 @@ except ImportError: # pygame import failed
     return pygame screen object
     """
     global _TIMESLICE, _TNEXT
-    _TIMESLICE = cfg.clockInterval
+    _TIMESLICE = cfg.clockInterval / 1000.0
     _TNEXT = now()+_TIMESLICE
     return None
 
@@ -92,8 +92,10 @@ except ImportError: # pygame import failed
     _EVENT_Q.append(evt)
   
   class Event( dict ):
-    def __init__(self, typecode, attr):
-      self.update(type=typecode, **attr)
+    def __init__(self, typecode, attr={}):
+      self.type=typecode
+      if attr:
+        self.__dict__.update(**attr)
 
   ### NOTE: this table needs to be verified!
   EVENT_NAMES = {
@@ -126,8 +128,8 @@ except ImportError: # pygame import failed
     t = now()
     if t<_TNEXT:
       sleep(_TNEXT-t)
-      yield Event( type=TIMEREVENT )
-      _TNEXT = t+_TIMESLICE
+    yield Event( TIMEREVENT )
+    _TNEXT = t+_TIMESLICE
 
   def get_impl():
     return True

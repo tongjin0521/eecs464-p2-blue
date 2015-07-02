@@ -1,4 +1,5 @@
-from joy import *
+from joy import JoyApp
+from joy.decl import *
 from joy.remote import Sink as RemoteSink
 
 class RemoteSinkApp( JoyApp ):
