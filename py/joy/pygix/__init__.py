@@ -16,6 +16,7 @@ try:
   import pygame.locals as constants  
   from pygame.locals import *
   IMPL = "True"
+  _OLD_REPEAT = None
   
   def startup( cfg ):
     """
@@ -25,7 +26,8 @@ try:
     """
     pygame.init()
     # set up key repeating so we can hold down the key to scroll.
-    self.old_k_delay, self.old_k_interval = pygame.key.get_repeat ()
+    global _OLD_REPEAT
+    _OLD_REPEAT = pygame.key.get_repeat ()
     pygame.key.set_repeat (cfg.keyboardRepeatDelay, cfg.keyboardRepeatInterval)
     pygame.time.set_timer(TIMEREVENT, cfg.clockInterval)
     J = [ pygame.joystick.Joystick(k)
@@ -37,7 +39,7 @@ try:
     return screen
 
   def shutdown():
-    pygame.key.set_repeat (self.old_k_delay, self.old_k_interval)
+    pygame.key.set_repeat (*_OLD_REPEAT)
     pygame.quit()
 
   def postEvent(evt ):
