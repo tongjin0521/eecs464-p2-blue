@@ -105,11 +105,6 @@ import scratch
 
 # Joy event classes and support functions
 from events import describeEvt
-from pygix import (
-  TIMEREVENT, CKBOTPOSITION, SCRATCHUPDATE, MIDIEVENT, QUIT,
-  JOYAXISMOTION, JOYBALLMOTION, JOYHATMOTION, JOYBUTTONUP, JOYBUTTONDOWN
-  )
-
 
 # MIDI interface
 try:
@@ -119,6 +114,9 @@ except ImportError:
     progress('*** MIDI support could not be started -- "import midi" failed ')
   def midi_joyEventIter():
     return []  
+
+# Useful constants
+from decl import *
 
 try:
   if PYCKBOTPATH:
