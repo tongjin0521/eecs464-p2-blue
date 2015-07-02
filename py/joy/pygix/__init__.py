@@ -34,7 +34,7 @@ try:
             for k in xrange(pygame.joystick.get_count()) ]
     for joy in J:
       joy.init()  
-    screen = pygame.display.set_mode(self.cfg.windowSize)
+    screen = pygame.display.set_mode(cfg.windowSize)
     pygame.display.flip()
     return screen
 
