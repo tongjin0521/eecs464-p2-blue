@@ -1,5 +1,6 @@
 import types, sys
 
+from pygix import EventType
 from pygix.constants import *
 
 from math import pi,exp,floor
@@ -113,7 +114,7 @@ class Plan( object ):
     if not self.isRunning():
       return
     for evt in evts:
-      assert type(evt) is pygix.EventType
+      assert type(evt) is EventType
       self.__evts.append(evt)
   
   def onEvent( self, evt ):
@@ -929,7 +930,7 @@ class StickFilter( Plan ):
       func -- callable -- input mapping applied to channel values before filtering
     """
     # Identify the event class
-    if isinstance(evt,pygix.EventType):
+    if isinstance(evt,EventType):
       evt,_ = self.nameValFor(evt)
     if type(evt) != str:
       raise TypeError(
@@ -958,7 +959,7 @@ class StickFilter( Plan ):
     Retrieves value and puts it on input queue for filter 
     
     INPUT:
-      evt -- pygix.EventType object      
+      evt -- EventType object      
     """
     # Search for key name of this event
     key,val = self.nameValFor(evt)
@@ -975,7 +976,7 @@ class StickFilter( Plan ):
     Sets all previous state variables (X, Y) to zero
     
     INPUT:
-      evt -- pygix.EventType object or string name of event channel
+      evt -- EventType object or string name of event channel
     """
     # Search for key name of this event
     key,val = self.nameValFor(evt)
@@ -1030,7 +1031,7 @@ class StickFilter( Plan ):
     object or the string name of the event.
     """
     # Identify the event class
-    if isinstance(evt,pygix.EventType):
+    if isinstance(evt,EventType):
       evt,_ = self.nameValFor(evt)
     if type(evt) != str:
       raise TypeError(
