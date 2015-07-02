@@ -7,11 +7,11 @@ between processes that may even be running on different machines
 """
 
 from plans import Plan
-from joy.events import JoyEvent, describeEvt, TIMEREVENT, KEYUP, KEYDOWN
+from joy.events import JoyEvent, describeEvt
+from pygix import TIMEREVENT, KEYUP, KEYDOWN, postEvent
 from socket import socket, AF_INET, SOCK_DGRAM, error as SocketError
 from errno import EAGAIN
 from json import loads as json_loads, dumps as json_dumps
-from pygame.event import post as pygame_event_post
 from loggit import progress
 
 # Default UDP port used for communications
@@ -126,7 +126,7 @@ class Sink( Plan ):
         # Put event on event queue
         nev = JoyEvent( **dic )
         #DBG progress('Remote event:'+str(nev))
-        pygame_event_post(nev)
+        postEvent(nev)
         continue
       # If custom events are allowed --> add to queue
       if self.allow:
