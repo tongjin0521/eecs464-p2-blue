@@ -8,6 +8,7 @@
 # Chad Schaffer
 # cmschaf@umich.edu
 import pylab
+import numpy as np
 from scipy import signal as S
 import util as U
 
@@ -22,30 +23,49 @@ for k in xrange(x.shape[1]):
     for kk in xrange(x.shape[2]):
         xf[:,k,kk] = S.filtfilt(A,B,x[:,k,kk])
 
+
+
 zf = xf[...,0]+1j*xf[...,1]
 
-#zf -= 1000-1200j
+R_tot = []
+I_tot = []
 
-total = pylab.angle(pylab.mean(zf * pylab.exp(1j*pylab.angle(zf).min()),1))
+for n in xrange(zf.shape[0]):
+    R_tot.append(pylab.mean(zf[n,...].real))
+    I_tot.append(pylab.mean(zf[n,...].imag))
 
-c = 0
+c = np.argmax(R_tot)
 
-for n in zf[0]:
-    if zf[n+1][0] < zf[n][0]:
-        c = n
-        break
+R_for_tot = R_tot[0:c]
+I_for_tot = I_tot[0:c]
+
+R_back_tot = R_tot[c:-1]
+I_back_tot = I_tot[c:-1]
+
+for_arc = np.empty([len(R_back_tot), 2])
 
 
-print c
-#el = pylab.asfarray([U.fit_ellipse(xf[400:,k,:2]) for k in xrange(xf.shape[1])])
 
-#mEl = pylab.mean(el,0)
+for n in xrange(len(R_back_tot)):
+    for_arc[n][0] = R_back_tot[n]
+    for_arc[n][1] = I_back_tot[n]
 
-#el.shape = el.shape[:2]
+#with np.errstate(divide='ignore', invalid='ignore'):
+elip = U.fit_ellipse(for_arc)
 
-#zc = el[:,3]/el[:,0]+1j*el[:,4]/el[:,2]
+#elip -> [0]a, [1]b, [2]c, [3]d, [4]e, [5]f
 
-pylab.plot(zf)
+h = (-elip[4]*elip[1] + 2 * elip[2] * elip[3])/ (elip[1]**2 - 4 * elip[0] * elip[2])
+
+k = (-elip[3]*elip[1] + 2 * elip[0] * elip[4])/ (elip[1]**2 - 4 * elip[0] * elip[2]) 
+
+
+R_for_tot = R_for_tot - h
+
+I_for_tot = I_for_tot - k 
+
+
+pylab.plot(R_for_tot, I_for_tot)
 
 pylab.show()
 
