@@ -31,8 +31,14 @@ if __name__=="__main__":
     
   """
   import sys
-  if len(sys.argv)>2:
-    app = RemoteSourceApp(sink=(sys.argv[1],int(sys.argv[2])))
+  from joy.remote import DEFAULT_PORT
+  if len(sys.argv)>1:
+    if len(sys.argv)>2:
+      port = int(sys.argv[2])
+    else:
+      port = DEFAULT_PORT
+      progress("**** Using default port "+str(DEFAULT_PORT))
+    app = RemoteSourceApp(sink=(sys.argv[1],port))
   else:
     app = RemoteSourceApp()
   app.run()
