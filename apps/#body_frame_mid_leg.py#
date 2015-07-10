@@ -80,8 +80,11 @@ if __name__ == "__main__":
         right_point[n][1] = pylab.mean(right_leg[..., n, 1])
         left_point[n][0] = pylab.mean(left_leg[..., n, 0])
         left_point[n][1] = pylab.mean(left_leg[..., n, 1])
-        axis[n][0] = pylab.mean(mid_leg_x[..., n])
-        axis[n][1] = pylab.mean(mid_leg_y[..., n])
+        #axis[n][0] = pylab.mean(mid_leg_x[..., n])
+        #axis[n][1] = pylab.mean(mid_leg_y[..., n])
+
+
+
 
     base_shape = pylab.np.array([right_point, left_point, x[...,6,...], x[...,7,...]])
 
