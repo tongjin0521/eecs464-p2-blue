@@ -8,14 +8,13 @@ pygame modules (which have very few dependencies, and so can be compiled anywher
 you have SDL)
 """
 
-try:
+from constants import *
+
+if IMPL=="True":
   # Pygame dependencies
   import pygame
   import pygame.joystick
   import pygame.event
-  import pygame.locals as constants  
-  from pygame.locals import *
-  IMPL = "True"
   _OLD_REPEAT = None
   
   def startup( cfg ):
@@ -63,11 +62,8 @@ try:
 
   EventType = pygame.event.EventType
         
-except ImportError: # pygame import failed
-  from sys import stderr
-  stderr.write("*** pygame missing; using compatibility wrapper instead\n")
-  import constants
-  from constants import *
+else: # pygame import failed
+  assert IMPL=="False"
   from time import sleep, time as now
   
   _EVENT_Q = []  
