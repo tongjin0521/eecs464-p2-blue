@@ -8,9 +8,13 @@ pygame modules (which have very few dependencies, and so can be compiled anywher
 you have SDL)
 """
 
+# Note: substantial ugliness is encoded in constants to allow it to use 
+#  c implementations of various pygame architectures transparently
+#  regardless of which is used, it becomes the 'constants' sub-module
+#  and its IMPL member indicates which implementation was used
 from constants import *
 
-if IMPL=="True":
+if IMPL=="pygame":
   # Pygame dependencies
   import pygame
   import pygame.joystick
@@ -63,7 +67,7 @@ if IMPL=="True":
   EventType = pygame.event.EventType
         
 else: # pygame import failed
-  assert IMPL=="False"
+  assert IMPL is not None
   from time import sleep, time as now
   
   _EVENT_Q = []  
