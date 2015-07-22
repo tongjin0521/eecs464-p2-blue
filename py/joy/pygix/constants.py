@@ -39,14 +39,13 @@ FILE: constants.py
   >>> IMPL
    'HRM96'
 """
+from sys import stderr
   
 try:
   from pygame.locals import *
   IMPL = "pygame"
 except ImportError: # pygame import failed
-  from sys import stderr
   stderr.write("*** pygame missing; using compatibility wrapper instead\n")
-  del stderr
   IMPL = None
   
 if IMPL is None:
@@ -57,7 +56,10 @@ if IMPL is None:
   for IMPL in ARCH:
     try:
       # See if we can find one
+      stderr.write('*** Trying architecture %s\n' % IMPL)
       fpd = imp.find_module('joy/pygix/constants_'+IMPL)
+      impl = imp.load_module('constants', *fpd)
+      stderr.write('***   ==>> SUCCESS!\n')
       break
     except ImportError:
       continue
@@ -66,7 +68,7 @@ if IMPL is None:
   # Load what we found
   try:
     loc = locals()
-    for nm,val in imp.load_module('constants', *fpd).__dict__.iteritems():
+    for nm,val in impl.__dict__.iteritems():
       if nm.startswith("__"):
         continue
       loc[nm]=val
@@ -75,4 +77,6 @@ if IMPL is None:
     if fpd[0]:
       fpd[0].close()
   # Clean up the namespace
-  del fpd,imp,loc,nm,val,ARCH
+  del fpd,imp,loc,nm,val,ARCH,impl
+
+del stderr
