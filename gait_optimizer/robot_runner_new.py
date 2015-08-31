@@ -25,14 +25,14 @@ except ImportError:
         raise
 
 #global variables for hexapod contact gait specific runs
-minYaw = 23
-maxYaw = 28
+minYaw = 15
+maxYaw = 20
 minRoll = 23
-maxRoll = 28
+maxRoll = 25
 
-minStance = 1.0
-maxStance = 2.0
-numStance = 5
+minStance = 0.5
+maxStance = 1
+numStance = 3
 
 
 def timestamp():
@@ -75,75 +75,82 @@ def wait():
 
 def trials(pt_num):
         
-            file = open('result.csv', 'w')
-            file.close()
-            #create and alter gait params per run
-            yawAmp = np.arange(minYaw, maxYaw, dtype=np.float)
-            rollAmp = np.arange(minYaw, maxYaw, dtype=np.float)
-            stanceVel = np.linspace(minStance, maxStance, numStance)
 
-            j = 0
-            i = 0
-            z = 0
+        #file = open('result.csv', 'w')
+        #file.close()
 
-            while True:
+        
+        #create and alter gait params per run
+        yawAmp = np.arange(minYaw, maxYaw, dtype=np.float)
+        rollAmp = np.arange(minRoll, maxRoll, dtype=np.float)
+        stanceVel = np.linspace(minStance, maxStance, numStance)
+
+        j = 0
+        i = 0
+        z = 0
+
+        while True:
                     
-                    check = run(n, pt_num, yawAmp[j], rollAmp[i], stanceVel[z],'forward')
+                check = run(n, pt_num, yawAmp[j], rollAmp[i], stanceVel[z],'forward')
 
-                    if check != 0:
-                            wait()
-                            continue
+                if check != 0:
+                        wait()
+                        continue
 
-                    
-                    check = run(n, pt_num, yawAmp[j], rollAmp[i], stanceVel[z],'back')
+                        
+                check = run(n, pt_num, yawAmp[j], rollAmp[i], stanceVel[z],'back')
                             
-                    if check != 0:
-                            wait()
-                            continue
+                if check != 0:
+                        wait()
+                        continue
                                     
                         
-                    z = z + 1
-                    if z == stanceVel.size:
-                            z = 0
-                            i = i + 1
-                            if i == rollAmp.size:
-                                    i = 0
-                                    j = j + 1
-                                    if j == yawAmp.size:
-                                            return 1
+                z = z + 1
+                if z == stanceVel.size:
+                        z = 0
+                        i = i + 1
+                        if i == rollAmp.size:
+                                i = 0
+                                j = j + 1
+                                if j == yawAmp.size:
+                                        return 1
 
 def eval():
         result = np.genfromtxt('result.csv', delimiter=',')
         speed = 0
-        rad = pi / 180
+        rad = 180 / pi
         
         
         for i in xrange(result.shape[0]):
                 holder = result[i][0]/ result[i][1]
-                print holder
+                #print holder
                 if holder > speed:
                         if result[i][2] == 0:
                                 speed = holder
                                 row = i
                         
         print "Best run forward: %s" % '\n'
-        print "speed: %f, rollAmp: %f, yawAmp: %f, stanceVel: %f %s" % (speed, result[row][2] * rad, result[row][3] * rad, result[row][4]* rad, '\n')
+        print "speed: %f, rollAmp: %f, yawAmp: %f, stanceVel: %f %s" % (speed, result[row][3] * rad, result[row][4] * rad, result[row][5]* rad, '\n')
         
+        speed = 0
+
         for i in xrange(result.shape[0]):
                 holder = result[i][0]/ result[i][1]
-                print holder
+                #print holder
                 if holder > speed:
                         if result[i][2] == 1:
                                 speed = holder
                                 row = i
         
         print "Best run backward: %s" % '\n'
-        print "speed: %f, rollAmp: %f, yawAmp: %f, stanceVel: %f %s" % (speed, result[row][2] * rad, result[row][3] * rad, result[row][4]* rad, '\n')
+        print "speed: %f, rollAmp: %f, yawAmp: %f, stanceVel: %f %s" % (speed, result[row][3]* rad, result[row][4]* rad, result[row][5]* rad, '\n')
 
 
 
 if __name__=="__main__":
 
+
+        #eval()
 
         pt_num = input("How many markers? ")
         n = 0
@@ -175,5 +182,8 @@ if __name__=="__main__":
 
                if doneFlag == 1:
                         eval()
+                        break
 
-                                       
+
+
+                        
