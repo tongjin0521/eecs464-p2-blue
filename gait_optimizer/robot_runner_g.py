@@ -1,6 +1,13 @@
 """Run the robot, collect and log trial data
 Feature add list:
 -Save data runs as gzipped csv
+
+WRITE = 7 (R1)
+PENALIZE = 2 (X)
+RUN = 3 (SQUARE)
+BACK = 4 (L2)
+EXIT = 1 (CIRCLE)
+
 """
 import subprocess
 import time
@@ -11,6 +18,7 @@ from numpy import array
 from optutil import fminIter
 from evaluator import evaluate
 from speak import say
+
 
 
 try:
@@ -48,9 +56,9 @@ class state_pretrial(super_state):
                 if evt.type == 11:
                     if evt.button == 3: #square button
                         return state_run()
-                    elif evt.button == 4:
+                    elif evt.button == 4: # L2
                         return state_back()
-                    elif evt.button == 2:
+                    elif evt.button == 2: # X button
                         say("Trial aborted, exiting.")
                         return state_exit()
             return state_pretrial()
@@ -124,9 +132,9 @@ class state_choose(super_state):
         def transition_method(self, l):
             for evt in l:
                 if evt.type == 11:
-                    if evt.button == 1:
+                    if evt.button == 1: # Circle
                          return state_penalize_init()
-                    elif evt.button == 7:
+                    elif evt.button == 7: # R1
                          return state_write_init()
                     elif evt.button == 2:
                          return state_exit()  
