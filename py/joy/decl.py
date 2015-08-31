@@ -1,5 +1,8 @@
-from pygame.locals import *
+from pygix.constants import *
 
-from events import (
+from pygix import (
   TIMEREVENT, CKBOTPOSITION, SCRATCHUPDATE, MIDIEVENT
   )
+  
+from loggit import progress
+

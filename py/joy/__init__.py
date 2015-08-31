@@ -62,12 +62,9 @@ from math import floor,exp,pi
 from glob import glob
 from os import environ, getenv, sep as OS_SEP
 
-# Pygame dependencies
-import pygame
-import pygame.joystick
-import pygame.event 
-from pygame.locals import *
-
+# pygame interface or compatibility layer
+import pygix
+  
 # YAML for configuration file parsing and formatting
 import yaml
 
@@ -107,12 +104,19 @@ plans.DEBUG = DEBUG
 import scratch
 
 # Joy event classes and support functions
-from events import (
-  describeEvt, TIMEREVENT, CKBOTPOSITION, SCRATCHUPDATE, MIDIEVENT
-  )
+from events import describeEvt
 
 # MIDI interface
-from midi import joyEventIter as midi_joyEventIter, init as midi_init
+try:
+  from midi import joyEventIter as midi_joyEventIter, init as midi_init
+except ImportError:
+  def midi_init():
+    progress('*** MIDI support could not be started -- "import midi" failed ')
+  def midi_joyEventIter():
+    return []  
+
+# Useful constants
+from decl import *
 
 try:
   if PYCKBOTPATH:
@@ -122,6 +126,7 @@ except NameError:
   PYCKBOTPATH = getenv('PYCKBOTPATH',__path__[0]+OS_SEP+'..'+OS_SEP+'..')
   if PYCKBOTPATH[-1:] != OS_SEP:
       PYCKBOTPATH=PYCKBOTPATH+OS_SEP
+
 
 
 class NoJoyWarning( UserWarning ):
@@ -204,6 +209,8 @@ class JoyAppConfig( object ):
         continue
       setattr(self,key,val)
       
+  
+  
     
 class JoyApp( object ):
   """
@@ -226,8 +233,8 @@ class JoyApp( object ):
   run, which executes the remainder of the life-cycle including the main loop.
   This consists of
   
-   1. onStart is called after successful initialization of all sub-systems,
-      including the pygame application. Plan.start can be called from here; this
+   1. onStart is called after successful initialization of all sub-systems. 
+      Plan.start can be called from here; this
       is a recommended location for starting Plan instances.
   
    2. multiple calls to onEvent, including periodic calls driven by
@@ -235,7 +242,7 @@ class JoyApp( object ):
       active plans. The main loop terminates due to uncaught exceptions in
       onEvent or a call to stop.
       
-   3. onStop, called prior to pygame shutdown.
+   3. onStop, called prior to full shutdown.
      
   """
   def __init__(self, confPath=None, robot=None, scr=None, cfg={}):
@@ -308,7 +315,8 @@ class JoyApp( object ):
       self.__scr_cast = set()
       self.__scr_upd = {}
     # initialize midi module (this is safe to call again multiple times)
-    midi_init()
+    if self.cfg.midi:
+      midi_init()
     # init Plan scheduling structures
     self.plans = [] #: (private) List of currently active Plan instances ("threads")
     self.__new = []    
@@ -325,7 +333,7 @@ class JoyApp( object ):
       keyboardRepeatInterval = 50,
       clockInterval = 20,
       voltagePollRate = 1.0,
-      minimalVoltage = 10,
+      minimalVoltage = 13,
       windowSize = [320,240],
       nodeNames = {},
       logFile = None,
@@ -467,23 +475,6 @@ class JoyApp( object ):
         func = self.robot.setterOf(func)
     return func
   
-  def _startPyGame(self):
-    """(private)
-    
-    Start up the pygame library
-    """
-    pygame.init()
-    # set up key repeating so we can hold down the key to scroll.
-    self.old_k_delay, self.old_k_interval = pygame.key.get_repeat ()
-    pygame.key.set_repeat (self.cfg.keyboardRepeatDelay, self.cfg.keyboardRepeatInterval)
-    pygame.time.set_timer(TIMEREVENT, self.cfg.clockInterval)
-    J = [ pygame.joystick.Joystick(k)
-            for k in xrange(pygame.joystick.get_count()) ]
-    for joy in J:
-      joy.init()  
-    self.screen = pygame.display.set_mode(self.cfg.windowSize)
-    pygame.display.flip()
-    self.isRunning = lambda : True
 
   def _posEventPump( self ):
     """(private)
@@ -502,9 +493,8 @@ class JoyApp( object ):
       if (m.__promise):
         pos = m.pna.async_parse('h',m.__promise)
         if abs(pos-m.__last_pos)>self.cfg.positionTolerance:
-          evt = pygame.event.Event(
-            CKBOTPOSITION, module = m.node_id, pos = pos )
-          pygame.event.post(evt)
+          evt = pygix.Event(CKBOTPOSITION, module = m.node_id, pos = pos )
+          pygix.postEvent(evt)
         m.__last_pos = pos
       m.__promise = m.get_pos_async()
       m.__promise_time = t
@@ -521,13 +511,11 @@ class JoyApp( object ):
       progress('Scratch connection aborted')
       return
     for nm,val in var.iteritems():
-      evt = pygame.event.Event(
-        SCRATCHUPDATE, scr=0, var=nm, value=val )
-      pygame.event.post(evt)
+      evt = pygix.Event(SCRATCHUPDATE, scr=0, var=nm, value=val )
+      pygix.postEvent(evt)
     for nm in bcast:
-      evt = pygame.event.Event(
-        SCRATCHUPDATE, scr=0, var=nm, value=None )
-      pygame.event.post(evt)
+      evt = pygix.Event(SCRATCHUPDATE, scr=0, var=nm, value=None )
+      pygix.postEvent(evt)
       
   # Table of functions for converting various event kinds into Scratch sensors
   SCRATCHY = {
@@ -653,6 +641,15 @@ class JoyApp( object ):
       return False
     return onceEvery
     
+  def _startRemote( self ):
+    """(private) start remote interface if configured"""  
+    if self.cfg.remote is None:
+      self.remote = None
+      return
+    self.remote = remote.Sink(self, convert=lambda x: x, **self.cfg.remote )
+    progress("Starting up a remote.Sink interface")
+    self.remote.start()
+  
   def run( self ):
     """
     Run the JoyApp.
@@ -663,15 +660,11 @@ class JoyApp( object ):
     
     onStop() is called before the application is shut down.
     """
-    self._startPyGame()
-    if self.cfg.remote is None:
-      self.remote = None
-    else:
-      self.remote = remote.Sink(self, convert=lambda x: x, **self.cfg.remote )
-      progress("Starting up a remote.Sink interface")
-      self.remote.start()
-    
+    self.screen = pygix.startup(self.cfg)
+    self.isRunning = lambda : True
+    self._startRemote()    
     try:
+      # Call onStart subclass hook
       self.onStart()
       while self.isRunning():
         self._pollSafety()
@@ -683,16 +676,14 @@ class JoyApp( object ):
           self._scrEventEmit()
         if self.cfg.midi:
           for evt in midi_joyEventIter():
-            pygame.event.post(evt)
-        evts = pygame.event.get()    
-        for evt in evts:
+            pygix.postEvent(evt)            
+        for evt in pygix.iterEvents():
           if evt.type == TIMEREVENT:
             self._timeslice(evt)
-            pygame.display.flip()
           self.onEvent(evt)        
     except Exception,exc:
       printExc()
-    # Make sure we quit pygame regardless of app cleanup bugs
+    # App cleanup bugs
     try:
       self.onStop()
       if self.scr:
@@ -704,8 +695,7 @@ class JoyApp( object ):
         if self.cfg.logProgress: 
           PROGRESS_LOG.remove(self.logger)
     finally:
-      pygame.key.set_repeat (self.old_k_delay, self.old_k_interval)
-      pygame.quit()
+      pygix.shutdown()
   
   def stop(self):
     """
@@ -724,8 +714,8 @@ class JoyApp( object ):
   def onStart(self):
     """(default)
     
-    Override this to run initialization code after pygame and the 
-    main window have been started up.
+    Override this to run initialization code after JoyApp object is initialized
+    but before any plans run
     
     By default, prints a message
     """
@@ -734,7 +724,7 @@ class JoyApp( object ):
   def onStop( self ):
     """(default)
     
-    Override this to run cleanup code before pygame is shut down
+    Override this to run cleanup code before shut down
     
     By default, prints a message
     """
