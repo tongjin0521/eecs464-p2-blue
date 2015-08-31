@@ -29,51 +29,9 @@ Main Functions
 --------------
 describeEvt -- describe an event in a string
 """
-from pygame.locals import *
-import pygame
+import pygix
 
-## Declare new event type numbers
-# TIMEREVENT-s are generated regularly and used to drive Plan execution
-TIMEREVENT = USEREVENT
-# CKBOTPOSITION events indicate a change in the position of a robot module 
-#   a "change" needs to be at least `positionTolerance` units, and position
-#   changes are polled `robotPollRate` seconds apart. Both `positionTolerance`
-#   and `robotPollRate` are configuration parameters and can be set via the
-#   JoyApp.yml configuration file.
-CKBOTPOSITION = USEREVENT+1
-# SCRATCHUPDATE events indicate a change in a Scratch channel
-SCRATCHUPDATE = USEREVENT+2
-# MIDIEVENT-s indicate input from a MIDI device
-MIDIEVENT = USEREVENT+3
 
-_EVENT_STRUCTURE = {
-    QUIT             : (),
-    ACTIVEEVENT      : ('gain', 'state'),
-    KEYDOWN          : ('unicode','key','mod'),
-    KEYUP	         : ('key','mod'),
-    MOUSEMOTION	     : ('pos','rel','buttons'),
-    MOUSEBUTTONUP    : ('pos','button'),
-    MOUSEBUTTONDOWN  : ('pos','button'),
-    JOYAXISMOTION    : ('joy','axis','value'),
-    JOYBALLMOTION    : ('joy','ball','rel'),
-    JOYHATMOTION     : ('joy','hat','value'),
-    JOYBUTTONUP      : ('joy','button'),
-    JOYBUTTONDOWN    : ('joy','button'),
-    VIDEORESIZE      : ('size','w','h'),
-    VIDEOEXPOSE      : (),
-    CKBOTPOSITION    : ('module','pos'),
-    SCRATCHUPDATE    : ('scr','var','value'),
-    TIMEREVENT       : (),
-    MIDIEVENT        : ('dev','sc','kind','index','value'),
-  }
-  
-_JOY_EVENT_NAMES = {
-    SCRATCHUPDATE : "ScratchUpdate",
-    CKBOTPOSITION : "CKBotPosition",
-    TIMEREVENT : "TimerEvent",
-    MIDIEVENT : "MIDIEvent"
-  }
-  
 def describeEvt( evt, parseOnly = False ):
   """
   Describe an event stored in a pygame EventType object.
@@ -91,12 +49,12 @@ def describeEvt( evt, parseOnly = False ):
   >>> print joy.events.describeEvt(evt,1)
   {'buttons': (0, 0, 0), 'type': 'MouseMotion', 'pos': (176, 140), 'rel': (0, 1)}
   """
-  assert type(evt) is pygame.event.EventType
-  plan = _EVENT_STRUCTURE[evt.type]
-  if evt.type<USEREVENT:
-    nm = pygame.event.event_name(evt.type)
+  assert type(evt) is pygix.EventType
+  plan = pygix.EVENT_STRUCTURE[evt.type]
+  if evt.type<pygix.USEREVENT:
+    nm = pygix.event_name(evt.type)
   else:
-    nm = _JOY_EVENT_NAMES.get(evt.type,None)
+    nm = pygix.JOY_EVENT_NAMES.get(evt.type,None)
     if nm is None:
       nm = "EVENT_%02d" % evt.type
   if parseOnly:
@@ -131,10 +89,10 @@ def JoyEvent( type_code=None, **kw ):
     else:
       return ValueError('Unknown event type -- pass a type_code parameter')
   atr = {}
-  for nm in _EVENT_STRUCTURE[et]:
+  for nm in pygix.EVENT_STRUCTURE[et]:
     if kw.has_key(nm):
       atr[nm] = kw[nm]
     else:
       return ValueError('Missing property "%s"' % nm)
-  return pygame.event.Event( et, atr )
+  return pygix.Event( et, atr )
 

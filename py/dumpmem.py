@@ -31,6 +31,8 @@ while arg:
     Options:
        -n <node-id>
          Which node to use
+       -c <count>
+         How many nodes to look for
        -p <port>
          Port descriptor (see port2port.newConnection)
        -o <output-file>
