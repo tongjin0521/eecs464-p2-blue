@@ -2,13 +2,13 @@ import math
 from time import sleep
 import ckbot.logical as L
 nm = {
-    0x14 : 'F',
-    0x20 : 'S1',
-    0x0c : 'S2',
-    0x19 : 'M',
-    0x90 : 'S3',
-    0x02 : 'S4',
-    0x1E : 'H'
+    0x20 : 'F',
+    0x93 : 'S1',
+    0x18 : 'S2',
+    0x13 : 'M',
+    0x09 : 'S3',
+    0x01 : 'S4',
+    0x16 : 'H'
     }
 c = L.Cluster(names=nm, count=7)
 Max_roll = 4000
@@ -18,7 +18,7 @@ r = 0
 r0 = 400
 y0 = 200
 y = 0
-tr = 150
+tr = -7000
 be0 = 100
 be = 0
 be_max= 0

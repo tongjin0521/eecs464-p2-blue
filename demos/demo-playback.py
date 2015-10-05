@@ -3,6 +3,7 @@ from ckbot.posable import PoseRecorder, PoseRecorderCLI
 
 if __name__ == "__main__":
     import ckbot.logical as L
+    L.DEFAULT_PORT=dict(TYPE='TTY',glob='/dev/ttyUSB*',baudrate=57600)
     c = L.Cluster()
     n = input("How many modules to .populate()? ")
     c.populate(n,timeout=n*0.5)

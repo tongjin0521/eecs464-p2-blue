@@ -1,7 +1,7 @@
 import types, sys
 
 from pygix import EventType
-from pygix.constants import *
+from decl import *
 
 from math import pi,exp,floor
 from warnings import warn
