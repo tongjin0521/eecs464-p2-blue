@@ -210,8 +210,8 @@ class Segment(object):
         self.ls = ls
 
 
-  def set_pos(self,yaw,bend,roll):
-    A = matrix([[2,0.5,0],[-2,0.5,0],[0,0,1]],dtype='float') 
+  def set_pos(self,yaw,bend,roll, b):
+    A = matrix([[2,0.5,1],[-2,0.5,1],[0,0,1]],dtype='float') 
     #numpy.matrix([[2,0.5,0],[-2,0.5,0],[0,0,1]],dtype='float')
     pos=A * matrix([[yaw],[bend],[roll]])
     if self.f!=None:
@@ -219,7 +219,17 @@ class Segment(object):
     if self.b!=None:
       self.b.set_pos(pos[1])
     if self.l!=None:
-      self.l.set_pos(pos[2])
+      self.l.set_pos(b * pos[2])
+
+  def set_pos_2(self,yaw,bend,roll, b):
+    A = matrix([[2,0.5,1], [-2,0.5,1],[0,0,1]],dtype='float')
+    pos=A * matrix([[yaw],[bend],[roll]])
+    if self.f!=None:
+      self.f.set_pos(-pos[0])
+    if self.b!=None:
+      self.b.set_pos(pos[1])
+    if self.l!=None:
+      self.l.set_pos(b* pos[2])
 
 class MechapodApp( JoyApp ):
 
@@ -239,29 +249,34 @@ class MechapodApp( JoyApp ):
   #import parameters for the gait for each run gp is a gaitParams() object  
   def setParams(self, gp, back):
     self.gp = gp
-    self.gp.maxFreq= .3
-    self.gp.maxBend = 900
-    self.gp.freq = 1
+    #self.gp.maxFreq= .3
+    #self.gp.maxBend = 900
+    #self.gp.freq = 1
     if back == 'back':
       self.backward = 1
       
   def _tripodGaitFun( self, phi ):  		      
+    
+    if self.backward == 1:
+      phiB = -phi
+      b = -1
+    else:
+      phiB = phi
+      b = 1
+
     g1 = self.gait1
     g2 = self.gait2
     g3 = self.gait3
     
     #for legs 1 & 3
-    g1.manageGait(phi)
+    g1.manageGait(phiB)
     s1roll = math.degrees(g1.roll)
     s1yaw = math.degrees(g1.yaw)
     
-    g3.manageGait(phi)
+    g3.manageGait(phiB)
     s3roll = math.degrees(g3.roll)
     s3yaw = math.degrees(g3.yaw)
 
-    if self.backward == 1:
-      s1yaw = -s1yaw
-      s3yaw = -s3yaw
 		
     #for leg 2: give phi2 = (phi1 + 0.5) mod 1
     if(phi > 0.5):
@@ -269,15 +284,20 @@ class MechapodApp( JoyApp ):
     else:
         phi2 = phi + 0.5
         
-    g2.manageGait(phi2) 
+    if self.backward == 1:
+      phi2B = -phi2
+    else:
+      phi2B = phi2
+
+    g2.manageGait(phi2B) 
     s2roll = math.degrees(g2.roll)
     s2yaw = math.degrees(g2.yaw)
     
 
     #roll/yaw are deg, need to convert to centidegrees
-    self.S1.set_pos(s1yaw*100, g1.bend, s1roll*100)  
-    self.S2.set_pos(s2yaw*100, g2.bend, s2roll*100)   
-    self.S3.set_pos(-s3yaw*100, -g3.bend, -s3roll*100)      #facing opposite     
+    self.S1.set_pos(s1yaw*100, g1.bend, s1roll*100, b)  
+    self.S2.set_pos_2(s2yaw*100, g2.bend, s2roll*100, b)   
+    self.S3.set_pos(-s3yaw*100, -g3.bend, -s3roll*100, b)      #facing opposite     
 
 
   def onStart(self):    
@@ -295,7 +315,7 @@ class MechapodApp( JoyApp ):
     self.stickMode = False
     
     #removed gait params, they are set from outside
-    #SEE self.setParams
+    #SEE self.setParams()
     
     self.gait1 = contactGait(self.gp, self.S1.l)  #+
     self.gait2 = contactGait(self.gp, self.S2.l)
@@ -349,9 +369,9 @@ class MechapodApp( JoyApp ):
   def onStop(self):
         progress("Stopped robot")
 
-        self.S1.set_pos(0, 0, 0)  
-        self.S2.set_pos(0, 0, 0)   
-        self.S3.set_pos(0, 0, 0)
+        self.S1.set_pos(0, 0, 0, 1)  
+        self.S2.set_pos(0, 0, 0, 1)   
+        self.S3.set_pos(0, 0, 0, 1)
         self.robot.off()
         #sys.exit()
            
@@ -382,7 +402,7 @@ if __name__=="__main__":
   robot = None
   
   L.DEFAULT_BUS = DX
-  L.DEFAULT_PORT = dict(TYPE="tty", baudrate=115200, glob="/dev/ttyUSB*")
+  L.DEFAULT_PORT = dict(TYPE="tty", baudrate=1000000, glob="/dev/ttyUSB*")
  
 
   #calculate params based on agruments fed per run
@@ -391,8 +411,8 @@ if __name__=="__main__":
   gp.rollAmp = float(sys.argv[4])*math.pi/180
   gp.yawAmp = float(sys.argv[3])*math.pi/180 #8
   gp.stanceVel = float(sys.argv[5])*math.pi/180
-  gp.rollThresh = gp.rollAmp * -23 / 30.0 # default
-  gp.yawThresh = gp.yawAmp * -12 / 13.0 # defa
+  gp.rollThresh = gp.rollAmp * -24 / 25.0 # default
+  gp.yawThresh = gp.yawAmp * -3 / 5.0 # defa
 
   app=MechapodApp(robot=dict(
       arch=DX,count=7
