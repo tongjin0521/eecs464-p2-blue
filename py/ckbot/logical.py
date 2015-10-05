@@ -894,8 +894,7 @@ Module.Types['V0.1-ATX'] = IR_Node_Atx
 Module.Types['PolServoModule'] = pololu.ServoModule
 Module.Types['HitecServoModule'] = hitec.ServoModule
 Module.Types['HitecMotorModule'] = hitec.MotorModule
-Module.Types['Dynamixel-006b'] = dynamixel.EX106Module
-Module.Types['Dynamixel-0040'] = dynamixel.RX64Module
-Module.Types['Dynamixel-0200'] = dynamixel.RX64Module
-Module.Types['Dynamixel-0136'] = dynamixel.MX64Module
-
+# Inherit all module ID strings defined in dynamixel.MODELS
+Module.Types.update(
+  { tc : mc for tc,(mm,mc) in dynamixel.MODELS.iteritems() }
+  )
