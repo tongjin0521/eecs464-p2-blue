@@ -32,8 +32,7 @@ import pololu
 import hitec
 import dynamixel
 
-DEFAULT_ARCH = dynamixel
-DEFAULT_PORT = None
+from defaults import *
 
 def nids2str( nids ):
   return ",".join(["Nx%02x" % nid for nid in nids])

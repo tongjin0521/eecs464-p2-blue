@@ -20,7 +20,7 @@ while arg:
     arg[:2]=[]
     continue
   if arg[0] == "-p":
-    port = arg[1]
+    port = eval(arg[1])
     arg[:2]=[]
     continue
   if arg[0] == "-o":
