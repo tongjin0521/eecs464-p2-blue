@@ -12,8 +12,7 @@ Created on Sat Sep  6 12:02:16 2014
 
 # Uses UDP sockets to communicate
 from socket import (
-  socket, AF_INET,SOCK_DGRAM, IPPROTO_UDP, error as SocketError,
-#  INADDR_ANY, IPPROTO_IP, IP_ADD_MEMBERSHIP, inet_aton,
+  socket, AF_INET,SOCK_STREAM, IPPROTO_TCP, error as SocketError,
   )
 # Packets are JSON enocoded
 from json import loads as json_loads
@@ -26,23 +25,31 @@ from joy import Plan, progress
 #  to students during the development process
 from waypointShared import *
 
-class SensorPlan( Plan ):
+class SensorPlanTCP( Plan ):
   """
-  SensorPlan is a concrete Plan subclass that uses a UDP socket to 
+  SensorPlan is a concrete Plan subclass that uses a TCP socket to 
   and decode WayPoint messages
   """
   def __init__( self, app, *arg, **kw ):
+    if kw.has_key("server"):
+      self.svrAddr = (kw['server'],WAYPOINT_MSG_PORT)
+      del kw['server']
+    else:
+      self.svrAddr = (WAYPOINT_HOST,WAYPOINT_MSG_PORT)    
     Plan.__init__(self, app, *arg, **kw )
     self.sock = None
     self.lastSensor = (0,None,None)
     self.lastWaypoints = (0,[])
+    self.buf = ''
           
   def _connect( self ):
     """Set up the socket"""
-    s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
-    s.bind(("",WAYPOINT_MSG_PORT))
+    s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)
+    s.connect(self.svrAddr)
     s.setblocking(0)
     self.sock = s
+    self.buf = ''
+    progress("Sensor connected to %s:%d" % self.svrAddr)
 
   def stop( self ):
     """(called when stopping) clean up the socket, if there is one"""
@@ -81,7 +88,7 @@ class SensorPlan( Plan ):
         """
         # receive an update / skip
         try:
-          return self.sock.recv(1024)
+          msg = self.sock.recv(1024)
         except SocketError, se:
           # If there was no data on the socket
           #   --> not a real error, else kill socket and start a new one
@@ -89,7 +96,17 @@ class SensorPlan( Plan ):
             progress("Connection failed: "+str(se))
             self.sock.close()
             self.sock = None
-        return '' # nothing received
+          return ''
+        # Use previously buffered data
+        msg = self.buf + msg
+        # End of dictionary should be end of message
+        f = msg.find("}")
+        if f<0:
+          self.buf = msg
+          return ''
+        # Pull out the first dictionary
+        self.buf = msg[f+1:]
+        return msg[:f+1]
         
   def behavior( self ):
     """
