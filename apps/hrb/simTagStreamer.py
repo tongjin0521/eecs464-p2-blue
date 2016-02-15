@@ -55,7 +55,6 @@ class RobotSimulatorApp( JoyApp ):
     # Get the simulated tag message
     msg = self.robSim.getTagMsg()
     # Send message to waypointServer "as if" we were tagStreamer
-    progress("MMM" + msg)
     self.sock.sendto(msg, self.srvAddr)
     
   def onEvent( self, evt ):
@@ -63,8 +62,8 @@ class RobotSimulatorApp( JoyApp ):
     if self.timeForStatus(): 
       self.showSensors()
     # generate simulated laser readings
-    ###if self.timeForLaser():
-    ###  progress( self.robSim.logLaserValue(self.now) )
+    if self.timeForLaser():
+      progress( self.robSim.logLaserValue(self.now) )
     # update the robot and simulate the tagStreamer
     if self.timeForFrame(): 
       self.emitTagMessage()
