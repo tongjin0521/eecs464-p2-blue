@@ -372,7 +372,7 @@ while len(waypoints)>M: # continue until goal is reached
     'b' : sensorB.sense( a, b, znr[ROBOT_TAGID,2]+znr[ROBOT_TAGID,3], r ),
   }
   # Check for waypoint capture
-  if (r<15) and ( abs(b)<r ):
+  if (r<50) and ( abs(b)<r ):
     for h in tgth:
       h.set_linewidth(3)
       h.set_color([0,0,1])

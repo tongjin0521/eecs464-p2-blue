@@ -36,16 +36,17 @@ class RobotSimulatorApp( JoyApp ):
     self.timeForLaser = self.onceEvery(1/15.0)
     self.timeForFrame = self.onceEvery(1/20.0)
     progress("Using %s:%d as the waypoint host" % self.srvAddr)
+    self.T0 = self.now
 
   def showSensors( self ):
     ts,f,b = self.sensor.lastSensor
     if ts:
-      progress( "Sensor: %d f %d b %d" % (ts,f,b)  )
+      progress( "Sensor: %4d f %d b %d" % (ts-self.T0,f,b)  )
     else:
       progress( "Sensor: << no reading >>" )
     ts,w = self.sensor.lastWaypoints
     if ts:
-      progress( "Waypoints: %d " % ts + str(w))
+      progress( "Waypoints: %4d " % (ts-self.T0) + str(w))
     else:
       progress( "Waypoints: << no reading >>" )
   
@@ -61,9 +62,10 @@ class RobotSimulatorApp( JoyApp ):
     # periodically, show the sensor reading we got from the waypointServer
     if self.timeForStatus(): 
       self.showSensors()
-    # generate simulated laser readings
-    if self.timeForLaser():
       progress( self.robSim.logLaserValue(self.now) )
+      # generate simulated laser readings
+    elif self.timeForLaser():
+      self.robSim.logLaserValue(self.now)
     # update the robot and simulate the tagStreamer
     if self.timeForFrame(): 
       self.emitTagMessage()
