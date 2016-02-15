@@ -1,10 +1,13 @@
 # file simTagStreamer.py simulates a robot in an arena
 
-from sensorPlan import SensorPlan
+from sensorPlanTCP import SensorPlanTCP
 from robotSim import DummyRobotSim
 from joy import JoyApp, progress
 from joy.decl import *
 from waypointShared import WAYPOINT_HOST, APRIL_DATA_PORT
+from socket import (
+  socket, AF_INET,SOCK_DGRAM, IPPROTO_UDP, error as SocketError,
+  )
 
 class RobotSimulatorApp( JoyApp ):
   """Concrete class RobotSimulatorApp <<singleton>>
@@ -21,8 +24,12 @@ class RobotSimulatorApp( JoyApp ):
     self.srvAddr = (wphAddr, APRIL_DATA_PORT)
     
   def onStart( self ):
+    # Set up socket for emitting fake tag messages
+    s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+    s.bind(("",0))
+    self.sock = s
     # Set up the sensor receiver plan
-    self.sensor = SensorPlan(self)
+    self.sensor = SensorPlanTCP(self,server=self.srvAddr[0])
     self.sensor.start()
     self.robSim = DummyRobotSim(fn=None)
     self.timeForStatus = self.onceEvery(1)
@@ -47,16 +54,17 @@ class RobotSimulatorApp( JoyApp ):
     self.robSim.refreshState()
     # Get the simulated tag message
     msg = self.robSim.getTagMsg()
-    # Use the sensor socket (dual-use) to send to waypointServer
-    self.sensor.sendto(msg, self.srvAddr)
+    # Send message to waypointServer "as if" we were tagStreamer
+    progress("MMM" + msg)
+    self.sock.sendto(msg, self.srvAddr)
     
   def onEvent( self, evt ):
     # periodically, show the sensor reading we got from the waypointServer
     if self.timeForStatus(): 
       self.showSensors()
     # generate simulated laser readings
-    if self.timeForLaser():
-      progress( self.robSim.logLaserValue(self.now) )
+    ###if self.timeForLaser():
+    ###  progress( self.robSim.logLaserValue(self.now) )
     # update the robot and simulate the tagStreamer
     if self.timeForFrame(): 
       self.emitTagMessage()
@@ -75,8 +83,9 @@ class RobotSimulatorApp( JoyApp ):
         self.robSim.turn(0.5)
         return progress("(say) Turn right")
     # Use superclass to show any other events
-    return JoyApp.onEvent(self,evt)
-
+      else:
+        return JoyApp.onEvent(self,evt)
+    return # ignoring non-KEYDOWN events
 
 if __name__=="__main__":
   print """

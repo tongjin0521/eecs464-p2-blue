@@ -119,7 +119,7 @@ class RobotSimInterface( object ):
     """
     # Cache a list of the corner tags. They don't move
     if self._msg is None:
-      self._msg = tags2list({ tid : MSG_TEMPLATE[tid] for tid in corners})
+      self._msg = tags2list({ tid : asfarray(MSG_TEMPLATE[tid]) for tid in corners})
     # Collect robot and waypoint locations
     state = { ROBOT_TAGID[0] : self.tagPos }
     state.update( self.waypoints )

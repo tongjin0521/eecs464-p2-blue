@@ -16,7 +16,8 @@ execfile('waypointShared.py')
 #### CONFIGURATION ##################################################
 
 # Host & Port for sending sensor readings
-ROBOT_INET_ADDR = ("172.16.16.16",0xBAA)
+#ROBOT_INET_ADDR = ("172.16.16.16",0xBAA)
+ROBOT_INET_ADDR = ("127.0.0.1",0xBAA)
 
 # Tag ID for robot
 ROBOT_TAGID = [ 4 ]

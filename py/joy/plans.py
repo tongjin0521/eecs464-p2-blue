@@ -89,7 +89,7 @@ class Plan( object ):
     self.app = app
     self.__evts = []
     self.__stack = []
-    if not hasattr(self,'_binding'):
+    if binding and not hasattr(self,'_binding'):
       self._initBindings(app,binding)
 
   def _initBindings( self, app, binding, allowOverride = False ):

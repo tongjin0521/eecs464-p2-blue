@@ -13,8 +13,7 @@ APRIL_DATA_PORT = 0xB00
 WAYPOINT_HOST = "10.0.0.1"
 
 # Port for Waypoint messages
-WAYPOINT_MSG_PORT = 0xBAA
-WAYPOINT_LISTENERS = [ "224.0.1.133" ] + [ "10.0.0.%d" % h for h in xrange(2,12) ]
+WAYPOINT_MSG_PORT = 8080
 
 # Corners of the arena, in order
 corners = [26,23,27,22,29,24,28,25]
