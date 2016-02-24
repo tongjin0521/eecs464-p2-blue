@@ -236,12 +236,11 @@ class dynamixelConfigurator:
           self._defaultPort()
         progress("Scanning for 0x%02X" % nid)
         for baud in self._baudPlan():
-            progress("+++ baud = " + str(baud))
             self.p.bus.reconnect(baudrate = baud)
-            self.p.reset()
+            self.p.reset(nodes=[nid])
             if self.p.pnas.has_key(nid):
                 tpe = self.read_type(nid)
-                progress(' ID 0x%02x: %s Module  found at baudrate %d ' % (nid, tpe, baud))
+                progress(' ID 0x%02x: %s Module found at baudrate %d ' % (nid, tpe, baud))
                 return
         progress( 'ID 0x%02x not found' % nid )
         return 

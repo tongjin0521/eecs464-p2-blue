@@ -1100,7 +1100,7 @@ class Protocol( AbstractProtocol ):
         self.heartbeats = {}
         self.requests = deque()
         self.pollRing = deque()
-        self.ping_rate = 1.0
+        self.ping_rate = ping_rate
         if nodes is None:
             progress("Scanning bus for nodes \n")
             nodes = self.scan()
