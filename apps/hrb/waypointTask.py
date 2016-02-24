@@ -278,8 +278,7 @@ while len(waypoints)>M: # continue until goal is reached
   #
   # Apply homography to all the points
   uvs = dot(pts,prj)
-  # reflect the y axis because cameras are flipped
-  z = uvs[...,0] - 1j*uvs[...,1] 
+  z = uvs[...,0] + 1j*uvs[...,1] 
   nz = ~isnan(z[:,0])
   nz &= asarray(uvs[:,0,-1],dtype=bool)
   z[nz,...] /= uvs[nz,...,[-1]]
