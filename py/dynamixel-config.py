@@ -237,7 +237,12 @@ class dynamixelConfigurator:
         progress("Scanning for 0x%02X" % nid)
         for baud in self._baudPlan():
             self.p.bus.reconnect(baudrate = baud)
-            self.p.reset(nodes=[nid])
+            while True:
+              try:
+                self.p.reset(nodes=[nid], ping_rate=0.1)
+                break
+              except dynamixel.ProtocolError,pe:
+                print str(pe), "retrying..."
             if self.p.pnas.has_key(nid):
                 tpe = self.read_type(nid)
                 progress(' ID 0x%02x: %s Module found at baudrate %d ' % (nid, tpe, baud))
