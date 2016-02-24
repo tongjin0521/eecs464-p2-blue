@@ -36,8 +36,12 @@ APRIL_DATA_PORT = 0xB00
 # Corners of the arena, in order
 corners = [26,23,27,22,29,24,28,25]
 
-# Reference locations of corners, with 1 in the last coordinate
-ref = array([
+try:
+  assert ref.ndim == 2
+except NameError:
+  # If a ref location was not defined in waypointShared
+  # Reference locations of corners, with 1 in the last coordinate
+  ref = array([
     [-1,0,1,1,1,0,-1,-1],
     [1,1,1,0,-1,-1,-1,0],
     [1.0/100]*8]).T * 100
