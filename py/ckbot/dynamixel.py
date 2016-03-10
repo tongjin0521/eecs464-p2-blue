@@ -1671,7 +1671,31 @@ class MX64Module(DynamixelModule ):
         """
         """
         DynamixelModule.__init__( self, node_id, typecode, pna )
-
+        self.reset_xpos()
+  
+    def reset_xpos(self):
+        """
+        Reset rotation count for the extended position read by get_xpos()
+        """
+        self.lastPos = 0
+        self.xrot = 0
+      
+    def get_xpos(self):
+        """
+        Get extended position 
+        
+        Returns position as floating point in units of rotation.
+        This can count an indefinite number of rotations, and may be
+        used in Motor mode to get position
+        """
+        pos = float(self.get_pos()-self.MIN_ANG)/self.MAX_ANG
+        if abs(pos-self.lastPos)>0.5:
+          if pos<self.lastPos:
+            self.xrot += 1
+          else:
+            self.xrot -= 1
+        self.lastPos = pos
+        return self.xrot + pos
 
 class MX28Module(DynamixelModule ):
     """
