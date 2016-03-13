@@ -144,9 +144,9 @@ class SychronizedMX(JoyApp):
         JoyApp.__init__(self, *arg, **kw)
 
     def onStart(self):
-      self.smx = [
-        ServoWrapperMX(self,self.robot.at.MX1),
-        ServoWrapperMX(self,self.robot.at.MX2),
+      self.smx = [ ServoWrapperMX(self,m)
+        for m in self.robot.itermodules()
+        if isinstance(m,MX64Module)
       ]
       for s in self.smx:
         s.start()
@@ -155,15 +155,11 @@ class SychronizedMX(JoyApp):
       if evt.type != KEYDOWN:
         return
       else:
-        f1 = "1234567890".find(evt.unicode)
-        f2 = "qwertyuiop".find(evt.unicode)
-        if f1>=0:
-          progress("MX1 to " + str(f1))
-          self.smx[0].set_ang(f1*0.1)
-        elif f2>=0:
-          progress("MX2 to " + str(f2))
-          self.smx[1].set_ang(f2*0.1)
-        if f1>=0 or f2>=0:
+        f = "1234567890".find(evt.unicode)
+        if f>=0:
+          progress("MXs to " + str(f))
+          for s in self.smx:
+            s.set_ang(f*0.1)
           return
       return JoyApp.onEvent(self,evt)
       
@@ -174,6 +170,16 @@ if __name__ == '__main__':
   
     The application can be terminated with 'q' or [esc]
     """
+    import sys
+    if len(sys.argv)!=2:
+      sys.stderr.write("""
+Usage:  python %s <<count>>
+   count -- number of modules in cluster.
+            Note: only MX64 modules will be controlled
+""" % sys.argv[0])
+      sys.exit(-1)
     app = SychronizedMX(
-        robot=dict(count=2, names=SERVO_NAMES))
+        robot=dict(count=int(sys.argv[1])
+                   ,port=dict(TYPE='TTY', glob="/dev/ttyACM*", baudrate=115200)
+        ))
     app.run()
