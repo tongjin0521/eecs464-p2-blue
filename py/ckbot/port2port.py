@@ -92,7 +92,12 @@ class SerialConnection( Serial, Connection ):
       self.path = port_path
     else:
       self.path = "<<COULD-NOT-OPEN>>"
-  
+
+  """Since pySerial decided to break things, lets un-break them"""
+  if not hasattr(Serial,'getSupportedBaudRates'):
+     def getSupportedBaudrates(self):
+        return [ (b,None) for b in self.BAUDRATES ]
+
   def __repr__(self):
     r = object.__repr__(self)
     return "%s %s %d:%d%s>" % (r[:-1],self.path, self.baudrate,self.stopbits,self.parity )
