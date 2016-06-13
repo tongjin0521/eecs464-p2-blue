@@ -444,6 +444,36 @@ class MemInterface( object ):
     else:
       self.set(key,val)
     
+class MemIxMixin( object ):
+  """
+  Module mixin class implementing memory interface
+
+  This adds mem_read and mem_write methods, and a get_mem 
+  """
+       
+  def mem_write( self, addr, val ):
+     "Write a byte to a memory address in the module's microcontroller"
+     self.pna.set( self.GIO_W_VAL, "B", val )
+     self.pna.set( self.GIO_W_ADDR, "H", addr )
+
+  def mem_read( self, addr ):
+     "Read a memory address from the module's microncontroller"
+     self.pna.set( self.GIO_R_ADDR, "H", addr )
+     return self.pna.get_sync( self.GIO_R_VAL, "B" )
+     
+  def mem_getterOf( self, addr ):
+     "Return a getter function for a memory address"
+     # Create the closure
+     def getter():
+       return self.mem_read(addr)
+     return getter
+     
+  def mem_setterOf( self, addr ):
+     "Return a setter function for a memory address"
+     # Create the closure
+     def setter(val):
+       return self.mem_write(addr,val)
+     return setter
 
 class GenericModule( Module ):
   """

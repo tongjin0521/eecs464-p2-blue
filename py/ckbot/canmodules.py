@@ -1,6 +1,9 @@
-from ckmodule import Module
+from ckmodule import Module, MemInterface, MemIxMixin
 
 import P18F2680
+
+def crop( val, lower, upper ):
+  return max(min(val,upper),lower)
 
 class MemAt0x1010( object ):
   GIO_R_ADDR = 0x1011
@@ -409,13 +412,14 @@ class IR_Node_Atx( Module, MemAt0x1010, MemIxMixin):
      self.mcu = None
      self.mem = MemInterface( self )
 
-#Register module types:
-Module.Types['V1.3'] = V1_3Module
-Module.Types['V1.4'] = V1_4Module
-Module.Types['mm'] =ICRA_Motor_Module
-Module.Types['V1.0-MM'] =Motor_Module_V1_0_MM
-Module.Types['GenericIO'] =GenericIO
-Module.Types['Sensor0.6'] =SensorNode_v06
-Module.Types['Sensor0.2'] =SensorNode_v06
-Module.Types['V0.1-ATX'] = IR_Node_Atx
+def _register_types(tbl):
+  #Register module types:
+  tbl['V1.3'] = V1_3Module
+  tbl['V1.4'] = V1_4Module
+  tbl['mm'] =ICRA_Motor_Module
+  tbl['V1.0-MM'] =Motor_Module_V1_0_MM
+  tbl['GenericIO'] =GenericIO
+  tbl['Sensor0.6'] =SensorNode_v06
+  tbl['Sensor0.2'] =SensorNode_v06
+  tbl['V0.1-ATX'] = IR_Node_Atx
 
