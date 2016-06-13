@@ -2,15 +2,16 @@ import math
 from time import sleep
 import ckbot.logical as L
 nm = {
-    0x20 : 'F',
-    0x93 : 'S1',
-    0x18 : 'S2',
-    0x13 : 'M',
-    0x09 : 'S3',
-    0x01 : 'S4',
-    0x16 : 'H'
+    0x1E : 'F',
+    0x20 : 'S1',
+    0x0C : 'S2',
+    0x19 : 'M',
+    0x1C : 'S3',
+    0x08 : 'S4',
+    0x14 : 'H'
     }
-c = L.Cluster(names=nm, count=7)
+PORT = dict(TYPE='TTY', glob='/dev/ttyUSB*', baudrate=1000000)
+c = L.Cluster(names=nm, count=7, port=PORT)
 Max_roll = 4000
 Max_yaw = 2000
 phase = 0
@@ -18,7 +19,7 @@ r = 0
 r0 = 400
 y0 = 200
 y = 0
-tr = -7000
+tr = 2000
 be0 = 100
 be = 0
 be_max= 0
