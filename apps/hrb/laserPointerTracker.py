@@ -6,7 +6,7 @@ from time import time as now
 
 class LaserTracker( object ):
   def __init__(self, fn=None):
-    self.cam = JpegStreamCamera("http://admin:admin@192.168.1.148/video.mjpg")
+    self.cam = JpegStreamCamera("http://admin:admin@192.168.254.125/video.mjpg")
     self.win = Display((800,600))
     self.clearBG()
     if not fn:
@@ -89,8 +89,7 @@ if __name__=="__main__":
   import sys
   if len(sys.argv) != 2:
     sys.stderr.write("Usage: %s <filename>\n" % sys.argv[0])
-    #fn = 'foo.csv.gz'
-    fn = "foo.csv"
+    fn = 'foo.csv.gz'
   else:
     fn = sys.argv[1]
     #if not fn.endswith('.gz'):

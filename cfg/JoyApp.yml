@@ -11,6 +11,7 @@ nodeNames: {
   0x07: H22,
   0x08: K22,
 }
+minimalVoltage : 10
 positionTolerance: 200000
 robotPollRate: 10000000
 windowSize: [320, 240]
