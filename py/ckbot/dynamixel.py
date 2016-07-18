@@ -404,7 +404,7 @@ class Bus( AbstractBus ):
         """
         List of supported baud rates
         """
-        return [ b[1] for b in self.ser.getSupportedBaudrates() ]
+        return self.ser.getSupportedBaudrates()
 
     def reset( self ):
         """
