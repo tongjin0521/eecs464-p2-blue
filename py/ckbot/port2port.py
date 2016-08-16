@@ -96,6 +96,8 @@ class SerialConnection( Serial, Connection ):
   """Since pySerial decided to break things, lets un-break them"""
   if not hasattr(Serial,'getSupportedBaudRates'):
      def getSupportedBaudrates(self):
+        if type(self.BAUDRATES[0]) is int:
+          return list(self.BAUDRATES)
         return [ (b,None) for b in self.BAUDRATES ]
 
   def __repr__(self):

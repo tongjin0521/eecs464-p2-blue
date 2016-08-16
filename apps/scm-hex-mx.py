@@ -8,15 +8,10 @@ from ckbot.dynamixel import MX64Module
 
 #v07
 
-'''
+
 SERVO_NAMES = {
-   0x02: 'FL', 0x06 : 'ML', 0x0A : 'HL',
-   0x04: 'FR', 0x08 : 'MR', 0x0C : 'HR'
-}
-'''
-SERVO_NAMES = {
-   0x06: 'FL', 0x0C: 'ML', 0x0E: 'HL',
-   0x04: 'FR', 0x22: 'MR', 0x08: 'HR'
+   0x0E: 'FL', 0x0C: 'ML', 0x2E: 'HL',
+   0x08: 'FR', 0x3C: 'MR', 0x04: 'HR'
 }
 
 
@@ -317,25 +312,25 @@ class SCMHexApp(JoyApp):
                     #f = (1 - self.rate) * f - self.rate * self.limit
                     f -= 0.2
                 f = clip(f, -1.5, 1.5)
-                if abs(f) < 1.0 / self.limit:
+                if abs(f) < 0.1: # too slow is "stopped"
                     self.fcp.setPeriod(0)
                     progress('(say) stop')
+                    progress('!!!!!!!!!!!!')
                 else:
                     self.fcp.setPeriod(1 / f)
                     if f>0:
-                        progress('(say) advance')
+                        progress('(say) forward')
                     else:
-                        progress('(say) retreat')                    
+                        progress('(say) back')                    
                 self.freq = f
                 progress('Period changed to %g, %.2f Hz' % (self.fcp.period, f))
             elif event in (K_LEFT, K_RIGHT) or event in (13, 15):
-				dTurn = 1 if event in (K_LEFT,13) else -1
-				self.turn = clip(self.turn + dTurn * 0.1, -1, 1)
-				progress('Turn is %.2f' % self.turn)
+				      dTurn = 1 if event in (K_LEFT,13) else -1
+				      self.turn = clip(self.turn + dTurn * 0.1, -1, 1)
+				      progress('Turn is %.2f' % self.turn)
 	    return
         if evt.type not in [TIMEREVENT, JOYAXISMOTION, MOUSEMOTION]:
             JoyApp.onEvent(self, evt)
-
 
 if __name__ == '__main__':
     print """
@@ -347,7 +342,7 @@ if __name__ == '__main__':
   switching between position and speed control, giving approximate RPM
   command, and polling for the motor to be out the other side
   
-  h -- help
+  h -- reset stance
   q -- quit
   arrow keys -- speed/slow and turn
   SPACE -- pause / resume
@@ -365,7 +360,7 @@ if __name__ == '__main__':
         # for actual operation use w/ arch=DX & NO required line:
         L.DEFAULT_BUS = DX
         app = SCMHexApp(
-            cfg = dict( logFile = "/tmp/log" ),
+            cfg = dict( logFile = "/tmp/log", logProgress=True ),
             robot=dict(arch=DX, count=6, names=SERVO_NAMES,
 #                       port=dict(TYPE='TTY', glob="/dev/ttyACM*", baudrate=115200)
                        port=dict(TYPE='TTY', glob="/dev/ttyUSB*", baudrate=115200)
