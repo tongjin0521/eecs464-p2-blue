@@ -132,12 +132,12 @@ class SCMHexApp(JoyApp):
         #DEBUG.extend(list('Fr'))
         self.T0 = self.now
         self.leg = [
-            ServoWrapperMX(self.robot.at.FL, logger=self.logger, ori=-1),
-            ServoWrapperMX(self.robot.at.ML, logger=self.logger, ori=-1),
-            ServoWrapperMX(self.robot.at.HL, logger=self.logger, ori=-1),
-            ServoWrapperMX(self.robot.at.FR, logger=self.logger ),
-            ServoWrapperMX(self.robot.at.MR, logger=self.logger ),
-            ServoWrapperMX(self.robot.at.HR, logger=self.logger ),
+            ServoWrapperMX(self.robot.at.FL, logger=self.logger, posOfs = 0.5, ori=-1),
+            ServoWrapperMX(self.robot.at.ML, logger=self.logger, posOfs = 0.5, ori=-1),
+            ServoWrapperMX(self.robot.at.HL, logger=self.logger, posOfs = 0.5, ori=-1),
+            ServoWrapperMX(self.robot.at.FR, logger=self.logger, posOfs = 0.5 ),
+            ServoWrapperMX(self.robot.at.MR, logger=self.logger, posOfs = 0.5 ),
+            ServoWrapperMX(self.robot.at.HR, logger=self.logger, posOfs = 0.5 ),
         ]
         self.fcp = FunctionCyclePlan(self, self._fcp_fun, 128, maxFreq=1.75, interval=0.05)
         self.walk = Walk(self)
@@ -174,7 +174,7 @@ class SCMHexApp(JoyApp):
         goal = [ self.bueh.at(des) for des in self.moving * (aDes + tInf) % 1.0 ]
         for leg, ga in zip(self.leg, goal):
             leg.set_ang(ga)
-        progress( ("TRI goal %.3f" % self.fcp.phase)+"\t".join([ "%+4.2f" % v for v in goal]))#, sameLine = True)
+        progress( ("TRI goal %.3f" % self.fcp.phase)+"\t".join([ "%+4.2f" % v for v in goal]), sameLine = True)
 
     def onEvent(self,evt):
         try:
