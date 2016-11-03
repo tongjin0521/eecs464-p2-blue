@@ -4,7 +4,7 @@ from numpy import nan, asfarray, prod, isnan, pi, clip, sin, angle, sign, round
 from cmath import exp
 from time import sleep, time as now
 from ckbot.dynamixel import MX64Module
-
+from joy.mxr import ServoWrapperMX
 
 #v07
 
@@ -50,153 +50,11 @@ class Buehler(object):
       res = (phi-self.duty)*((1-self.sweep) / (1-self.duty))+self.sweep       
     return (res+1-self.resOfs) % 1.0
 
-class ServoWrapperMX(object):
-    zeroAngle = 0.55
-    
-    def __init__(self, servo, logger=None, **kw):
-        assert isinstance(servo, MX64Module), "only works with MX"
-        self.servo = servo
-        self.aScl = 36000.0  # servo units per rotation
-        self.rpmScl = 1 / 64.0
-        self.posOfs = 0
-        self.ori = 1
-        self.desAng = 0
-        self.desRPM = 00
-        self.Kp = 25.0
-        self.Kv = 0
-        self.logger = logger
-        self._clearV()
-        self._v = nan
-        self.__dict__.update(kw)
-        self._ensure_motor = self._set_motor
-        self._ensure_servo = self._set_servo
-
-    def doCtrl(self):
-        """execute an interaction of the controller update loop"""
-        a = exp(1j * self.get_ang()*2*pi)
-        a0 = exp(1j * self.desAng*2*pi)
-        lead = angle(a / a0)
-        if abs(lead)>0.7*pi:
-            if "F" in DEBUG:
-                progress("FB desRPM %g out of range" % (self.desRPM))
-                    # outside of capture range; ignore
-            return
-        pFB = clip(self.Kp * lead, -45, 45)
-        if isnan(self._v):
-            vFB = 0
-        else:
-            vFB = self.Kv * (self._v - self.desRPM)
-        rpm = self.desRPM - pFB - vFB
-        if abs(rpm)<0.1:
-            rpm = 0
-        if "F" in DEBUG:
-            progress("FB desRPM %g p %g v %g" % (self.desRPM, pFB, vFB))
-        if self.logger:
-            self.logger.write( "ctrl", nid=self.servo.node_id,  
-                              desRPM=str(self.desRPM), pFB=str(pFB), vFB=str(vFB) )
-        # Push into the motor
-        self._set_rpm(rpm)
-
-    def _set_servo(self):
-        """(private) set module in servo mode
-
-            also configures the _ensure_* callbacks        
-        """
-        self.servo.set_mode(0)
-        if "h" in DEBUG:
-            progress("%s.set_mode('Servo')" % (self.servo.name))
-        if self.servo.get_mode() == 0:
-            self._ensure_servo = lambda: None
-        self._ensure_motor = self._set_motor
-
-    def _set_motor(self):
-        """(private) set module in motor mode
-
-            also configures the _ensure_* callbacks        
-        """
-        self.servo.set_mode(1)
-        if "h" in DEBUG:
-            progress("%s.set_mode('Motor')" % (self.servo.name))
-        if self.servo.get_mode() == 1:
-            self._ensure_motor = lambda: None
-        self._ensure_servo = self._set_servo
-
-    def _set_pos(self, pos):
-        self.servo.set_pos(pos)
-
-    def set_ang(self, ang):
-        self.desAng = (ang + self.zeroAngle) % 1.0
-        if "s" in DEBUG:
-            progress("%s.set_angle(%g)" % (self.servo.name, ang))
-        if self.logger:
-            self.logger.write( "set_ang", nid=self.servo.node_id, ang=str(ang) )
-
-    def get_ang(self):
-        pos = self.servo.get_pos()
-        ang = (pos - self.posOfs) / self.aScl / self.ori
-        if "g" in DEBUG:
-            progress("%s.get_angle --> %g" % (self.servo.name, ang))
-        if self.logger:
-            self.logger.write( "get_ang", nid=self.servo.node_id, ang=str(ang) )
-        self._updateV(ang)
-        return ang
-
-    def _clearV(self):
-        """Clear state of velocity estimator"""
-        self._lastA = None
-        self._lastT = None
-
-    def _updateV(self, ang):
-        """
-        Push angle measurement into velocity estimator
-        """
-        t = now()
-        if self._lastA is not None:
-            da = ang - self._lastA
-            dt = t - self._lastT
-            vNew = da / dt * 60.0  # angle is in rotations, dt seconds
-            # If no previous estimate --> use current estimate
-            if isnan(self._v):
-                self._v = vNew
-            else:  # Use first order lowpass to smooth velocity update
-                a = 0.2
-                self._v = self._v * (1 - a) + vNew * a
-        self._lastA = ang
-        self._lastT = t
-
-    def adjustV(self, ratio):
-        """adjust scaling of the velocity to make motors match up"""
-        self.rpmScl = clip(self.rpmScl * ratio, 0.3 / 64, 3.0 / 64)
-
-    def set_rpm(self, rpm):
-        self.desRPM = rpm
-        return self._set_rpm(rpm)
-
-    def _set_rpm(self, rpm):
-        """Push an RPM setting to the motor"""
-        self._ensure_motor()
-        tq = clip(self.rpmScl * self.ori * rpm, -0.999, 0.999)
-        if "r" in DEBUG:
-            progress("%s.set_torque(%g) <-- rpm %g" % (self.servo.name, tq, rpm))
-        self.servo.set_torque(tq ) #+ sign(tq) * 0.08)
-
 class TurnInPlace(Plan):
     def __init__(self,app,legs):
         Plan.__init__(self,app)
         self.legs = legs
         self.turn = 0.2
-
-    def behavior2(self):
-        # radii of the leg midstance from centre of rotation
-        tDir = asfarray([1,1,1,-1,-1,-1])
-        ang = asfarray([0,0,0,1,1,1])
-        dur = 1.0
-        steps = 10
-        for k in xrange(steps):
-            ang += tDir / steps
-            for leg,a in zip(self.legs,ang):
-                leg.set_ang(a)
-            yield self.forDuration(dur/steps)
 
     def behavior(self):
         bias = asfarray([0,0.03,0,0.03,0,0]) # asfarray([0,0.1,0,0,0.1,0])
@@ -217,11 +75,56 @@ class TurnInPlace(Plan):
     def setTurn(self, t):
         self.turn = t
 
+class Walk(Plan):
+    def __init__(self,app):
+        Plan.__init__(self,app)
+        self.dur = 1
+        
+    def behavior(self):
+        legs = self.app.leg
+        walk = self.app.fcp
+        # Get legs ready for walking
+        progress("(say) preparing to walk")
+        goal = asfarray([0,0.5]*3)
+        def knot(scl):
+          for leg,ga in zip(legs,goal*scl):
+            leg.set_ang(ga)
+          ang = asfarray([leg.get_ang() for leg in legs])
+          progress("... at "+str(ang.round(2)))
+          progress("... to "+str((goal*scl).round(2)))
+          err = ang-(goal*scl)
+          return all(abs(err)<0.1)    
+        while not knot(0.5):
+          progress("... prep 1 ...")
+          yield self.forDuration(0.1)
+        while not knot(1.0):
+          progress("... prep 1 ...")
+          yield self.forDuration(0.1)
+        # Start walking
+        progress("(say) walking")
+        walk.resetPhase()
+        yield walk
+
+class Stand(Plan):        
+    def behavior(self):
+      # Need to break self.app encapsulation, or write ton more code
+      if self.app.walk.isRunning():
+        progress("(say) halting")
+        self.app.halt = True
+        while any(self.app.moving):
+          progress('...wait...' +str(self.app.moving))
+          yield self.forDuration(0.1)
+      progress("(say) standing")
+      for leg in self.app.leg:
+          leg.set_ang(0)
+      yield self.forDuration(0.5)
+
+### TODO (Revzen): code up general transition manager
 
 class SCMHexApp(JoyApp):
     def __init__(self, *arg, **kw):
         JoyApp.__init__(self, *arg, **kw)
-        self.bueh = Buehler( -0.25, 0.3, 0.85 )
+        self.bueh = Buehler(-.3, 0.8, 0.8 )
 
     def onStart(self):
         global off
@@ -236,11 +139,9 @@ class SCMHexApp(JoyApp):
             ServoWrapperMX(self.robot.at.MR, logger=self.logger ),
             ServoWrapperMX(self.robot.at.HR, logger=self.logger ),
         ]
-        self.triL = self.leg[0::2]
-        self.triR = self.leg[1::2]
         self.fcp = FunctionCyclePlan(self, self._fcp_fun, 128, maxFreq=1.75, interval=0.05)
-        self.iwp = FunctionCyclePlan(self, self._inch_fun, 128, maxFreq=1.75, interval=0.05)
-        #self.fcp = FunctionCyclePlan(self, lambda ignore : None, 256, maxFreq=0.5, interval=0.01)
+        self.walk = Walk(self)
+        self.stand = Stand(self)
         self.freq = 5/60.0
         self.turn = 0
         self.Kturn = 0.24  #0.12 original
@@ -248,42 +149,18 @@ class SCMHexApp(JoyApp):
         self.limit = 1 / 0.30
         self.moving = asfarray([1] * 6)
         self.halt = 1
-        # set motors at initial position
-        for leg in self.triL:
-            leg.set_ang(0.5)
-        for leg in self.triR:
-            leg.set_ang(0)
         self.isCtrlTime = self.onceEvery(0.1)
         self.ctrlQueue = [ l for l in self.leg ]
         self.fcp.setPeriod(1/self.freq)
-        self.fcp.start()
-        self.iwp.setPeriod(1/self.freq)
         self.tip = TurnInPlace(self, self.leg)
         self.cmd = None
 
-    def _inch_fun(self, phase):
-        # Desired angle for left and right tripods
-        aL = phase - 0.5
-        aDes = asfarray([aL, aL-0.33, aL+0.33, aL,aL-0.33,aL+0.33])
-        if self.halt:
-            # elements close to zero angle stop moving
-            self.moving[abs(aDes)<.1]=0
-        else:
-            self.moving[:]=1
-        	
-        goal = (self.moving * aDes) % 1.0
-        for leg, des in zip(self.leg, goal):
-            leg.set_ang(self.bueh.at(des))
-        progress( "IWP goal "+"\t".join([ "%+4.2f" % v for v in goal]), sameLine = True)
-
     def _fcp_fun(self, phase):
-        # Desired angle for left and right tripods
-        aL = phase - 0.5
-        aR = ((phase + 0.5) % 1.0) - 0.5  #((phase + 0.5) % 1.0) - 0.5 original
-        aDes = asfarray([aL, aL, aL, aR, aR, aR])
+        # Legs array is FL ML HL FR MR HR
+        aDes = asfarray([0,0.5,0,0.5,0,0.5]) + phase
         if self.halt:
             # elements close to zero angle stop moving
-            self.moving[abs(aDes)<.1]=0
+            self.moving[abs((aDes+.1) % 1.0)<.2]=0
         else:
             self.moving[:]=1
         	
@@ -294,10 +171,10 @@ class SCMHexApp(JoyApp):
         assert all(abs(tInf)<0.15), "Sanity check on turn influence"
         # progress("inf "+str(tInf))
 		    #tInf = self.turn * self.Kturn * asfarray([-1,-1,-1,0,0,0])#1,-1,1,-1,1,-1
-        goal = self.moving * (aDes + tInf) % 1.0
-        for leg, des in zip(self.triL + self.triR, goal):
-            leg.set_ang(self.bueh.at(des))
-        progress( "TRI goal "+"\t".join([ "%+4.2f" % v for v in goal]), sameLine = True)
+        goal = [ self.bueh.at(des) for des in self.moving * (aDes + tInf) % 1.0 ]
+        for leg, ga in zip(self.leg, goal):
+            leg.set_ang(ga)
+        progress( ("TRI goal %.3f" % self.fcp.phase)+"\t".join([ "%+4.2f" % v for v in goal]))#, sameLine = True)
 
     def onEvent(self,evt):
         try:
@@ -307,6 +184,7 @@ class SCMHexApp(JoyApp):
             self.stop()
         except Exception,ex:
             progress(str(ex))
+            self.stop()
             
     def _onEvent(self, evt):
         if self.now-self.T0 > 300: # Controller time limit
@@ -317,25 +195,9 @@ class SCMHexApp(JoyApp):
                 l = self.ctrlQueue.pop(0)
                 l.doCtrl()
                 self.ctrlQueue.append(l)
-            # also piggyback some housekeeping
-            if not (self.cmd or self.fcp.isRunning() or  self.tip.isRunning() or self.iwp.isRunning()):
-                    self.fcp.start()
         event = None
         if evt.type == KEYDOWN:
            event = evt.key
-        elif evt.type == JOYAXISMOTION:
-           if evt.axis == 0:
-             if evt.value < -0.5:
-               event = K_LEFT
-             elif evt.value > 0.5:
-               event = K_RIGHT
-           elif evt.axis == 1:
-             if evt.value < -0.5:
-               event = K_DOWN
-             elif evt.value > 0.5:
-               event = K_UP
-        elif evt.type == JOYBUTTONDOWN:
-           event = evt.button
         if event is not None:
             if event in [K_q, K_ESCAPE] or event == 8:  # 'q' and [esc] stop program
                 self.stop()
@@ -348,16 +210,19 @@ class SCMHexApp(JoyApp):
             elif event == K_h:
                 self.halt = (self.halt == 0)
                 if self.halt:
-                  progress("(say) Halting motion")  
+                  if self.walk.isRunning():
+                      self.walk.stop()
+                  self.stand.start()  
                 else:
-                  progress("(say) Starting motion")
-                
+                  if self.stand.isRunning():
+                      self.stand.stop()
+                  self.walk.start()
+                 
             elif event == K_s:
-                if any(self.moving):
-                  self.halt = 1
-                  progress("(say) halting first; try again after")
+                if self.fcp.isRunning():
+                  progress("(say) stopping first")
+                  self.stand.start()
                 else:
-                  self.fcp.stop()
                   progress("(say) Enter position commands")
                   # Get a list from the use and complete it to 6 entries by appending zeros
                   self.cmd = list(input("Positions (as 6-tuple, or [] to return to normal mode):"))
@@ -365,23 +230,12 @@ class SCMHexApp(JoyApp):
                     for l,a in zip(self.leg, self.cmd):
                       l.set_ang(a)
                   progress("Set to:" + str(self.cmd))
-            elif event == K_i:
-                if any(self.moving):
-                  self.halt = 1
-                  progress("(say) halting first; try again after")
-                if self.iwp.isRunning():
-                  progress("(say) Leaving inchworm")
-                  self.iwp.stop()
-                else:
-                  progress("(say) starting inchworm")
-                  self.fcp.stop()
-                  self.iwp.start()
                 
             elif event == K_z or event == K_x:
-                if any(self.moving):
-                    self.halt = 1
+                if any(self.fcp.isRunning()):
+                    self.stand.start()
+                    progress("Standing first")
                 else:
-                    self.fcp.stop()
                     if event == K_z:
                         self.tip.setTurn(-0.2)
                     else:
@@ -391,18 +245,16 @@ class SCMHexApp(JoyApp):
                 f = self.freq                
                 if event == K_UP or event == 12:
                     #f = (1 - self.rate) * f + self.rate * self.limit
-                    f += 0.2
+                    f += 0.02
                 else:
                     #f = (1 - self.rate) * f - self.rate * self.limit
-                    f -= 0.2
+                    f -= 0.02
                 f = clip(f, -1.5, 1.5)
                 if abs(f) < 0.1: # too slow is "stopped"
                     self.fcp.setPeriod(0)
-                    self.iwp.setPeriod(0)
                     progress('(say) stop')
                 else:
                     self.fcp.setPeriod(1 / f)
-                    self.iwp.setPeriod(1 / f)
                     if f>0:
                         progress('(say) forward')
                     else:
