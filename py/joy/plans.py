@@ -1261,3 +1261,37 @@ class MultiClick( Plan ):
     """
     return self.app.onMultiClick(self,evts)
 
+
+class AnimatorPlan(Plan):
+    """
+    Concrete class AnimatorPlan 
+    
+    Wrapper for making easy animations using matplotlib and JoyApp.
+    
+    USAGE:
+      The AnimatorPlan constructor is given a function that takes a matplotlib
+      figure object and updates the figure each iteration.
+    """
+    def __init__(self,app,fun=None,fps=20):
+      Plan.__init__(self,app)
+      self.set_fps(fps)
+      self.set_generator(fun)
+    
+    def set_fps(self,fps):
+      """Set FPS for animation"""      
+      self.delay = 1.0 / fps
+
+    def set_generator(self,fun):
+      """
+      Set the frame generator function
+      INPUT:
+         fun -- function -- takes matplotlib.figure and returns a generator
+            that updates the figure every .next() call
+      """
+      assert callable(fun)
+      self.fun = fun
+      
+    def behavior(self):
+      for fr in self.fun(self.app.fig):
+        self.app.animate()
+        yield self.forDuration(self.delay)
