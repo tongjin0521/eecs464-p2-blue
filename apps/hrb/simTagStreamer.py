@@ -19,7 +19,7 @@ class RobotSimulatorApp( JoyApp ):
   """    
   def __init__(self,wphAddr=WAYPOINT_HOST,*arg,**kw):
     JoyApp.__init__( self,
-      confPath="$/cfg/JoyApp.yml",
+      confPath="$/cfg/JoyApp.yml", *arg, **kw
       ) 
     self.srvAddr = (wphAddr, APRIL_DATA_PORT)
     
@@ -78,10 +78,10 @@ class RobotSimulatorApp( JoyApp ):
         self.robSim.move(-0.5)
         return progress("(say) Move back")
       elif evt.key == K_LEFT:
-        self.robSim.turn(-0.5)
+        self.robSim.turn(0.5)
         return progress("(say) Turn left")
       elif evt.key == K_RIGHT:
-        self.robSim.turn(0.5)
+        self.robSim.turn(-0.5)
         return progress("(say) Turn right")
     # Use superclass to show any other events
       else:
@@ -98,8 +98,8 @@ if __name__=="__main__":
   """
   import sys
   if len(sys.argv)>1:
-      app=RobotSimulatorApp(wphAddr=sys.argv[1])
+      app=RobotSimulatorApp(wphAddr=sys.argv[1], cfg={'windowSize' : [160,120]})
   else:
-      app=RobotSimulatorApp(wphAddr=WAYPOINT_HOST)
+      app=RobotSimulatorApp(wphAddr=WAYPOINT_HOST, cfg={'windowSize' : [160,120]})
   app.run()
 
