@@ -86,7 +86,7 @@ class Sensor( object ):
     self.radius = None
     self.noise = 0.01
 
-  def sense( self, a, b, c, scale=0.2 ):
+  def sense( self, ax, a, b, c, scale=0.2 ):
     """Compute sensor measurement for line from a to b, given
        sensor location c and a scale factor
     """
@@ -98,9 +98,8 @@ class Sensor( object ):
     x = z.real * (b-a) + a
     d = z.imag * abs(b-a)
     res = lineSensorResponse( d/scale, self.noise )
-    plot( [c.real, x.real], [c.imag, x.imag], 
+    ax.plot( [c.real, x.real], [c.imag, x.imag], 
       *self.lineargs, **self.linekw )
-    text( (c.real+x.real)/2, (c.imag+x.imag)/2, 
+    ax.text( (c.real+x.real)/2, (c.imag+x.imag)/2, 
       "%d" % res, ha='center',va='center' )
     return int(res)
-
