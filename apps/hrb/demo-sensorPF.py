@@ -5,6 +5,14 @@ FILE: demo-sensorPF.py
   responses
 """
 
+# Go headless
+from matplotlib import use as mpl_use
+mpl_use('Agg')
+frm1 = "./dpf/fr1-%02d.png"
+frm2 = "./dpf/fr2-%02d.png"
+print "Output frames at:",frm1, frm2
+fr = 0
+
 from time import sleep
 from waypointShared import lineSensorResponse, lineDist
 
@@ -71,7 +79,9 @@ while True:
     plot( pos.real, pos.imag, 'r+', ms = 15, mew=3)
     plot( pts[best].real, pts[best].imag, 'bx', ms = 15, mew=2)
     axis('equal'); axis([-0.5,1.5,-0.5,1.5])
+    savefig(frm1 % fr)
     figure(2); clf()    
     bar(arange(Num),wgt)
-    draw()
+    savefig(frm2 % fr)
+    fr = (fr + 1) % 100
     sleep(0.05)

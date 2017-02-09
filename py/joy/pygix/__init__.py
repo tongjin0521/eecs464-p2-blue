@@ -58,8 +58,13 @@ if IMPL=="pygame":
     evts = pygame.event.get()    
     for evt in evts:
       if evt.type == TIMEREVENT:
-        pygame.display.flip()
+        pygame.display.update()
       yield evt
+
+  def showMplFig(buf,sz,scr,bg=(255,255,255)):
+    img = pygame.image.frombuffer(buf,sz,'RGBA')
+    scr.fill(bg)
+    scr.blit(img,(0,0))
 
   def get_impl():
     return True
@@ -132,6 +137,10 @@ else: # pygame import failed
       sleep(_TNEXT-t)
     yield Event( TIMEREVENT )
     _TNEXT = t+_TIMESLICE
+
+  def showMplFig(buf,sz,bg=(255,255,255)):
+    "Running headless"
+    pass
 
   def get_impl():
     return True

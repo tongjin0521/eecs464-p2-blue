@@ -64,7 +64,17 @@ from os import environ, getenv, sep as OS_SEP
 
 # pygame interface or compatibility layer
 import pygix
-  
+
+# Try to get matplotlib with Agg backend
+try:
+    from matplotlib import use as mpl_use
+    mpl_use('Agg')
+    from matplotlib.pylab import figure
+except ImportError:
+    print ">>> matplotlib not found; plotting disabled"
+    def figure(*arg,**kw):
+        return None
+        
 # YAML for configuration file parsing and formatting
 import yaml
 
@@ -661,6 +671,10 @@ class JoyApp( object ):
     onStop() is called before the application is shut down.
     """
     self.screen = pygix.startup(self.cfg)
+    # Obtain figure for plotting; None if running headless
+    w,h = self.cfg.windowSize
+    self.fig = figure(figsize=(w/80,h/80),dpi=80)
+    self._frame = None
     self.isRunning = lambda : True
     self._startRemote()    
     try:
@@ -676,11 +690,15 @@ class JoyApp( object ):
           self._scrEventEmit()
         if self.cfg.midi:
           for evt in midi_joyEventIter():
-            pygix.postEvent(evt)            
+            pygix.postEvent(evt)
+        if self._frame:
+            buf,sz = self._frame
+            pygix.showMplFig(buf,sz,self.screen)
+            self._frame = None            
         for evt in pygix.iterEvents():
           if evt.type == TIMEREVENT:
             self._timeslice(evt)
-          self.onEvent(evt)        
+          self.onEvent(evt)   
     except Exception,exc:
       printExc()
     # App cleanup bugs
@@ -697,6 +715,15 @@ class JoyApp( object ):
     finally:
       pygix.shutdown()
   
+  def animate(self):
+      """
+      Get image in self.fig for presenting next GUI update
+      
+      If no self.fig (headless system), call is silently ignored
+      """
+      if self.fig:
+          self._frame = self.fig.canvas.print_to_buffer()
+      
   def stop(self):
     """
     Stop the JoyApp
@@ -705,7 +732,6 @@ class JoyApp( object ):
    
   def _startPlan( self, plan ):
     """(private)
-    
     Called by Plan.start() to notify JoyApp that plan should be started
     """
     if not plan in self.plans:
@@ -743,6 +769,12 @@ class JoyApp( object ):
       progress( describeEvt(evt) )
       if self.logger:
         self.logger.write('event',**describeEvt(evt,parseOnly=1))
+      if self.fig and evt.type==KEYDOWN:
+          self.fig.clf()
+          ax = self.fig.gca()
+          ax.plot([-1,1,1,1,-1],[-1,-1,1,1,-1],'w-')
+          ax.text(0,0,evt.unicode)
+          self.animate()
     if evt.type==QUIT or (evt.type==KEYDOWN and evt.key in (K_q,K_ESCAPE)):
        self.stop()
 

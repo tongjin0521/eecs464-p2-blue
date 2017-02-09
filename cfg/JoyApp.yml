@@ -14,6 +14,6 @@ nodeNames: {
 minimalVoltage : 10
 positionTolerance: 200000
 robotPollRate: 10000000
-windowSize: [320, 240]
+windowSize: [800, 600]
 # remote : { allowMisc : 10 }
 

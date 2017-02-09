@@ -1,11 +1,20 @@
+
+# Go headless
+from matplotlib import use as mpl_use
+mpl_use('Agg')
+frm = "./ptt/fr%02d.png"
+print "Output frames at:",frm
+
 from socket import socket, AF_INET, SOCK_DGRAM, error as SocketError
-from numpy import asarray,zeros_like,kron,concatenate,newaxis
-from numpy.linalg import lstsq, svd, inv
-from json import loads as json_loads, dumps as json_dumps
+from numpy import asarray,zeros_like,kron,concatenate,array,mean,dot,angle,pi
+from numpy.linalg import svd
+from matplotlib.pyplot import savefig, plot, axis, clf, text
+from json import loads as json_loads
 from sys import stdout
 
 if __name__ != "__main__":
   raise RuntimeError("Run this as a script")
+
 
 try:
   s.close()
@@ -71,6 +80,7 @@ ax = array([
 ])*1.2
 
 allow = set(corners + [12,14,13,15])
+fr = 0
 while True: #number of samples
   try:
     while True:
@@ -131,5 +141,6 @@ while True: #number of samples
       ha='center',va='center' )
     axis(ax)
   #
-  draw()
+  savefig(frm % fr)
+  fr = (fr+1) % 100
   stdout.flush()
