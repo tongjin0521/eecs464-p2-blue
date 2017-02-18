@@ -1532,14 +1532,17 @@ class DynamixelModule( AbstractServoModule ):
         Gets the actual position of the module
         """
         dxl = self.mem_read(self.mcu.present_position)
-        #TODO: convert to units of deg/100
         return self.dynamixel2ang(dxl)
 
     def get_pos_async(self):
         """
-        Returns None, indicating that this functionality is not supported for this module class
+        Returns a promise for the get_pos value. A promise is a list which
+        will eventually contain a value or an exception object
+        
+        NOTE: the value needs to be converted using .dynamixel2ang() if
+        the usual centi-degree units are wanted
         """
-        return None 
+        return self.pna.mem_read_async(self.mcu.present_position)
         
     def set_pos(self,val):
         """
@@ -1608,7 +1611,6 @@ class DynamixelModule( AbstractServoModule ):
       INPUT:
           val -- unit from 0.0 to 1.0 where 1.0 is the maximum torque
       """
-
       if val > 1.0:
         val = 1.0
       elif val < 0.0:
