@@ -109,7 +109,6 @@ class CRMXServoPlan(Plan):
           fb = clip(-self.Kp * lead, -45, 45)
           # Only give feedback commands if they are sufficiently large to matter
           rpm = fb if abs(fb)<self.minFb else 0
-              rpm = 0
           if "F" in DEBUG:
               progress("FB %g lead %g at %g" % (rpm,lead,angle(a)))
           # Push into the motor
