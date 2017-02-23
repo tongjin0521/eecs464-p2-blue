@@ -1,14 +1,69 @@
-# file simTagStreamer.py simulates a robot in an arena
+# file robotSimulator.py simulates a robot in an arena
 
 from sensorPlanTCP import SensorPlanTCP
-from robotSim import DummyRobotSim
+from robotSim import DummyRobotSim,RobotSimInterface
 from joy import JoyApp, progress
 from joy.decl import *
+from joy.plans import Plan
 from waypointShared import WAYPOINT_HOST, APRIL_DATA_PORT
 from socket import (
   socket, AF_INET,SOCK_DGRAM, IPPROTO_UDP, error as SocketError,
   )
+from pylab import randn,dot,mean,exp,newaxis
 
+class MoveForward(Plan):
+  def __init__(self,app,simIX):
+    Plan.__init__(self,app)
+    self.simIX = simIX
+    # Distance to travel
+    self.dist = 10
+    # Duration of travel [sec]
+    self.dur = 3
+    # Number of intermediate steps
+    self.N = 10
+    # Noise level for forward motion
+    self.dNoise = 0.05
+    
+  def behavior(self):
+    s = self.simIX
+    # Compute step along the forward direction
+    step = (dot([1,-1,-1,1],s.tagPos)*2.0/float(self.N)*self.dist)[newaxis,:]
+    dt = self.dur / float(self.N)
+    for k in xrange(self.N):
+      # Move all tag corners forward by distance, with some noise
+      s.tagPos = s.tagPos + step * (1+randn()*self.dNoise)
+      yield self.forDuration(dt)
+
+class Turn(Plan):
+  def __init__(self,app,simIX):
+    Plan.__init__(self,app)
+    self.simIX = simIX
+    # Angle to turn [rad]
+    self.ang = 0.1
+    # Duration of travel [sec]
+    self.dur = 3.0
+    # Number of intermediate steps
+    self.N = 10
+    # Noise level for turn motion
+    self.aNoise = 0.005
+    
+  def behavior(self):
+    s = self.simIX
+    # Compute rotation step
+    dt = self.dur / float(self.N)
+    rot = exp(1j * self.ang / float(self.N))
+    for k in xrange(self.N):
+      # Get current tag location
+      z = dot(s.tagPos,[1,1j])
+      c = mean(z)
+      # Rotate with angle noise
+      zr = c + (z-c) * rot * exp(1j*randn()*self.aNoise)
+      # Store as new tag 
+      s.tagPos[:,0] = zr.real
+      s.tagPos[:,1] = zr.imag
+      yield self.forDuration(dt)
+          
+          
 class RobotSimulatorApp( JoyApp ):
   """Concrete class RobotSimulatorApp <<singleton>>
      A JoyApp which runs the DummyRobotSim robot model in simulation, and
@@ -32,6 +87,8 @@ class RobotSimulatorApp( JoyApp ):
     self.sensor = SensorPlanTCP(self,server=self.srvAddr[0])
     self.sensor.start()
     self.robSim = DummyRobotSim(fn=None)
+    self.moveP = MoveForward(self,self.robSim)
+    self.turnP = Turn(self,self.robSim)
     self.timeForStatus = self.onceEvery(1)
     self.timeForLaser = self.onceEvery(1/15.0)
     self.timeForFrame = self.onceEvery(1/20.0)
@@ -71,17 +128,21 @@ class RobotSimulatorApp( JoyApp ):
       self.emitTagMessage()
 
     if evt.type == KEYDOWN:
-      if evt.key == K_UP:
-        self.robSim.move(0.5)
+      if evt.key == K_UP and not self.moveP.isRunning():
+        self.moveP.dist = 1.0
+        self.moveP.start()
         return progress("(say) Move forward")
-      elif evt.key == K_DOWN:
-        self.robSim.move(-0.5)
+      elif evt.key == K_DOWN and not self.moveP.isRunning():
+        self.moveP.dist = -1.0
+        self.moveP.start()
         return progress("(say) Move back")
-      elif evt.key == K_LEFT:
-        self.robSim.turn(0.5)
+      if evt.key == K_LEFT and not self.turnP.isRunning():
+        self.turnP.ang = 0.3
+        self.turnP.start()
         return progress("(say) Turn left")
-      elif evt.key == K_RIGHT:
-        self.robSim.turn(-0.5)
+      if evt.key == K_RIGHT and not self.turnP.isRunning():
+        self.turnP.ang = -0.3
+        self.turnP.start()
         return progress("(say) Turn right")
     # Use superclass to show any other events
       else:
