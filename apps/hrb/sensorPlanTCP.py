@@ -129,3 +129,58 @@ class SensorPlanTCP( Plan ):
         self.lastWaypoints = (ts,dic['w'])
       # Make sure to allow others to get the CPU
       yield
+
+
+
+if __name__=="__main__":
+  import sys
+  
+  print """
+  Running the sensor reader
+
+  Connects a SensorPlanTCP to a waypointTask do display the sensor readings
+  
+  Useage: %s <server-IP>
+  """ % sys.argv[0]
+          
+  class SensorApp( JoyApp ):
+    """Concrete class SensorApp <<singleton>>
+    """    
+    def __init__(self,wphAddr=WAYPOINT_HOST,*arg,**kw):
+      JoyApp.__init__( self,
+        confPath="$/cfg/JoyApp.yml", *arg, **kw
+        ) 
+      self.srvAddr = (wphAddr, APRIL_DATA_PORT)
+      
+    def onStart( self ):
+      # Set up the sensor receiver plan
+      self.sensor = SensorPlanTCP(self,server=self.srvAddr[0])
+      self.sensor.start()
+      progress("Using %s:%d as the waypoint host" % self.srvAddr)
+      self.T0 = self.now
+  
+    def showSensors( self ):
+      ts,f,b = self.sensor.lastSensor
+      if ts:
+        progress( "Sensor: %4d f %d b %d" % (ts-self.T0,f,b)  )
+      else:
+        progress( "Sensor: << no reading >>" )
+      ts,w = self.sensor.lastWaypoints
+      if ts:
+        progress( "Waypoints: %4d " % (ts-self.T0) + str(w))
+      else:
+        progress( "Waypoints: << no reading >>" )
+    
+      
+    def onEvent( self, evt ):
+      # periodically, show the sensor reading we got from the waypointServer
+      if self.timeForStatus(): 
+        self.showSensors()
+      return JoyApp.onEvent(self,evt)
+
+  if len(sys.argv)>1:
+      app=SensorApp(wphAddr=sys.argv[1], cfg={'windowSize' : [160,120]})
+  else:
+      app=SensorApp(wphAddr=WAYPOINT_HOST, cfg={'windowSize' : [160,120]})
+  app.run()
+
