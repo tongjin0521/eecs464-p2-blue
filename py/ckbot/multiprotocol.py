@@ -145,13 +145,13 @@ class MultiProtocol( AbstractProtocol ):
   
 if __name__=="__main__":
     # Unit test
-    import nobus as NB
-    from logical import Cluster
+    import ckbot.nobus as NB
+    from ckbot.logical import Cluster
     p1 = NB.Protocol()
     p2 = NB.Protocol()
     NIDS = [0x101, 0x102, 0x107, 0x202, 0x203]
     mp = MultiProtocol(p1,p2)
     c = Cluster( 
-              arch=NB,count=len(NIDS),fillMissing=True, required=NIDS
+              arch=mp,count=len(NIDS),fillMissing=True, required=NIDS
     )
     

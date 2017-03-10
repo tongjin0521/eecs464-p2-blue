@@ -28,8 +28,12 @@ def progress(msg):
   stdout.flush()
 
 # Library location specified by PYCKBOTPATH environment var
-PYCKBOTPATH = getenv('PYCKBOTPATH','.')
-if PYCKBOTPATH[-1:] != sep:
+
+PYCKBOTPATH = getenv('PYCKBOTPATH',None)
+if PYCKBOTPATH is None:
+  if __file__.rfind('py%sckbot'%sep)>-1:
+     PYCKBOTPATH = __file__[:__file__.rfind('py%sckbot'%sep)]
+elif PYCKBOTPATH[-1:] != sep:
   PYCKBOTPATH=PYCKBOTPATH+sep
 if not GLOB_GLOB(PYCKBOTPATH+"py%sckbot%sckmodule.py" % (sep,sep)):
   progress("WARNING: PYCKBOTPATH='%s' does not point to the right place" % PYCKBOTPATH )
@@ -192,7 +196,7 @@ class Module(object):
     self.od = None
     self.code_version = None    
     assert pna is None or isinstance(pna,AbstractNodeAdaptor)
-    assert pna is None or pna.nid == node_id 
+    assert pna is None or (pna.nid & 0xFF) == (node_id & 0xFF) 
     self.pna = pna
     self.name = None
     self._attr = {}
