@@ -1,9 +1,15 @@
 """
 -- The ckbot.dynamixel python module implements classes that communicate with CKBot nodes connected
-   to a ( Robotis ) Dynamixel Single-Line Serial or Half-Duplex RS485 Bus. 
+   to a ( Robotis ) Dynamixel Half-Duplex RS485 Bus, as per Robotis documentation
+
+   Current protocol documentation is found at:
+     http://support.robotis.com/en/product/actuator/dynamixel/dxl_communication.htm
+
+   This library was written referring to the EX-106 manual v1.12 
+   which Robotis no longer makes available from its website.
 
 -- ckbot.dynamixel utilizes Bus and Protocol classes as an interface between the dynamixel hardware
-   and protocol communication layers ( As specified in the Robotis E-manual http://support.robotis.com/en/ )
+   and protocol communication layers
 
    ... talk about meminterface, pna, and module classes ...
 -- Typical usage via ckbot.logical python module:
@@ -479,7 +485,7 @@ class Bus( AbstractBus ):
         return 0xFF ^ (0xFF & sum([ ord(c) for c in dat ]))
 
     @classmethod
-    def _parseErr( cls, pkt ):
+    def parseErr( cls, pkt, noRaise=False ):
         """ (private)
         Parse and output error returned from dynamixel servos as per 3-4-1 pp. 25
         """
@@ -500,9 +506,9 @@ class Bus( AbstractBus ):
           msg.append("Current load cannot be controlled with set maximum torque")
         if err & 0x40:
           msg.append("Unknown instruction in message")
-        if len(msg)>1:
+        if len(msg)>1 and not noRaise:
           raise DynamixelServoError("; ".join(msg))
-        return 
+        return "; ".join(msg)
 
     def _dropByte( self, error=None ):
         """ (private)
@@ -525,7 +531,7 @@ class Bus( AbstractBus ):
         """
         out = []
         b = [ ord(m) for m in msg ]
-        while len(b)>6:
+        while len(b)>5:
           if b[0] != 0xff or b[1] != 0xff:
             out.append("<<bad SYNC %02X %02X>>" % (b[0],b[1]))
           else:
@@ -645,13 +651,13 @@ class Bus( AbstractBus ):
             if self._testForEcho(fl_pkt):
               self.rxEcho += 1
               if 'x' in self.DEBUG:
-                progress('[Dynamixel] recv echo --> %s\n' % repr(fl_pkt))
+                progress('[Dynamixel] recv echo --> [%s] %s\n' % (self.dump(fl_pkt),repr(fl_pkt)))
               continue
             self.rxPkts += 1
             if 'x' in self.DEBUG:
-              progress('[Dynamixel] recv --> %s\n' % repr(fl_pkt))
+              progress('[Dynamixel] recv --> [%s] %s\n' % (self.dump(fl_pkt),repr(fl_pkt)))
             # Run error check
-            self._parseErr(pkt)
+            self.parseErr(pkt)
             return pkt
         # ends parsing loop
         # Function terminates returning a valid packet payload or None
@@ -680,7 +686,7 @@ class Bus( AbstractBus ):
         body = pack('BBB',nid,len(pars)+2,cmd)+pars  
         msg = Dynamixel.SYNC+body+pack("B",self._chksum(body))
         if 'x' in self.DEBUG:
-          progress('[Dynamixel] send --> %s\n' % repr(msg))
+          progress('[Dynamixel] send --> [%s] %s\n' % (self.dump(msg),repr(msg)))
         self.ser.write(msg)
         self.txPkts+=1
         self.txBytes+=len(msg)
@@ -712,7 +718,7 @@ class Bus( AbstractBus ):
            ) 
         msg = Dynamixel.SYNC+body+pack("B",self._chksum(body))
         if 'x' in self.DEBUG:
-          progress('[Dynamixel] sync_write --> %s\n' % repr(msg))
+          progress('[Dynamixel] sync_write --> [%s] %s\n' % (self.dump(msg),repr(msg)))
         self.ser.write(msg)
         self.suppress[msg] = self.txPkts
         self.txPkts+=1
@@ -794,7 +800,12 @@ class Bus( AbstractBus ):
     @staticmethod
     def splitReply( reply ):
       """
-      TODO
+      Unpack reply header and payload
+      OUTPUT: nid, len, cmd, tail
+        nid -- node ID
+        len -- message length 
+        cmd -- command code in message
+        tail -- remainder of the message, as a string
       """
       return unpack('BBB',reply[:3])+(reply[3:],)
       
@@ -1536,13 +1547,9 @@ class DynamixelModule( AbstractServoModule ):
 
     def get_pos_async(self):
         """
-        Returns a promise for the get_pos value. A promise is a list which
-        will eventually contain a value or an exception object
-        
-        NOTE: the value needs to be converted using .dynamixel2ang() if
-        the usual centi-degree units are wanted
-        """
-        return self.pna.mem_read_async(self.mcu.present_position)
+	<<Disabled>>        
+	"""
+        pass
         
     def set_pos(self,val):
         """

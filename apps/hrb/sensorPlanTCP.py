@@ -134,6 +134,8 @@ class SensorPlanTCP( Plan ):
 
 if __name__=="__main__":
   import sys
+  from joy import JoyApp
+  from joy.decl import *
   
   print """
   Running the sensor reader
@@ -157,6 +159,7 @@ if __name__=="__main__":
       self.sensor = SensorPlanTCP(self,server=self.srvAddr[0])
       self.sensor.start()
       progress("Using %s:%d as the waypoint host" % self.srvAddr)
+      self.timeForStatus = self.onceEvery(0.33)
       self.T0 = self.now
   
     def showSensors( self ):

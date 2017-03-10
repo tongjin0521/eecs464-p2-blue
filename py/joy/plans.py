@@ -1,5 +1,10 @@
 import types, sys
 
+# For NBRPlan
+from os import O_NONBLOCK
+from fcntl import F_SETFL, F_GETFL, fcntl
+from errno import EAGAIN
+
 from pygix import EventType
 from decl import *
 
