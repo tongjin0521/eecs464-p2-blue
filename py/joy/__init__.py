@@ -395,13 +395,33 @@ class JoyApp( object ):
     if a:
       del robot['arch']
     self.robot = Cluster(arch=a, **robot)
+    if self.cfg.robotPollRate:
+      self.__initPosPolling()
     if self.cfg.minimalVoltage:
       return self.__initVoltageSafety()
+  
+  def __initPosPolling(self):
+    """(private)
+    Set up servos for position polling
+    """
+    self.__pollPos = []
+    for m in self.robot.itermodules():
+      # Collect modules that have a voltage sensing capability
+      if not isinstance(m,AbstractServoModule): 
+        continue
+      p = m.get_pos_async()
+      if p is None:
+        continue
+      m.__promise = p
+      m.__promise_time = self.now
+      m.__last_pos = 0
+      self.__pollPos.append(m)
+    
     
   def __initVoltageSafety( self ):
     """(private) 
     collect all robot modules that have a get_voltage() method
-    ans set them up for polling
+    and set them up for polling position
     """
     vs = []
     for m in self.robot.itermodules():
@@ -673,32 +693,43 @@ class JoyApp( object ):
     self.screen = pygix.startup(self.cfg)
     # Obtain figure for plotting; None if running headless
     w,h = self.cfg.windowSize
-    self.fig = figure(figsize=(w/80,h/80),dpi=80)
+    self.fig = figure(666,figsize=(w/80,h/80),dpi=80)
     self._frame = None
     self.isRunning = lambda : True
     self._startRemote()    
     try:
       # Call onStart subclass hook
       self.onStart()
+      # ----------- STARTS: MAIN LOOP --------------
       while self.isRunning():
+        # Check all safety check providers
         self._pollSafety()
-        # DISABLED DUE TO TIMING PROBLEMS, SEE COMMENT IN _posEventPump
-        #if self.robot:
-        #  self._posEventPump()
+        # Poll scratch interface (if enabled)
         if self.scr:
           self._scrEventPump()
           self._scrEventEmit()
+        # Poll midi interfaces (if requested)
         if self.cfg.midi:
           for evt in midi_joyEventIter():
             pygix.postEvent(evt)
+        # Update UI (if active)
         if self._frame:
             buf,sz = self._frame
             pygix.showMplFig(buf,sz,self.screen)
-            self._frame = None            
+            self._frame = None
+        # Update robot (if one connected)
+        if self.robot:
+            # Let communication library do housekeeping
+            self.robot.p.update()
+            # Poll for robot position changes (if enabled)
+            self._posEventPump()
+        # Loop and process all events in the queue            
         for evt in pygix.iterEvents():
+          # TIMEREVENT-s cause the execution timeslices
           if evt.type == TIMEREVENT:
             self._timeslice(evt)
           self.onEvent(evt)   
+      # ----------- ENDS: MAIN LOOP --------------
     except Exception,exc:
       printExc()
     # App cleanup bugs
@@ -763,18 +794,19 @@ class JoyApp( object ):
     
     Override this method to install your event handling code.
     The default JoyApp displays all events in human readable form on screen.
-    Hitting <escape> or closing the windowill cause it to quit.    
+    Hitting <escape> or closing the window will cause it to quit.    
     """
     if evt.type != TIMEREVENT:
       progress( describeEvt(evt) )
       if self.logger:
         self.logger.write('event',**describeEvt(evt,parseOnly=1))
       if self.fig and evt.type==KEYDOWN:
-          self.fig.clf()
-          ax = self.fig.gca()
-          ax.plot([-1,1,1,1,-1],[-1,-1,1,1,-1],'w-')
-          ax.text(0,0,evt.unicode)
-          self.animate()
+        # Display keypress in the GUI (if GUI exists)
+        self.fig.clf()
+        ax = self.fig.gca()
+        ax.plot([-1,1,1,1,-1],[-1,-1,1,1,-1],'w-')
+        ax.text(0,0,evt.unicode)
+        self.animate()
     if evt.type==QUIT or (evt.type==KEYDOWN and evt.key in (K_q,K_ESCAPE)):
        self.stop()
 
