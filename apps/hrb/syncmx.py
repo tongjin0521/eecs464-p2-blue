@@ -45,7 +45,8 @@ class ServoWrapperMX(Plan):
               if "F" in DEBUG:
                   progress("FB desRPM %g out of range" % (self.desRPM))
                       # outside of capture range; ignore
-              return
+              yield self.forDuration(self.rate)
+              continue
           pFB = clip(self.Kp * lead, -45, 45)
           if isnan(self._v):
               vFB = 0
@@ -150,6 +151,11 @@ class SychronizedMX(JoyApp):
       ]
       for s in self.smx:
         s.start()
+      # Start motors spinning so that position controller
+      #   gets to capture them
+      for m in self.robot.itermodules():
+        m.set_torque(0.2)
+
         
     def onEvent(self,evt):
       if evt.type != KEYDOWN:
