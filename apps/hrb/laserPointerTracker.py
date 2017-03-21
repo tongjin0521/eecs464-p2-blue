@@ -82,6 +82,7 @@ class LaserTracker( object ):
         time.sleep(0.05)
     except KeyboardInterrupt:
       self.out.close()
+      self.win.quit()
       print "\n"+"*"*40+"\nSafely terminated\n"+"*"*40
       raise
 
