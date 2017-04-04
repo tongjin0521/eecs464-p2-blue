@@ -1,4 +1,6 @@
-from joy import *
+from joy.decl import *
+from joy import JoyApp, StickFilter
+from pygame.event import Event as pygame_Event
 
 class StickFilterApp( JoyApp ):
   def __init__(self,*arg,**kw):
@@ -10,7 +12,7 @@ class StickFilterApp( JoyApp ):
     # Event channels can be names using a pygame event object, or using string
     #   names that follow a very strict structure. For tutorial puposes we
     #   show both options here.
-    evt = pygame.event.Event(JOYAXISMOTION,joy=0,axis=0,value=None)
+    evt = pygame_Event(JOYAXISMOTION,joy=0,axis=0,value=None)
     # This channel is lowpass filtered -- useful for direct position control    
     sf.setLowpass( evt, 5 )
     # This channel is integrated, saturating at +/- 9.
