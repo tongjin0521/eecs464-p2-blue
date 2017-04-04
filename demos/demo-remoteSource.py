@@ -13,9 +13,10 @@ class RemoteSourceApp( JoyApp ):
     self.rs.start()
     
   def onEvent( self, evt ):
-    if evt.type in set([KEYDOWN, KEYUP]):
-      print ">>>>",
-      JoyApp.onEvent(self,evt)
+    if evt.type in set([KEYDOWN,KEYUP,JOYAXISMOTION]):
+      # Process keydown events so that 'q' key will work
+      if evt.type == KEYDOWN:
+        JoyApp.onEvent(self,evt)
       self.rs.push( evt )
       return
     elif evt.type == MOUSEMOTION:

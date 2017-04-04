@@ -1266,6 +1266,71 @@ class MultiClick( Plan ):
     """
     return self.app.onMultiClick(self,evts)
 
+class NBRPlan( Plan ):
+  """
+  NBRPlan concrete class for non-blocking file reader
+  
+  Reads file (typically a serial port) until no data available
+  by using non-blocking IO.
+  
+  The contents are then available in self.ln (a list) and the timestamp
+  of the read operation is in self.ts
+  
+  ATTRIBUTES:
+    .ts -- timestamps of lines read (from self.app.now)
+    .ln -- list of lines read
+    .iterLimit -- maximum number of lines that will be read at once
+  """
+  def __init__(self, app, fn="/dev/ttyACM0"):
+    """
+    INPUT:
+      fn -- filename of file to read
+    """
+    Plan.__init__(self,app)
+    self.fn = fn
+    self.f = None
+    self.iterLimit = 1e200
+    self.clear()
+    self.__reopen()
+    
+  def clear(self):
+    """
+    Clear recorded data
+    """
+    self.ts = []
+    self.ln = []
+
+  
+  def __reopen(self):
+    """
+    (PRIVATE) reopen the file in non-blocking mode
+    """
+    assert self.f is None
+    f = open(self.fn,"r")
+    fd = f.fileno()
+    flag = fcntl(fd, F_GETFL)
+    fcntl(fd, F_SETFL, flag | O_NONBLOCK)
+    assert fcntl(fd, F_GETFL) & O_NONBLOCK, "success in setting nonblocking mode"
+    self.f = f
+  
+  def behavior(self):
+    while True:
+      assert len(self.ts) == len(self.ln),"Did you remember to pop timestamps from .ts to match the lines in .ln?"
+      # Note: the workloop here will run forever if the file being read
+      #   produces data faster than we can read. This will break JoyApp
+      #   If you want to be sure you're safe, set self.iterLimit 
+      if self.f is None:
+        self.__reopen()
+      try:
+        while len(self.ln)<self.iterLimit:
+          self.ln.append(self.f.readline())
+          self.ts.append(self.app.now)
+      except IOError,ioe:
+        if ioe.errno == EAGAIN:
+          # We are done reading
+          yield
+        else:
+          raise
 
 class AnimatorPlan(Plan):
     """

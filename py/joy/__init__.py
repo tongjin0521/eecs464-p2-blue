@@ -430,12 +430,6 @@ class JoyApp( object ):
         vs.append(m)
       if not isinstance(m,AbstractServoModule): 
         continue
-      p = m.get_pos_async()
-      if p is None:
-        continue
-      m.__promise = p
-      m.__promise_time = self.now
-      m.__last_pos = 0
     # If any voltage sensing modules found, and sensing was requested
     #   then add the safety provider
     if not vs:
@@ -621,6 +615,7 @@ class JoyApp( object ):
          self.robot.off()
       self.stop()
       progress("(say) DANGER: safety conditions violated -- shutting down")
+      progress(str(se))
       raise
   
   def _timeslice( self, timerevt ):
@@ -763,6 +758,7 @@ class JoyApp( object ):
    
   def _startPlan( self, plan ):
     """(private)
+    
     Called by Plan.start() to notify JoyApp that plan should be started
     """
     if not plan in self.plans:

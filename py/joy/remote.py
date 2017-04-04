@@ -196,13 +196,25 @@ class Source( Plan ):
     """
     self.dst = dst
 
+  def sendMsg( self, **msg ):
+    """
+    Send a dictionary to the remote sink; will appear in its 
+    misc message queue unless it has the key "type", in which
+    case the sink will try to convert it to a JoyApp event.
+
+    WARNING: if you use "type" inappropriately, the sink
+      will error out and stop running
+    """
+    assert not msg.has_key("t"), "Reserved for sender timestamp"
+    msg['t'] = self.app.now
+    jsn = json_dumps(msg, ensure_ascii = True )
+    self.sock.sendto( jsn, self.dst )
+    progress( "Sending '%s' to %s:%d" % ((jsn,)+self.dst) )
+    
   def onEvent( self, evt ):
     if evt.type == TIMEREVENT:
       return False
     dic = describeEvt( evt, parseOnly = True )
-    dic['t'] = self.app.now
-    jsn = json_dumps(dic, ensure_ascii = True )
-    self.sock.sendto( jsn, self.dst )
-    progress( "Sending '%s' to %s:%d" % ((jsn,)+self.dst) )
+    self.sendMsg(**dic)
     return False
 
