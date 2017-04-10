@@ -1,4 +1,4 @@
-from numpy import asarray,zeros
+from numpy import asarray,zeros,mean,std
 from gzip import open as opengz
 from time import time as now
 from joy.decl import *
@@ -13,11 +13,10 @@ class DotTrackerPlan( Plan ):
   def onStart(self):
     self.blobs = []
     self.depth = 5 # seconds
-    self.cam = JpegStreamCamera("http://admin:admin@192.168.254.125/video.mjpg")
+    self.cam = JpegStreamCamera("http://admin:hrb2017@35.2.254.129:8081/video")
     self.win = Display((800,600))
     self.cam.getImage().save(self.win)
     self.clearBG()
-    
   def clearBG( self ):
     self.bgN = 5
     self.bgQ = None
@@ -32,8 +31,8 @@ class DotTrackerPlan( Plan ):
   def _putRoundRobin( self, ts, img ):
     qi = (self.qi+1) % self.bgN
     if self.bgQ is None:
-      self.bgQ = zeros( (self.bgN,)+img.shape, int16 )
-      self.tsQ = zeros( (self.bgN,), int16 )
+      self.bgQ = zeros( (self.bgN,)+img.shape, int )
+      self.tsQ = zeros( (self.bgN,), int )
     # arrays are ready
     self.bgQ[qi,...] = img
     self.tsQ[qi] = ts 
@@ -42,9 +41,9 @@ class DotTrackerPlan( Plan ):
 
   def _outBlobs( self, t, b ):
     if b is None:
-      self.blobs.append(dict(time=self.app.now,t=t,b=[]))
+      self.blobs.append(dict(time=self.app.now,tsense=t,b=[]))
     else:
-      self.blobs.append(dict(time=self.app.now,t=t,b=asarray(b.coordinates())))
+      self.blobs.append(dict(time=self.app.now,tsense=t,b=asarray(b.coordinates())))
     # Make sure that entries older than depth are removed 
     while self.blobs and self.blobs[0]['time']<self.app.now-self.depth:
       self.blobs.pop(0)
@@ -61,6 +60,8 @@ class DotTrackerPlan( Plan ):
   def work( self ):
     raw = self.cam.getImage()
     self.raw = raw
+    self.raw.save(self.win)
+#    self.clearBG()
     img = raw.getGrayNumpy()
     self.img = img
     t = now()
@@ -73,14 +74,15 @@ class DotTrackerPlan( Plan ):
       self._showBlobs(b)
     if t-self.trr>self.rrRate:
       self._putRoundRobin( t, img )
-      self.bg = mean( self.bgQ, axis=0 )
-      self.bgs = std( self.bgQ, axis=0 )
+      self.bg = np.mean( self.bgQ, axis=0 )
+      self.bgs = np.std( self.bgQ, axis=0 )
 
   def behavior( self ):
     #self.cam.getImage().save(self.win)
     try:
       while not self.win.isDone():
         self.work()
+#	print(self.win.isDone())
         yield self.forDuration(0.05)
     except KeyboardInterrupt:
       self.win.quit()
@@ -90,7 +92,7 @@ class DotTrackerPlan( Plan ):
 
 class DotTrackerSource(Source,DotTrackerPlan):
   def __init__(self,app,*argv,**kw):
-    Source.__init__(app,*argv,**kw)
+    Source.__init__(self,app,*argv,**kw)
 
   def onStart(self):
     Source.onStart(self)
@@ -108,22 +110,22 @@ class DotTrackerSource(Source,DotTrackerPlan):
       return
     msg = dict(
       time=self.app.now,
-      t=t,
+      tsense=t,
       b=[ [x,y] for (x,y) in b.coordinates()]
       )
     self.sendMsg(**msg)
-  
+
 if __name__=="__main__":
    from joy import JoyApp
    class App(JoyApp):
      def onStart(self):
-       self.dt = DotTrackerPlan(self)
+       self.dt = DotTrackerSource(self)
        self.dt.start()
        self.oe = self.onceEvery(1)
     
      def onEvent(self,evt):
        if self.oe():
-         progress(self.dt.blobs[-1:])
+         progress("OE:" + str(self.dt.blobs[-1:]))
        # Punt keydown events to superclass
        if evt.type == KEYDOWN:
          return JoyApp.onEvent(evt)
