@@ -1,4 +1,5 @@
 
+
 """
 File joy.remote contains the remote.Source and remote.Sink Plan 
 subclasses. These Plan-s may be used to relay remote JoyApp events 
@@ -56,6 +57,10 @@ class Sink( Plan ):
     self.setAllowMisc(allowMisc)
     if convert is None:
       def default_convert( dic ):
+        # Non-event messages --> passthrough
+        if not dic.has_key('type'):
+          return dic
+        # Filter events by type_code
         tc = dic['type_code']
         if tc in {KEYUP,KEYDOWN,JOYBUTTONUP,JOYBUTTONDOWN} :
           return dic

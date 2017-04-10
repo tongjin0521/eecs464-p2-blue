@@ -8,9 +8,16 @@ class RemoteSinkApp( JoyApp ):
     
   def onStart( self ):
     self.rs = RemoteSink(self)
+    self.rs.setAllowMisc(True)
     self.rs.start() # in case of running with no pygame
+    self.showMisc = self.onceEvery(1)
   
   def onEvent( self, evt ):
+    if self.showMisc():
+      if self.rs.queue:
+        progress("Queue has %d messages:" % len(self.rs.queue))
+        for n,msg in enumerate(self.rs.queue):
+	  progress('[%0d] %s' % (n,msg))
     if evt.type == ACTIVEEVENT:
       if evt.gain==1 and self.rs.isRunning():
         progress("(say) ignoring remote events")

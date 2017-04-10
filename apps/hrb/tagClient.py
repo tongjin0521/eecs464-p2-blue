@@ -1,6 +1,6 @@
-from joy import JoyApp
+from joy import JoyApp, progress
 from joy.plans import AnimatorPlan
-from joy.decl import KEYDOWN  
+from joy.decl import KEYDOWN 
 
 from socket import socket, AF_INET, SOCK_DGRAM, error as SocketError
 from numpy import array, mean
@@ -21,10 +21,14 @@ def _animation(fig):
   fig.clf()
   ax = fig.add_subplot(111)
   msg = None
+  src = None
   while True:
     try:
       # read data as fast as possible
-      m = s.recv(1<<16)
+      m,msrc = s.recvfrom(1<<16)
+      if not (msrc == src):
+        src = msrc
+        progress("New tag data source: %s:%d"%src)
       if m and len(m)>2:
         msg = m
       continue
