@@ -1,9 +1,9 @@
 """
   The ckbots.logical module provides classes to create representations
   of modules inside a cluster. It directly includes classes representing
-  modules on a CAN-bus (for historical reasons), and imports additional
-  module classes from pololu and hitec. The top of the classes heirarchy
-  for modules and their NodeAdaptor-s are found in ckmodule.
+  modules classes from pololu, dynamixel and hitec. 
+  The top of the classes heirarchy for modules and their NodeAdaptor-s 
+  are found in ckmodule.
 
   Main uses of this module:
   (*) query the object dictionary of a module by its logical name
@@ -11,7 +11,7 @@
 
   The top level of this module is cluster. Typically users will create a 
   cluster  to represent a set of modules that can communicate on the same 
-  CANBus. Modules can be  addressed through logical names via the Attributes 
+  Bus. Modules can be  addressed through logical names via the Attributes 
   class. 
 """
 import re
@@ -24,7 +24,6 @@ from ckmodule import *
 import pololu
 import hitec
 import dynamixel
-import canmodules
 
 from defaults import *
 
@@ -150,6 +149,7 @@ class Cluster(dict):
       p -- instance of Protocol for communication with modules
       at -- instance of the Attributes class.
       limit -- float -- heartbeat time limit before considering node dead
+      _updQ -- list -- collection of objects that need update() calls
     """
     dict.__init__(self)
     if arch is None:
@@ -160,6 +160,7 @@ class Cluster(dict):
       self.p = arch
     else:
       self.p = arch.Protocol(bus = arch.Bus(port=port))
+    self._updQ = [self.p]
     self.at = ModulesByName()
     self.limit = 2.0
     if args or kwargs:
@@ -185,6 +186,7 @@ class Cluster(dict):
       count, timeout, timestep, required, fillMissing-- see self.discover()
       fillMissing -- class / bool -- fills in any missing yet required modules
             with instances of this class. If boolean true, uses MissingModule
+            NOTE: the nobus mechanism bypasses this; use nobus.NID_CLASS
       names -- dictionary of Modules names based with node id as their key.
       walk -- bool -- if true, walks each module to indentify its interface
       autonamer -- names the modules if no names are given.
@@ -253,6 +255,11 @@ class Cluster(dict):
           timeout=timeout, found=nids, required=required, count=count )
     return nids
 
+  def update(self):
+    """Allow stateful members to update; propagates to """
+    for m in self._updQ:
+      m.update()
+
   def off( self ):
     """Make all servo or motor modules go slack"""
     for m in self.itermodules():
@@ -285,6 +292,8 @@ class Cluster(dict):
       ##V: How to properly do this?
       assert isinstance(mod,Module) or isinstance(mod, pololu2_vv.PololuServoModule) or isinstance(mod, hitec.HitecServoModule)
       self.at._add(mod.name, mod)
+      if hasattr(mod,"update") and callable(mod.update):
+        self._updQ.append(mod)
       self[mod.node_id] = mod
     return self
     
@@ -435,7 +444,6 @@ class Cluster(dict):
     return DelayedPermissionError("Property '%s' is not writable" % clp)
 
 Module.Types[MissingModule.TYPECODE] = MissingModule
-canmodules._register_types(Module.Types)
 Module.Types['PolServoModule'] = pololu.ServoModule
 Module.Types['HitecServoModule'] = hitec.ServoModule
 Module.Types['HitecMotorModule'] = hitec.MotorModule

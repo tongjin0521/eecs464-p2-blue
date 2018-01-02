@@ -5,7 +5,7 @@ FILE: constants.py
   constants needed by joy from whatever implementation of pygame is 
   available.
 
-  First, the full blows pygame import is attempted. If that doesn't work out,
+  First, the full blown pygame import is attempted. If that doesn't work out,
   a hard coded list of implementations is tried out. Those are expected to
   be constants_ARCH.DYN where ARCH is some architecture, and DYN is the
   dynamic loader format for the python environment.

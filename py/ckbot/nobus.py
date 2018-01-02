@@ -1,6 +1,12 @@
 from time import time as now
 from ckmodule import AbstractProtocol, AbstractBus, AbstractNodeAdaptor, MissingModule
 
+# If you want to use non-default MissingModule replacements, first
+#   map their NIDs to their module classes, e.g.
+#   >>> import nobus as NB, dynamixel as DX
+#   >>> NB.NID_CLASS[0x32] = DX.MissingDynamixel
+NID_CLASS = {}
+
 class Protocol( AbstractProtocol ):
   """abstract superclass of all Protocol classes
   
@@ -47,5 +53,5 @@ class NodeAdaptor( AbstractNodeAdaptor ):
     self.nid = nid
   
   def get_typecode( self ):
-    return MissingModule.TYPECODE
-
+    cls = NID_CLASS.get(self.nid,MissingModule)
+    return cls.TYPECODE

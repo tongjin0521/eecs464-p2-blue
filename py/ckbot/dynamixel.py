@@ -43,7 +43,7 @@ from glob import glob
 from random import uniform
 from collections import deque
 
-from ckmodule import Module, AbstractNodeAdaptor, AbstractProtocol, AbstractBus, progress, AbstractServoModule, AbstractProtocolError, AbstractBusError, MemInterface
+from ckmodule import Module, AbstractNodeAdaptor, AbstractProtocol, AbstractBus, progress, AbstractServoModule, AbstractProtocolError, AbstractBusError, MemInterface, MissingModule
 from port2port import newConnection
 
 DEFAULT_PORT = dict(TYPE='tty', baudrate=115200, timeout=0.01)
@@ -1836,6 +1836,21 @@ class RX64Module( DynamixelModule ):
         """
         DynamixelModule.__init__( self, node_id, typecode, pna )
 
+class MissingDynamixel(MissingModule):
+    TYPECODE = "Dynamixel-FAKE"
+
+    def __init__(self,*argv,**kw):
+        MissingModule.__init__(self,*argv,**kw)
+
+    def set_mode(self,mode):
+        pass
+
+    def get_typecode( self ):
+        return self.TYPECODE
+     
+    def get_mode(self):
+        return 0
+
 MODELS = {
  'Dynamixel-006b' : (EX106MemWithOps,EX106Module),
  'Dynamixel-0040' : (RX64MemWithOps,RX64Module),
@@ -1843,4 +1858,5 @@ MODELS = {
  'Dynamixel-000c' : (AX12MemWithOps,AX12Module),
  'Dynamixel-001d' : (MX28MemWithOps,MX28Module),
  'Dynamixel-0136' : (MX64MemWithOps,MX64Module),
+ MissingDynamixel.TYPECODE : (None,MissingDynamixel),
 }

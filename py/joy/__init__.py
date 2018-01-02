@@ -53,7 +53,6 @@ have individually overriden this behavior byusing some other list in their
 
 # Standard library dependencies
 import sys
-import time
 import types
 import traceback
 from itertools import izip
@@ -304,7 +303,7 @@ class JoyApp( object ):
         progress('Progress messages will be logged')
         PROGRESS_LOG.add(self.logger)       
     #
-    self.now = time.time()
+    self.now = pygix.now()
     # initialize safety provider list
     self.safety = []
     # init CKBot cluster interface
@@ -624,7 +623,7 @@ class JoyApp( object ):
     Timer events get propagated to all Plans and trigger execution 
     of a timeslice.
     """
-    self.now = time.time()
+    self.now = pygix.now()
     self.plans.extend(self.__new)
     self.__new = []
     if 'P' in self.DEBUG: debugMsg(self, "plans=%s" % dbgId(self.plans) )
@@ -715,7 +714,7 @@ class JoyApp( object ):
         # Update robot (if one connected)
         if self.robot:
             # Let communication library do housekeeping
-            self.robot.p.update()
+            self.robot.update()
             # Poll for robot position changes (if enabled)
             self._posEventPump()
         # Loop and process all events in the queue            
