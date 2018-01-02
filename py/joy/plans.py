@@ -715,6 +715,13 @@ class CyclePlan( Plan ):
       except StandardError:
         printExc()
   
+  def resetPhase(self, phi0=0):
+    """
+    Reset phase to the specified value at the current time, without
+    taking any actions
+    """
+    self.phase = float(phi0) % 1.0
+    
   def behavior(self):
     """(final)
     

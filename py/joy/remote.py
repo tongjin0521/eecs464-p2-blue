@@ -10,7 +10,7 @@ between processes that may even be running on different machines
 from plans import Plan
 from joy.events import JoyEvent, describeEvt
 from pygix import TIMEREVENT, KEYUP, KEYDOWN, JOYBUTTONUP, JOYBUTTONDOWN, postEvent
-from socket import socket, AF_INET, SOCK_DGRAM, error as SocketError
+from socket import socket, AF_INET, SOCK_DGRAM, SOL_SOCKET, SO_REUSEADDR, error as SocketError
 from errno import EAGAIN
 from json import loads as json_loads, dumps as json_dumps
 from loggit import progress
@@ -72,6 +72,7 @@ class Sink( Plan ):
   
   def onStart( self ):
     self.sock = socket( AF_INET, SOCK_DGRAM )
+    self.sock.setsockopt( SOL_SOCKET, SO_REUSEADDR, 1  )
     self.sock.bind(self.bnd)
     self.sock.setblocking(False)
   
@@ -122,7 +123,8 @@ class Sink( Plan ):
       #
       # Process the event packet
       #
-      dic = self.convert(dic)
+      if dic.has_key('type'):
+       dic = self.convert(dic)
       # If converter dropped event --> next
       if not dic:
         continue

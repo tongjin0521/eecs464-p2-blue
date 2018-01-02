@@ -14,7 +14,18 @@ you have SDL)
 #  and its IMPL member indicates which implementation was used
 from constants import *
 
-if IMPL=="pygame":
+# This is used by all JoyApp code for current time. If we redefine it,
+# we can run in simulated time
+from time import time as now
+
+from os import getenv
+SCHD=getenv("PYGIXSCHD",None)
+del getenv
+
+# NOTE: for ASAP simulation, set env variable PYGIXSCHD to ASAP
+#  for FAST (and CPU hungry) execution, set env variable PYGIXSCHD to FAST
+
+if IMPL == 'pygame':
   # Pygame dependencies
   import pygame
   import pygame.joystick
@@ -55,11 +66,14 @@ if IMPL=="pygame":
     return pygame.event.event_name(evt)
     
   def iterEvents():
-    evts = pygame.event.get()    
+    evts = pygame.event.get() 
     for evt in evts:
       if evt.type == TIMEREVENT:
         pygame.display.update()
       yield evt
+    # When in FAST mode, every call to iterEvents returns at least one TIMEREVENT
+    if SCHD=='FAST':
+      yield Event(TIMEREVENT)
 
   def showMplFig(buf,sz,scr,bg=(255,255,255)):
     img = pygame.image.frombuffer(buf,sz,'RGBA')
@@ -127,14 +141,24 @@ else: # pygame import failed
   }
   def event_name(evType):
     return EVENT_NAMES.get(evType, None)
+
+  # if using faster than realtime simulation, whenever we check the time,
+  # the time is the time for the next timeslice. This makes all scheduling
+  # decisions occur immediately
+  if SCHD=="ASAP":
+    def now():
+      return _TNEXT
     
   def iterEvents():
     global _EVENT_Q,_TNEXT
     while _EVENT_Q:
       yield _EVENT_Q.pop(0)
-    t = now()
-    if t<_TNEXT:
-      sleep(_TNEXT-t)
+    while True:
+      t = now()
+      if t<_TNEXT-_TIMESLICE*0.1:
+        sleep(_TNEXT-t)
+      else:
+        break
     yield Event( TIMEREVENT )
     _TNEXT = t+_TIMESLICE
 

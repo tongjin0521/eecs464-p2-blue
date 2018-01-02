@@ -6,9 +6,8 @@
 # in the comments in the beginning of the file.
 #
 import os
-import logical, rb, can, nocando, pololu, port2port
-from can import PYCKBOTPATH
+import logical, rb, nocando, nobus, pololu, port2port, posable, ckmodule
+from ckmodule import PYCKBOTPATH
 
-__VERSION__="$Id$"
-__all__ = [ 'logical', 'can', 'nocando','port2port','pcan', 'posable' ]
+__all__ = [ 'logical', 'nocando','nobus', 'port2port', 'posable', 'ckmodule' ]
 
