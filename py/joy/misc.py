@@ -67,9 +67,14 @@ def loadCSV( fn ):
   def convert(x):
     x = x.strip()
     if not x or x=='""': return None
-    if x[0]=='"': return x[1:-1]
-    return float(x)
-  res = [ 
+    try:
+      return float(x)
+    except ValueError:
+      if x[0] in {'"',"'"}:
+        return x[1:-1]
+      else:
+        return x
+  res = [
     [ convert(x) for x in l.split(",") ] 
     for l in f if l.strip() and l[:1]!="#"
   ]
