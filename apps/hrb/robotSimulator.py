@@ -1,7 +1,7 @@
 # file robotSimulator.py simulates a robot in an arena
 
 from sensorPlanTCP import SensorPlanTCP
-from robotSim import DummyRobotSim,RobotSimInterface
+from robotSimIX import DummyRobotSim,RobotSimInterface
 from joy import JoyApp, progress
 from joy.decl import *
 from joy.plans import Plan
@@ -23,7 +23,7 @@ class MoveForward(Plan):
     self.N = 10
     # Noise level for forward motion
     self.dNoise = 0.05
-    
+
   def behavior(self):
     s = self.simIX
     # Compute step along the forward direction
@@ -46,7 +46,7 @@ class Turn(Plan):
     self.N = 10
     # Noise level for turn motion
     self.aNoise = 0.005
-    
+
   def behavior(self):
     s = self.simIX
     # Compute rotation step
@@ -58,26 +58,26 @@ class Turn(Plan):
       c = mean(z)
       # Rotate with angle noise
       zr = c + (z-c) * rot * exp(1j*randn()*self.aNoise)
-      # Store as new tag 
+      # Store as new tag
       s.tagPos[:,0] = zr.real
       s.tagPos[:,1] = zr.imag
       yield self.forDuration(dt)
-          
-          
+
+
 class RobotSimulatorApp( JoyApp ):
   """Concrete class RobotSimulatorApp <<singleton>>
      A JoyApp which runs the DummyRobotSim robot model in simulation, and
      emits regular simulated tagStreamer message to the desired waypoint host.
-     
+
      Used in conjection with waypointServer.py to provide a complete simulation
      environment for Project 1
-  """    
+  """
   def __init__(self,wphAddr=WAYPOINT_HOST,*arg,**kw):
     JoyApp.__init__( self,
       confPath="$/cfg/JoyApp.yml", *arg, **kw
-      ) 
+      )
     self.srvAddr = (wphAddr, APRIL_DATA_PORT)
-    
+
   def onStart( self ):
     # Set up socket for emitting fake tag messages
     s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
@@ -106,7 +106,7 @@ class RobotSimulatorApp( JoyApp ):
       progress( "Waypoints: %4d " % (ts-self.T0) + str(w))
     else:
       progress( "Waypoints: << no reading >>" )
-  
+
   def emitTagMessage( self ):
     """Generate and emit and update simulated tagStreamer message"""
     self.robSim.refreshState()
@@ -114,17 +114,17 @@ class RobotSimulatorApp( JoyApp ):
     msg = self.robSim.getTagMsg()
     # Send message to waypointServer "as if" we were tagStreamer
     self.sock.sendto(msg, self.srvAddr)
-    
+
   def onEvent( self, evt ):
     # periodically, show the sensor reading we got from the waypointServer
-    if self.timeForStatus(): 
+    if self.timeForStatus():
       self.showSensors()
       progress( self.robSim.logLaserValue(self.now) )
       # generate simulated laser readings
     elif self.timeForLaser():
       self.robSim.logLaserValue(self.now)
     # update the robot and simulate the tagStreamer
-    if self.timeForFrame(): 
+    if self.timeForFrame():
       self.emitTagMessage()
 
     if evt.type == KEYDOWN:
@@ -155,7 +155,7 @@ if __name__=="__main__":
 
   Listens on local port 0xBAA (2986) for incoming waypointServer
   information, and also transmits simulated tagStreamer messages to
-  the waypointServer. 
+  the waypointServer.
   """
   import sys
   if len(sys.argv)>1:
@@ -163,4 +163,3 @@ if __name__=="__main__":
   else:
       app=RobotSimulatorApp(wphAddr=WAYPOINT_HOST, cfg={'windowSize' : [160,120]})
   app.run()
-
