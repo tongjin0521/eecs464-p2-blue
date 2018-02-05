@@ -1,32 +1,48 @@
-from numpy import *
-from SimpleCV import *
+
 from gzip import open as opengz
 from time import time as now
+from pdb import set_trace as BRK
 
+# Standard imports
+from cv2 import (
+    SimpleBlobDetector, VideoCapture, drawKeypoints,
+    imshow as cv2_imshow, imwrite as cv2_imwrite,
+    COLOR_RGB2GRAY, cvtColor, circle as cv2_circle,
+    destroyAllWindows, waitKey, SimpleBlobDetector_Params
+    )
+from numpy import (
+  zeros, int16, uint8, asarray, mean, std
+)
 
 class LaserTracker( object ):
   def __init__(self, fn=None):
-    self.cam = JpegStreamCamera("http://admin:admin@192.168.254.125/video.mjpg")
-    self.win = Display((800,600))
+    bdp = SimpleBlobDetector_Params()
+    bdp.minArea = 5
+    bdp.maxArea = 300
+    bdp.filterByInertia = False
+    bdp.filterByConvexity = False
+    self.bd = SimpleBlobDetector(bdp)
+    self.cam = VideoCapture(0)
+    #self.cam = VideoCapture("http://admin:hrb2018@172.18.18.3:8080/video")
     self.clearBG()
     if not fn:
       self.out = None
     else:
       self.out = opengz(fn,"w")
-      img = self.cam.getImage()
-      img.save(fn+'first.png')
- 
+      ok,img = self.cam.read()
+      cv2_imwrite(fn+'first.png',img)
+
   def clearBG( self ):
-    self.bgN = 5
+    self.bgN = 10
     self.bgQ = None
     self.bg = None
     self.tsQ = []
     self.blob = []
     self.qi = -1
     self.trr = 0
-    self.rrRate = 2
-    self.guard = 10 
-  
+    self.rrRate = 0.5
+    self.guard = 10
+
   def _putRoundRobin( self, ts, img ):
     qi = (self.qi+1) % self.bgN
     if self.bgQ is None:
@@ -34,38 +50,43 @@ class LaserTracker( object ):
       self.tsQ = zeros( (self.bgN,), int16 )
     # arrays are ready
     self.bgQ[qi,...] = img
-    self.tsQ[qi] = ts 
+    self.tsQ[qi] = ts
     self.qi = qi
     self.trr = ts
 
   def _outBlobs( self, t, b ):
-    if b is None:
+    if not b:
       self.out.write("%.2f, 0, 0, 0\n" % t)
     else:
-      for n,(x,y) in enumerate(b.coordinates()):
-        self.out.write("%.2f, %d, %d, %d\n" % (t,n+1,x,y))          
+      for n,(x,y) in enumerate(b):
+        self.out.write("%.2f, %d, %d, %d\n" % (t,n+1,x,y))
     self.out.flush()
 
   def _showBlobs( self, b ):
-    raw = self.raw
+    img = self.raw.copy()
     if b is not None:
-      dl = raw.dl()
-      for xy in b.coordinates():
-        dl.circle(xy,10,Color.RED,filled=1)
-        dl.circle(xy,5,Color.BLACK,filled=1)
-    raw.save(self.win)
-    
+      for x,y in b:
+        xy = (int(x),int(y))
+        cv2_circle(img,xy,10,(0,255,0),thickness=2)
+        #cv2_circle(img,xy,5,(0,0,0),thickness=-1)
+    cv2_imshow('Tracker',img)
+
   def work( self ):
-    raw = self.cam.getImage()
+    res,raw = self.cam.read()
+    if not res:
+        return
     self.raw = raw
-    img = raw.getGrayNumpy()
+    img = cvtColor(raw,COLOR_RGB2GRAY)
     self.img = img
     t = now()
     if self.bg is not None:
-      ind = img > (self.bg+3*self.bgs+self.guard)
-      ind = ind & (img > 240)
-      self.ind = ind
-      b = Image(ind).findBlobs()
+      d0 = img - (self.bg+3*self.bgs+self.guard)
+      d1 = (d0 / max(64,d0.max())).clip(0,1)
+      d2 = d1 * (img > 192)
+      self.ind = 255-asarray(255*d2,uint8)
+      cv2_imshow('ind',self.ind)
+      kp = self.bd.detect(self.ind)
+      b = [kpi.pt for kpi in kp]
       if self.out:
         self._outBlobs(t,b)
       self._showBlobs(b)
@@ -75,16 +96,19 @@ class LaserTracker( object ):
       self.bgs = std( self.bgQ, axis=0 )
 
   def run( self ):
-    self.cam.getImage().save(self.win)
+    res,img = self.cam.read()
+    if res:
+        cv2_imshow('Tracker',img)
     try:
-      while not self.win.isDone():
+      while waitKey(5) not in {27,113}:
         self.work()
-        time.sleep(0.05)
-    except KeyboardInterrupt:
+    finally:
       self.out.close()
-      self.win.quit()
+      self.cam.release()
+      destroyAllWindows()
+      [ waitKey(50) for k in range(10) ]
       print "\n"+"*"*40+"\nSafely terminated\n"+"*"*40
-      raise
+
 
 if __name__=="__main__":
   import sys
