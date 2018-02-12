@@ -52,7 +52,7 @@ except NameError:
     [1.0/100]*8]).T * 100
 
 # Tag IDs for waypoints
-waypoints = range(4)
+waypoints = [1,2,3,5]
 
 # EMA coefficient for static tag locations
 alpha = 0.05
@@ -130,10 +130,11 @@ class Sensor( object ):
     x = z.real * (b-a) + a
     d = z.imag * abs(b-a)
     res = lineSensorResponse( d/scale, self.noise )
-    ax.plot( [c.real, x.real], [c.imag, x.imag], 
-      *self.lineargs, **self.linekw )
-    ax.text( (c.real+x.real)/2, (c.imag+x.imag)/2, 
-      "%d" % res, ha='center',va='center' )
+    if not any(isnan(c.real)) and not any(isnan(x.real)):
+      ax.plot( [c.real, x.real], [c.imag, x.imag], 
+        *self.lineargs, **self.linekw )
+      ax.text( (c.real+x.real)/2, (c.imag+x.imag)/2, 
+        "%d" % res, ha='center',va='center' )
     return int(res)
 
 def _animation(f1):
@@ -203,14 +204,14 @@ def _animation(f1):
         # read data as fast as possible
         msg = s.recv(1<<16)
         nmsg += 1
-    except SocketError, se:
+    except SocketError:
       # until we've run out; last message remains in m
       pass
     # make sure we got something
     if not msg:
       continue
     # Parse tag information from UDP packet
-    dat = json_loads(msg)
+    dat = [d for d in json_loads(msg) if type(d) is dict ]
     msg = ''
     # Collect allowed tags
     h = empty_like(pts)
@@ -221,7 +222,7 @@ def _animation(f1):
         continue
       #if ~isnan(h[nm,0,0]):
       #  print '(dup)',
-      p = asarray(d['p'])/100
+      p = asfarray(d['p'])/100
       h[nm,:,:2] = p
       h[nm,:,2] = 1
     #
@@ -249,11 +250,11 @@ def _animation(f1):
     # Collect the corner tags and estimate homography
     nprj = None
     try:
-      roi = array( [ mean(pts[nm],0) for nm in corners ] )
+      roi = array( [ mean(pts[nmi],0) for nmi in corners ] )
       # Homography mapping roi to ref
       nprj = fitHomography( roi, ref )
     except KeyError, ck:
-      progress("-- missing corner %s" % str(c))
+      progress("-- missing corner %s" % str(ck))
     #
     # If no previous homography --> try again
     if prj is None:
@@ -294,7 +295,8 @@ def _animation(f1):
     c = zc[waypoints]
     vc = ~isnan(c)
     a1.plot( c[vc].real, c[vc].imag,'-k',lw=3,alpha=0.3)
-    a1.plot( c[[M,M+1]].real, c[[M,M+1]].imag, '--r', lw=4)
+    if not any(isnan(c[[M,M+1]].real)):
+      a1.plot( c[[M,M+1]].real, c[[M,M+1]].imag, '--r', lw=4)
     a1.axis('equal')
     a1.axis(ax)
     #
@@ -310,6 +312,7 @@ def _animation(f1):
     # robot heading angle phasor
     ang = mean((rbt-zc[ROBOT_TAGID])/ang0)
     ang /= abs(ang)
+    ang = ang.real
     # If logging data --> put into log
     if logfile is not None:
       lo = [ now(), zc[ROBOT_TAGID].real, zc[ROBOT_TAGID].imag, ang,
@@ -327,7 +330,8 @@ def _animation(f1):
     vc = ~isnan(c)
     cr = (c - zc[ROBOT_TAGID])/ang
     a2.plot( cr[vc].real, cr[vc].imag,'-k',lw=3,alpha=0.3)
-    a2.plot( cr[[M,M+1]].real, cr[[M,M+1]].imag, '--r', lw=4)
+    if not any(isnan(cr[[M,M+1]].real)):
+      a2.plot( cr[[M,M+1]].real, cr[[M,M+1]].imag, '--r', lw=4)
     #
     # Show the tags
     znr = (znz - zc[ROBOT_TAGID])/ang
