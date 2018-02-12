@@ -42,11 +42,13 @@ def _animation(fig):
     # display it
     ax.cla()
     for d in json_loads(msg):
+      if type(d) is not dict:
+        continue
       a = array(d['p'])
       ax.plot( a[[0,1,2,3,0],0], a[[0,1,2,3,0],1], '.-b' )
       ax.plot( a[[0],0], a[[0],1], 'og' )
       ax.text( mean(a[:,0]), mean(a[:,1]), d['i'], ha='center',va='center' )
-      ax.axis([0,1024,0,768])
+      ax.axis([0,1280,0,800])
     yield
     
       
