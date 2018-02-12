@@ -385,7 +385,7 @@ class JoyApp( object ):
     p = robot.get('protocol',None)
     a = robot.get('arch',None)
     if a and p:
-      raise ValueError,"Do not combine legacy protocol= with arch="
+      raise ValueError("Do not combine legacy protocol= with arch=")
     # NOTE: A protocol instance can be passed in arch= parameter of Cluster
     if p:
       del robot['protocol']
