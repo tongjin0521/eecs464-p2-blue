@@ -2,20 +2,19 @@ if __name__ != "__main__":
     raise RuntimeError("Run this as a script")
 
 from socket import socket, AF_INET, SOCK_DGRAM, SOCK_STREAM, error as SocketError
+from errno import EADDRINUSE
 from numpy import (
-  array,asarray,zeros, exp,linspace, 
+  array,asarray,zeros, exp,linspace, diff,
   zeros_like,kron, pi, empty_like, nan, isnan,
-  concatenate, mean, dot, inf
+  concatenate, mean, dot, inf, angle, asfarray
   )
-from numpy.linalg import lstsq, svd, inv
-from numpy.random import rand, randn
+from numpy.linalg import svd
 from gzip import open as gzip_open
 from json import loads as json_loads, dumps as json_dumps
-from time import time as now
+from time import time as now, sleep
 from joy import JoyApp, speak, progress
 from joy.plans import AnimatorPlan
 from joy.decl import KEYDOWN
-
 execfile('waypointShared.py')
 
 #### CONFIGURATION ##################################################
@@ -111,11 +110,12 @@ def fitHomography( x, y ):
   res = V[-1,:].reshape(3,3)
   return res.T
 
+###!!! from pdb import set_trace as BRK
+
 class Sensor( object ):
   def __init__(self, *lineargs, **linekw):
     self.lineargs = lineargs
     self.linekw = linekw
-    self.radius = None
     self.noise = 0.01
 
   def sense( self, ax, a, b, c, scale=0.2 ):
@@ -125,12 +125,14 @@ class Sensor( object ):
     # Rigid transform and rescaling that
     # takes (a,b) to (0,1), applied to c
     z = (c-a)/(b-a)
+    ###!!! qq = asarray([z[0],a,b,c[0]])
+    ###!!! print "[[[]]]",qq.round(2),scale
     if (z.real<0) or (z.real>1):
       return lineSensorResponse( inf, self.noise )
     x = z.real * (b-a) + a
     d = z.imag * abs(b-a)
     res = lineSensorResponse( d/scale, self.noise )
-    if not any(isnan(c.real)) and not any(isnan(x.real)):
+    if 1:#not any(isnan(c.real)) and not any(isnan(x.real)):
       ax.plot( [c.real, x.real], [c.imag, x.imag], 
         *self.lineargs, **self.linekw )
       ax.text( (c.real+x.real)/2, (c.imag+x.imag)/2, 
@@ -146,7 +148,14 @@ def _animation(f1):
     s.setblocking(0)
     # Server socket
     srv = socket(AF_INET, SOCK_STREAM )
-    srv.bind(("0.0.0.0",8080))
+    while True:
+      try:
+        srv.bind(("0.0.0.0",8080))
+        break
+      except SocketError,se:
+        if se.errno == EADDRINUSE:
+          print "... address in use ..."
+          sleep(2)          
     srv.listen(2)
   except:
     app.stop()
@@ -312,10 +321,9 @@ def _animation(f1):
     # robot heading angle phasor
     ang = mean((rbt-zc[ROBOT_TAGID])/ang0)
     ang /= abs(ang)
-    ang = ang.real
     # If logging data --> put into log
     if logfile is not None:
-      lo = [ now(), zc[ROBOT_TAGID].real, zc[ROBOT_TAGID].imag, ang,
+      lo = [ now(), zc[ROBOT_TAGID].real, zc[ROBOT_TAGID].imag, angle(ang),
              int(zc[waypoints[M]].real), int(zc[waypoints[M]].imag) ]
       logfile.write(", ".join(["%.3f" % x for x in lo])+"\n")      
     # indicate robot
@@ -334,18 +342,20 @@ def _animation(f1):
       a2.plot( cr[[M,M+1]].real, cr[[M,M+1]].imag, '--r', lw=4)
     #
     # Show the tags
-    znr = (znz - zc[ROBOT_TAGID])/ang
+    zrr = (z - zc[ROBOT_TAGID])/ang
+    znr = zrr[nz,...]
     a2.plot( znr[:,[0,1,2,3,0]].real.T, znr[:,[0,1,2,3,0]].imag.T, '.-b' )
     a2.plot( [znr[:,0].real], [znr[:,0].imag], 'og' )
-    for nm,p in enumerate(znr):
-      if not isnan(p[0]):
+    for nm,p in enumerate(zrr):
+      if not isnan(p[0]) and nz[nm]:
         q = mean(p)
         a2.text( q.real,q.imag, "%d" % nm, ha='center',va='center' )
     #
     ### Check for waypoint contact
     #
     # Tag scale
-    r = max(abs(znr[ROBOT_TAGID]).flat)
+    r = max(abs(diff(znr[ROBOT_TAGID].flat)))
+    ###!!! progress("\n:::"+repr(r))
     # Indicate goal circle
     tgt = circ*r
     tgth = [
@@ -361,8 +371,8 @@ def _animation(f1):
     a,b = cr[[M,M+1]]
     # Build into packet
     pkt = {
-      'f' : sensorF.sense( a2, a, b, znr[ROBOT_TAGID,0]+znr[ROBOT_TAGID,1], r ),
-      'b' : sensorB.sense( a2, a, b, znr[ROBOT_TAGID,2]+znr[ROBOT_TAGID,3], r ),
+      'f' : sensorF.sense( a2, a, b, zrr[ROBOT_TAGID,0]+zrr[ROBOT_TAGID,1], r ),
+      'b' : sensorB.sense( a2, a, b, zrr[ROBOT_TAGID,2]+zrr[ROBOT_TAGID,3], r ),
     }
     # Check for waypoint capture
     if (r<50) and ( abs(b)<r ):
