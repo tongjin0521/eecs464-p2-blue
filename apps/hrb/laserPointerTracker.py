@@ -15,14 +15,14 @@ from numpy import (
 )
 
 class LaserTracker( object ):
-  def __init__(self, fn=None):
+  def __init__(self, fn=None, cam=0):
     bdp = SimpleBlobDetector_Params()
     bdp.minArea = 5
     bdp.maxArea = 300
     bdp.filterByInertia = False
     bdp.filterByConvexity = False
     self.bd = SimpleBlobDetector(bdp)
-    self.cam = VideoCapture(0)
+    self.cam = VideoCapture(cam)
     #self.cam = VideoCapture("http://admin:hrb2018@172.18.18.3:8080/video")
     self.clearBG()
     if not fn:
@@ -112,7 +112,7 @@ class LaserTracker( object ):
 
 if __name__=="__main__":
   import sys
-  if len(sys.argv) != 2:
+  if len(sys.argv) > 1:
     sys.stderr.write("Usage: %s <filename>\n" % sys.argv[0])
     fn = 'foo.csv.gz'
   else:
@@ -120,5 +120,9 @@ if __name__=="__main__":
     #if not fn.endswith('.gz'):
     #  fn = fn + ".gz"
   sys.stderr.write("  output to %s\n" % fn)
-  lt = LaserTracker(fn)
+  if len(sys.argv) > 2:
+    cam = int(sys.argv[2])
+  else:
+    cam = 0
+  lt = LaserTracker(fn,cam)
   lt.run()
