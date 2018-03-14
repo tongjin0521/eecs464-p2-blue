@@ -70,15 +70,15 @@ speak.say("")
 
 def skew( v ):
   """
-  Convert a 3-vector to a skew matrix such that 
+  Convert a 3-vector to a skew matrix such that
     dot(skew(x),y) = cross(x,y)
-  
+
   The function is vectorized, such that:
   INPUT:
     v -- N... x 3 -- input vectors
   OUTPUT:
-    N... x 3 x 3  
-    
+    N... x 3 x 3
+
   For example:
   >>> skew([[1,2,3],[0,0,1]])
   array([[[ 0,  3, -2],
@@ -133,9 +133,9 @@ class Sensor( object ):
     d = z.imag * abs(b-a)
     res = lineSensorResponse( d/scale, self.noise )
     if 1:#not any(isnan(c.real)) and not any(isnan(x.real)):
-      ax.plot( [c.real, x.real], [c.imag, x.imag], 
+      ax.plot( [c.real, x.real], [c.imag, x.imag],
         *self.lineargs, **self.linekw )
-      ax.text( (c.real+x.real)/2, (c.imag+x.imag)/2, 
+      ax.text( (c.real+x.real)/2, (c.imag+x.imag)/2,
         "%d" % res, ha='center',va='center' )
     return int(res)
 
@@ -154,8 +154,8 @@ def _animation(f1):
         break
       except SocketError,se:
         if se.errno == EADDRINUSE:
-          print "... address in use ..."
-          sleep(2)          
+          print "... address in use. Waiting a bit ..."
+          sleep(2)
     srv.listen(2)
   except:
     app.stop()
@@ -181,7 +181,7 @@ def _animation(f1):
   lbl = array(list(".+ld:*LD"))
   # (CONST) Reference locations for tag corners
   ang0 = array([-1+1j,1+1j,1-1j,-1-1j]) * -1j
-  # (CONST) Point on a circle 
+  # (CONST) Point on a circle
   circ = exp(1j*linspace(0,2*pi,16))
   ### Initial values for variables
   # Configure sensor line-types
@@ -239,7 +239,7 @@ def _animation(f1):
     #
     ### Update pts array
     #
-    # Tags seen in this frame 
+    # Tags seen in this frame
     fidx = ~isnan(h[:,0,0])
     # Tags previously unseen
     uidx = isnan(pts[:,0,0])
@@ -276,7 +276,7 @@ def _animation(f1):
     #
     # Apply homography to all the points
     uvs = dot(pts,prj)
-    z = uvs[...,0] + 1j*uvs[...,1] 
+    z = uvs[...,0] + 1j*uvs[...,1]
     nz = ~isnan(z[:,0])
     nz &= asarray(uvs[:,0,-1],dtype=bool)
     z[nz,...] /= uvs[nz,...,[-1]]
@@ -315,7 +315,7 @@ def _animation(f1):
       continue
     #
     ### robot tag related updates
-    # 
+    #
     # robot tag corners
     rbt = z[ROBOT_TAGID,...]
     # robot heading angle phasor
@@ -325,14 +325,14 @@ def _animation(f1):
     if logfile is not None:
       lo = [ now(), zc[ROBOT_TAGID].real, zc[ROBOT_TAGID].imag, angle(ang),
              int(zc[waypoints[M]].real), int(zc[waypoints[M]].imag) ]
-      logfile.write(", ".join(["%.3f" % x for x in lo])+"\n")      
+      logfile.write(", ".join(["%.3f" % x for x in lo])+"\n")
     # indicate robot
     a1.plot( zc[ROBOT_TAGID].real, zc[ROBOT_TAGID].imag, '*r' ,ms=15)
     #
     ### robot relative view
     #
     a2 = f1.add_subplot(122)
-    # 
+    #
     # Show the waypoints
     c = zc[waypoints]
     vc = ~isnan(c)
@@ -354,7 +354,7 @@ def _animation(f1):
     ### Check for waypoint contact
     #
     # Tag scale
-    r = max(abs(diff(znr[ROBOT_TAGID].flat)))
+    r = max(abs(diff(zrr[ROBOT_TAGID].flat)))
     ###!!! progress("\n:::"+repr(r))
     # Indicate goal circle
     tgt = circ*r
@@ -364,7 +364,7 @@ def _animation(f1):
     ]
     # Update dynamic zoom
     if zoom is not None:
-      zoom = zoom * 0.95 + r * 0.05
+      zoom = zoom * 0.9 + r * 0.1
     else:
       zoom = r
     # Check distance of both sensors to the line
@@ -375,7 +375,7 @@ def _animation(f1):
       'b' : sensorB.sense( a2, a, b, zrr[ROBOT_TAGID,2]+zrr[ROBOT_TAGID,3], r ),
     }
     # Check for waypoint capture
-    if (r<50) and ( abs(b)<r ):
+    if abs(b)<zoom:
       for h in tgth:
         h.set_linewidth(3)
         h.set_color([0,0,1])
@@ -387,9 +387,9 @@ def _animation(f1):
         return
     # Add waypoint update to packet, as needed
     if now()-lastWay>WAY_RATE:
-      pkt['w'] = zip( 
-        [ int(x) for x in zc[waypoints[M:]].real], 
-        [ int(x) for x in zc[waypoints[M:]].imag] 
+      pkt['w'] = zip(
+        [ int(x) for x in zc[waypoints[M:]].real],
+        [ int(x) for x in zc[waypoints[M:]].imag]
       )
       lastWay = now()
     # If we don't have a client -- listen
@@ -424,7 +424,7 @@ class App(JoyApp):
   def onEvent(self,evt):
       if evt.type == KEYDOWN:
         return JoyApp.onEvent(self,evt)
-        
+
 if __name__=="__main__":
   app = App(cfg={'windowSize' : [1200,600]})
   app.run()
@@ -432,4 +432,3 @@ if __name__=="__main__":
 # TODO: auto activation of subprocess tagstreamer
 # TODO: Cleanup into class format
 # TODO: yaml / json for arena config
-
