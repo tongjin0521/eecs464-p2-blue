@@ -27,7 +27,7 @@ from waypointShared import *
 
 class SensorPlanTCP( Plan ):
   """
-  SensorPlan is a concrete Plan subclass that uses a TCP socket to 
+  SensorPlan is a concrete Plan subclass that uses a TCP socket to
   and decode WayPoint messages
   """
   def __init__( self, app, *arg, **kw ):
@@ -35,13 +35,13 @@ class SensorPlanTCP( Plan ):
       self.svrAddr = (kw['server'],WAYPOINT_MSG_PORT)
       del kw['server']
     else:
-      self.svrAddr = (WAYPOINT_HOST,WAYPOINT_MSG_PORT)    
+      self.svrAddr = (WAYPOINT_HOST,WAYPOINT_MSG_PORT)
     Plan.__init__(self, app, *arg, **kw )
     self.sock = None
     self.lastSensor = (0,None,None)
     self.lastWaypoints = (0,[])
     self.buf = ''
-          
+
   def _connect( self ):
     """Set up the socket"""
     s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)
@@ -66,51 +66,53 @@ class SensorPlanTCP( Plan ):
       # if not connected --> sleep for a bit
       if self.sock is None:
         yield self.forDuration(0.1)
-      else: # otherwise --> done, return to parent 
-        return 
-  
+      else: # otherwise --> done, return to parent
+        return
+
   def sendto(self,*argv,**kw):
     """
     Expose the socket sendto to allow owner to use socket for sending
-    
+
     Will try to connect a socket if there is none
     """
     # if not connected --> try to connect
     if self.sock is None:
       self._connect()
     return self.sock.sendto(*argv,**kw)
-    
+
   def _nextMessage( self ):
         """
-        Obtain the next message; kill socket on error. 
-        
+        Obtain the next message; kill socket on error.
+
         returns '' if nothing was received
         """
-        # receive an update / skip
-        try:
-          msg = self.sock.recv(1024)
-        except SocketError, se:
-          # If there was no data on the socket
-          #   --> not a real error, else kill socket and start a new one
-          if se.errno != 11:
-            progress("Connection failed: "+str(se))
-            self.sock.close()
-            self.sock = None
-          return ''
+        # if buffer contains no complete messages --> read socket
+        if self.buf.find('}')<0:
+            # receive an update / skip
+            try:
+              msg = self.sock.recv(1024)
+            except SocketError, se:
+              # If there was no data on the socket
+              #   --> not a real error, else kill socket and start a new one
+              if se.errno != 11:
+                progress("Connection failed: "+str(se))
+                self.sock.close()
+                self.sock = None
+              return ''
+            self.buf = self.buf + msg
         # Use previously buffered data
-        msg = self.buf + msg
+        buf = self.buf
         # End of dictionary should be end of message
-        f = msg.find("}")
+        f = buf.find("}")
         if f<0:
-          self.buf = msg
           return ''
         # Pull out the first dictionary
-        self.buf = msg[f+1:]
-        return msg[:f+1]
-        
+        self.buf = buf[f+1:]
+        return buf[:f+1]
+
   def behavior( self ):
     """
-    Plan main loop    
+    Plan main loop
     """
     while True:
       # If no socket set up --> activate the ensureConnection sub-behavior to fix
@@ -118,7 +120,7 @@ class SensorPlanTCP( Plan ):
         yield self.ensureConnection()
       msg = self._nextMessage()
       # If no message --> sleep a little and try again
-      if len(msg) is 0:
+      if not msg:
           yield self.forDuration(0.3)
           continue
       # Parse the message
@@ -127,33 +129,31 @@ class SensorPlanTCP( Plan ):
       self.lastSensor = (ts, dic['f'], dic['b'])
       if dic.has_key("w"):
         self.lastWaypoints = (ts,dic['w'])
-      # Make sure to allow others to get the CPU
-      yield
-
+      # NOTE: does not yield if flooded with traffic
 
 
 if __name__=="__main__":
   import sys
   from joy import JoyApp
   from joy.decl import *
-  
+
   print """
   Running the sensor reader
 
   Connects a SensorPlanTCP to a waypointTask do display the sensor readings
-  
+
   Useage: %s <server-IP>
   """ % sys.argv[0]
-          
+
   class SensorApp( JoyApp ):
     """Concrete class SensorApp <<singleton>>
-    """    
+    """
     def __init__(self,wphAddr=WAYPOINT_HOST,*arg,**kw):
       JoyApp.__init__( self,
         confPath="$/cfg/JoyApp.yml", *arg, **kw
-        ) 
+        )
       self.srvAddr = (wphAddr, APRIL_DATA_PORT)
-      
+
     def onStart( self ):
       # Set up the sensor receiver plan
       self.sensor = SensorPlanTCP(self,server=self.srvAddr[0])
@@ -161,7 +161,7 @@ if __name__=="__main__":
       progress("Using %s:%d as the waypoint host" % self.srvAddr)
       self.timeForStatus = self.onceEvery(0.33)
       self.T0 = self.now
-  
+
     def showSensors( self ):
       ts,f,b = self.sensor.lastSensor
       if ts:
@@ -173,11 +173,11 @@ if __name__=="__main__":
         progress( "Waypoints: %4d " % (ts-self.T0) + str(w))
       else:
         progress( "Waypoints: << no reading >>" )
-    
-      
+
+
     def onEvent( self, evt ):
       # periodically, show the sensor reading we got from the waypointServer
-      if self.timeForStatus(): 
+      if self.timeForStatus():
         self.showSensors()
       return JoyApp.onEvent(self,evt)
 
@@ -186,4 +186,3 @@ if __name__=="__main__":
   else:
       app=SensorApp(wphAddr=WAYPOINT_HOST, cfg={'windowSize' : [160,120]})
   app.run()
-
