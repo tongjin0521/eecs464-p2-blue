@@ -323,8 +323,10 @@ def _animation(f1):
     ang /= abs(ang)
     # If logging data --> put into log
     if logfile is not None:
+      lwp = len(waypoints)-1
       lo = [ now(), zc[ROBOT_TAGID].real, zc[ROBOT_TAGID].imag, angle(ang),
-             int(zc[waypoints[M]].real), int(zc[waypoints[M]].imag) ]
+             int(zc[waypoints[M]].real), int(zc[waypoints[M]].imag),
+             int(zc[waypoints[min(M+1,lwp)]].real), int(zc[waypoints[min(M+1,lwp)]].imag) ]
       logfile.write(", ".join(["%.3f" % x for x in lo])+"\n")
     # indicate robot
     a1.plot( zc[ROBOT_TAGID].real, zc[ROBOT_TAGID].imag, '*r' ,ms=15)
