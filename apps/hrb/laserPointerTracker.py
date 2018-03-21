@@ -112,13 +112,13 @@ class LaserTracker( object ):
 
 if __name__=="__main__":
   import sys
-  if len(sys.argv) > 1:
+  if len(sys.argv) < 1:
     sys.stderr.write("Usage: %s <filename>\n" % sys.argv[0])
     fn = 'foo.csv.gz'
   else:
     fn = sys.argv[1]
-    #if not fn.endswith('.gz'):
-    #  fn = fn + ".gz"
+    if not fn.endswith('.gz'):
+      fn = fn + ".gz"
   sys.stderr.write("  output to %s\n" % fn)
   if len(sys.argv) > 2:
     cam = int(sys.argv[2])
