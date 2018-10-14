@@ -1,4 +1,13 @@
-from joy import *
+'''
+FILE demo-dof-selector.py
+
+This file helps in binding a joystick axis to a dof(motor) and sets the gain and offset values
+by using the joystick. It does that by storing all the values in a dictionary and has induvidual
+funtions to change those values on receiving Joystick input
+'''
+from joy.decl import *
+from joy import JoyApp
+from joy.plans import *
 
 class Simmod(object):
   def __init__(self):
@@ -7,7 +16,17 @@ class Simmod(object):
     progress('Created %s ' % self.name) 
     
 class DofSelectorApp( JoyApp ):
-  
+  '''
+  This is a concrete class which gets the user's joystick inputs and performs the following 
+  operations:
+  Dof Select: This is used to bind a joystick axis to a motor
+  Gain Select: This is used to set the gain value for the binded axis
+  Off Select: This is used to set the offset value for the binded axis
+
+  This file uses dictionaries as interface between joystick axes and modules 
+  by using axis names as keys to modules, gain and offset values
+
+  '''  
   def __init__(self,robot=None,*arg,**kw):
     #if robot is None:
     #  raise ValueError('This application requires a robot')
@@ -16,30 +35,42 @@ class DofSelectorApp( JoyApp ):
       **kw)
     
   def onStart( self ):
+    #Get a list of the modules in a variable
     self.dof = list(self.robot.itermodules())
+    #Get a list of the positions of the modules in a variable
     self.setter = [ m.set_pos for m in self.dof ]
     self.btns = set()
     self.gain = {}
     self.ofs = {}
+    #It is a dictionary with the axes names as indices to the modules as values
     self.bind = {}
     self.mode = None
     self.btnTime = 0
     self.axisTime = 0
 
   def onClick(self,evt):
+    '''
+    This function is used to see the modules binded with axes
+    '''
+    #to set the proper keys for finding bindings
     if self.mode == evt.button:
       self.mode = None
     else:
       self.mode = evt.button
     progress('[[[ MODE %s ]]]] -- mode changed' % str(self.mode))
+    #Check to see if the pressed button is binded
     if not self.bind.has_key(self.mode):
       progress("   >> no bindings defined") 
       return
+    #print all the axes with binded modules
     for (joy,axis),dof in self.bind[self.mode].iteritems():
       progress("   >> joy %d axis %d -- module %s"
         % (joy,axis,self.dof[dof].name) )
     
   def doMultiButton( self, evt ):
+    '''
+    This function is used to check for a short button press
+    '''
     if evt.type==JOYBUTTONDOWN:
       self.btns.add(evt.button)
       self.btnTime = self.now + self.cfg.buttonWait
@@ -57,6 +88,10 @@ class DofSelectorApp( JoyApp ):
       return
 
   def getDofGainOfs( self, evt):
+    '''
+    This function returns the dof, gain and offset lists designated previously
+    by the user
+    '''
     # Find binding table for current mode
     dof = None
     bnd = self.bind.get(self.mode,None)
@@ -79,17 +114,22 @@ class DofSelectorApp( JoyApp ):
     return dof,g,o    
       
   def doSelectDof( self, evt ):
+    '''
+    This function is used to bind a module to the axis being moved
+    '''
     bnd = self.bind.get(self.mode,None)
     if bnd is None:
       bnd = {}
       self.bind[self.mode] = bnd
     key = (evt.joy,evt.axis)
     
-    # Find binding for axis being moved
+    # Find the module binded for the axis being moved
     dof = bnd.get(key,0)
     # Cycle through DOF
+    #if the axis movement is positive, it will select the next module for that axis 
     if evt.value>0:
       dof = (1+dof) % len(self.dof)
+    #if the axis movement is negative, it will select the previous module for that axis
     else:
       dof = (len(self.dof)-1+dof) % len(self.dof)
     # Store back in bindings      
@@ -99,6 +139,10 @@ class DofSelectorApp( JoyApp ):
     self.axisTime = self.now + self.cfg.axisWait
 
   def doSelectGain( self, evt ):
+    '''
+    This function is used to set the gain value for the module
+    binded to the input axis
+    '''
     dof,g,o = self.getDofGainOfs(evt)
     if dof is None:
       progress("Could not find binding")
@@ -112,6 +156,10 @@ class DofSelectorApp( JoyApp ):
     self.axisTime = self.now
     
   def doSelectOfs( self, evt ):
+    '''
+    This function is used to set the offset value for the module
+    binded to the input axis
+    '''
     dof,g,o = self.getDofGainOfs(evt)
     if dof is None:
       progress("Could not find binding")

@@ -194,12 +194,12 @@ class Hub( MultiProtocol ):
     """
     pass
   
-  def update( self ):
+  def update( self, t=None ):
       """Update all sub-protocols and collect heartbeats"""
       hb = {}
       # Loop over all protocols contained in this one
       for p in self.nim.iterowners():
-          p.update()
+          p.update(t)
           # Collect heartbeats from the protocols
           for inid,val in p.heartbeats.iteritems():
               xnid = self.nim.mapI2X(p,inid)

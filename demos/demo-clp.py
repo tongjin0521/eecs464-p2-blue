@@ -78,13 +78,13 @@ def getDofByNID( clst ):
   NOTE: this does not require walking the OD-s
   """
   res = []
-  for node is clst.itervalues():
+  for node in clst.itervalues():
     try:
       s = clst.setterOf("%s/@set_pos" % node.name)
     except KeyError, ke:
       print ke
       continue
-    res.append((node.nid,s))
+    res.append((node.node_id,s))
   res.sort()
   return res
 

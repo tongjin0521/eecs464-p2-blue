@@ -1,6 +1,30 @@
-from joy import *
-
+'''
+FIlE demo-inchworm.py
+This file helps us control a 5 segment robot using two methods
+1. starting a gaitCyclePlan from a CSV file on user input 
+2. by using axes of a joystick to control induvidual motors
+'''
+from joy.decl import *
+from joy import JoyApp, StickFilter
+from joy.misc import curry
+from joy.plans import GaitCyclePlan
+from joy.misc import loadCSV
 class InchwormApp( JoyApp ):
+  '''
+  This is a concrete class which controls a 5 segment robot in two modes using a joystick and 
+  CSV file 
+  
+  It uses the joystick's front buttons to toggle between the modes in onEvent
+  1. joystick mode:
+  It uses a stickfilter object to take joystick input and uses setIntegrator function to filter
+  the input. And then it uses set_pos function on the module respective to the joystick axis used.
+  2. gait Mode: 
+  It takes a CSV file created by demo-makeInchwormCSV.py to implement a GainCyclePlan and starts 
+  and controls the plan using keyboard input in onEvent function
+
+  It would be useful for those who want control a robot with various motors using joystick 
+  or CSV file  
+  '''
   # Load the gait table for the inchworming gait
   # NOTE: we could equally well generate the gait table here by pasting in the
   #   code from 'demo-makeInchwormCSV.py', but this would not demonstrate the
@@ -95,7 +119,7 @@ class InchwormApp( JoyApp ):
     if evt.type==JOYAXISMOTION:
       self.sf.push(evt)
       return True
-    if evt.type==TIMEREVENT and :
+    if evt.type==TIMEREVENT :
       lClaw = self.sf.getValue("joy0axis1")
       lAng = self.sf.getValue("joy0axis0")
       rClaw = self.sf.getValue("joy0axis3")
@@ -116,7 +140,7 @@ class InchwormApp( JoyApp ):
       return False
     #
     # [enter] toggles gait on and off
-    if evt.key==K_ENTER:
+    if evt.key==K_KP_ENTER:
       if self.gait.isRunning():
         self.gait.stop()
         progress( "Gait stopped" )

@@ -3,12 +3,12 @@ FILE: pygix.py
 
 pygame isolation layer. This Isolation layer interfaces with pygame when available.
 When pygame is not available, it provides similar functionality to allow core
-JoyApp functions to work, and imports the relevant constants from the binary 
-pygame modules (which have very few dependencies, and so can be compiled anywhere 
+JoyApp functions to work, and imports the relevant constants from the binary
+pygame modules (which have very few dependencies, and so can be compiled anywhere
 you have SDL)
 """
 
-# Note: substantial ugliness is encoded in constants to allow it to use 
+# Note: substantial ugliness is encoded in constants to allow it to use
 #  c implementations of various pygame architectures transparently
 #  regardless of which is used, it becomes the 'constants' sub-module
 #  and its IMPL member indicates which implementation was used
@@ -19,23 +19,26 @@ from constants import *
 from time import time as now
 
 from os import getenv
-SCHD=getenv("PYGIXSCHD",None)
+SCHD=getenv("PYGIXSCHD","")
 del getenv
 
 # NOTE: for ASAP simulation, set env variable PYGIXSCHD to ASAP
 #  for FAST (and CPU hungry) execution, set env variable PYGIXSCHD to FAST
-
-if IMPL == 'pygame':
+#  Prepend "FORCE-" to force scheduler despite pygame being available
+#  this will import K_* constants and event types from pygame, but will
+#  otherwise function as if running headless. In particular, in FORCE-
+#  environments the Event objects are the headless classes
+if IMPL == 'pygame' and not SCHD.startswith("FORCE-"):
   # Pygame dependencies
   import pygame
   import pygame.joystick
   import pygame.event
   _OLD_REPEAT = None
-  
+
   def startup( cfg ):
     """
     Initialization performed on start
-    
+
     return pygame screen object
     """
     pygame.init()
@@ -47,7 +50,7 @@ if IMPL == 'pygame':
     J = [ pygame.joystick.Joystick(k)
             for k in xrange(pygame.joystick.get_count()) ]
     for joy in J:
-      joy.init()  
+      joy.init()
     screen = pygame.display.set_mode(cfg.windowSize)
     pygame.display.flip()
     return screen
@@ -58,15 +61,15 @@ if IMPL == 'pygame':
 
   def postEvent(evt ):
     return pygame.event.post( evt )
-     
+
   def Event(*argv, **kw ):
     return pygame.event.Event(*argv,**kw)
 
   def event_name(evt ):
     return pygame.event.event_name(evt)
-    
+
   def iterEvents():
-    evts = pygame.event.get() 
+    evts = pygame.event.get()
     for evt in evts:
       if evt.type == TIMEREVENT:
         pygame.display.update()
@@ -80,24 +83,29 @@ if IMPL == 'pygame':
     scr.fill(bg)
     scr.blit(img,(0,0))
 
+  def showMplFig(buf,sz,scr,bg=(255,255,255)):
+    img = pygame.image.frombuffer(buf,sz,'RGBA')
+    scr.fill(bg)
+    scr.blit(img,(0,0))
+
   def get_impl():
     return True
 
   EventType = pygame.event.EventType
-        
-else: # pygame import failed
+
+else: # pygame import failed / bypassed
   assert IMPL is not None
   from time import sleep, time as now
-  
-  _EVENT_Q = []  
+
+  _EVENT_Q = []
   _TIMESLICE = 0.05
   _TNEXT = now()
   USEREVENT = 100
-  
+
   def startup( cfg ):
     """
     Initialization performed on start
-    
+
     return pygame screen object
     """
     global _TIMESLICE, _TNEXT
@@ -111,32 +119,38 @@ else: # pygame import failed
   def postEvent(evt ):
     global _EVENT_Q
     _EVENT_Q.append(evt)
-  
+
   class Event( object ):
     def __init__(self, typecode, attr={}):
       self.type=typecode
       if attr:
         self.__dict__.update(**attr)
 
+  # If forced use of headless scheduler then we should have
+  #   all constants provided by pygame
+  if SCHD.startswith("FORCE-"):
+      assert IMPL == "pygame"
+      SCHD = SCHD[6:]
+
   ### NOTE: this table needs to be verified!
   EVENT_NAMES = {
-     0 : 'QUIT',    
+     0 : 'QUIT',
      1 : 'ACTIVEEVENT',
-     2 : 'KEYDOWN',    
-     3 : 'KEYUP',	     
+     2 : 'KEYDOWN',
+     3 : 'KEYUP',
      4 : 'MOUSEMOTION',
      5 : 'MOUSEBUTTONUP',
      6 : 'MOUSEBUTTONDOWN',
-     7 : 'JOYAXISMOTION',  
-     8 : 'JOYBALLMOTION',  
-     9 : 'JOYHATMOTION',   
-    10 : 'JOYBUTTONUP',    
-    11 : 'JOYBUTTONDOWN',  
+     7 : 'JOYAXISMOTION',
+     8 : 'JOYBALLMOTION',
+     9 : 'JOYHATMOTION',
+    10 : 'JOYBUTTONUP',
+    11 : 'JOYBUTTONDOWN',
     12 : 'VIDEORESIZE',
-    13 : 'VIDEOEXPOSE',    
-    14 : 'CKBOTPOSITION',  
-    15 : 'SCRATCHUPDATE',  
-    16 : 'TIMEREVENT',     
+    13 : 'VIDEOEXPOSE',
+    14 : 'CKBOTPOSITION',
+    15 : 'SCRATCHUPDATE',
+    16 : 'TIMEREVENT',
     17 : 'MIDIEVENT'
   }
   def event_name(evType):
@@ -148,7 +162,7 @@ else: # pygame import failed
   if SCHD=="ASAP":
     def now():
       return _TNEXT
-    
+
   def iterEvents():
     global _EVENT_Q,_TNEXT
     while _EVENT_Q:
@@ -171,6 +185,7 @@ else: # pygame import failed
 
   EventType = type(Event(0))
 
+
 ############################################################################
 # These constants are defined for both implementations
 ############################################################################
@@ -178,7 +193,7 @@ else: # pygame import failed
 ## Declare new event type numbers
 # TIMEREVENT-s are generated regularly and used to drive Plan execution
 TIMEREVENT = USEREVENT
-# CKBOTPOSITION events indicate a change in the position of a robot module 
+# CKBOTPOSITION events indicate a change in the position of a robot module
 #   a "change" needs to be at least `positionTolerance` units, and position
 #   changes are polled `robotPollRate` seconds apart. Both `positionTolerance`
 #   and `robotPollRate` are configuration parameters and can be set via the
@@ -188,7 +203,7 @@ CKBOTPOSITION = USEREVENT+1
 SCRATCHUPDATE = USEREVENT+2
 # MIDIEVENT-s indicate input from a MIDI device
 MIDIEVENT = USEREVENT+3
-  
+
 EVENT_STRUCTURE = {
     QUIT             : (),
     ACTIVEEVENT      : ('gain', 'state'),
@@ -209,11 +224,10 @@ EVENT_STRUCTURE = {
     TIMEREVENT       : (),
     MIDIEVENT        : ('dev','sc','kind','index','value'),
   }
-  
+
 JOY_EVENT_NAMES = {
     SCRATCHUPDATE : "ScratchUpdate",
     CKBOTPOSITION : "CKBotPosition",
     TIMEREVENT : "TimerEvent",
     MIDIEVENT : "MIDIEvent"
   }
-

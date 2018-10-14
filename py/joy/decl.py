@@ -1,6 +1,6 @@
 from pygix.constants import *
 
-from pygix import (
+from events import (
   TIMEREVENT, CKBOTPOSITION, SCRATCHUPDATE, MIDIEVENT
   )
   

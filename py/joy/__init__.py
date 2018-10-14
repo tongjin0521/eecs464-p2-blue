@@ -385,7 +385,7 @@ class JoyApp( object ):
     p = robot.get('protocol',None)
     a = robot.get('arch',None)
     if a and p:
-      raise ValueError("Do not combine legacy protocol= with arch=")
+      raise ValueError,"Do not combine legacy protocol= with arch="
     # NOTE: A protocol instance can be passed in arch= parameter of Cluster
     if p:
       del robot['protocol']
@@ -686,8 +686,11 @@ class JoyApp( object ):
     """
     self.screen = pygix.startup(self.cfg)
     # Obtain figure for plotting; None if running headless
-    w,h = self.cfg.windowSize
-    self.fig = figure(666,figsize=(w/80,h/80),dpi=80)
+    if self.cfg.windowSize is not None:
+        w,h = self.cfg.windowSize
+        self.fig = figure(666,figsize=(w/80,h/80),dpi=80)
+    else:
+        self.fig = None
     self._frame = None
     self.isRunning = lambda : True
     self._startRemote()    
@@ -792,18 +795,18 @@ class JoyApp( object ):
     Hitting <escape> or closing the window will cause it to quit.    
     """
     if evt.type != TIMEREVENT:
-      progress( describeEvt(evt) )
-      if self.logger:
+        progress( describeEvt(evt) )
+    if self.logger:
         self.logger.write('event',**describeEvt(evt,parseOnly=1))
-      if self.fig and evt.type==KEYDOWN:
-        # Display keypress in the GUI (if GUI exists)
-        self.fig.clf()
-        ax = self.fig.gca()
-        ax.plot([-1,1,1,1,-1],[-1,-1,1,1,-1],'w-')
-        ax.text(0,0,evt.unicode)
-        self.animate()
+    if self.fig and evt.type==KEYDOWN:
+      # Display keypress in the GUI (if GUI exists)
+      self.fig.clf()
+      ax = self.fig.gca()
+      ax.plot([-1,1,1,1,-1],[-1,-1,1,1,-1],'w-')
+      ax.text(0,0,evt.unicode)
+      self.animate()
     if evt.type==QUIT or (evt.type==KEYDOWN and evt.key in (K_q,K_ESCAPE)):
-       self.stop()
+      self.stop()
 
 def test():
   import sys

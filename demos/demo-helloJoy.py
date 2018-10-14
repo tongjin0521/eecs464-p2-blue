@@ -1,4 +1,10 @@
-from joy import *
+'''
+FILE demo-helloJoy.py
+
+This demonstrates basic joyapp programming and it converts your mouse postion to y-value and prints it on your screen
+'''
+from joy.decl import *
+from joy import JoyApp
 
 class HelloJoyApp( JoyApp ):
   """HelloJoyApp
@@ -9,6 +15,8 @@ class HelloJoyApp( JoyApp ):
      given by "#output " -- i.e. it is a debug message. 
      
      See JoyApp.setterOf() for a specification of possible outputs
+
+     This file is intended to introduce you to our joy library
   """
   def __init__(self,spec,*arg,**kw):
     # This is a "constructor". It initializes the JoyApp object.

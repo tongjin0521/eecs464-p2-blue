@@ -1,6 +1,25 @@
-from joy import *
+'''
+FILE demo-arm.py
+
+This file demonstrates the movement of robotic arm and gripper using 5 motors and a joystick. It does that by calculating the position
+of each servo when user gives the skew and bend values and bringing the motors rto that position using set_pos function 
+'''
+from joy.decl import *
+from joy import JoyApp, Plan, Stckfilter
 
 class MoveArm( Plan ):
+  '''
+  This is a concrete class which creates a plan for arm movement based on joystick input
+  
+  It calculates the angles to be set based on bend and skew given by joystick input. It receives input through the getValue function of the 
+  stickfilter which its owner JoyApp class had created. It also  calculates wrist and grip movement values based on user input. It implements 
+  these calculations on a robot by setting the motors' position using set_pos function
+
+  Expects its owner Joyapp to have:
+  1. An .sf StickFilter which can be used to obtain input
+  2. A robot with 5 modules arm1, arm2, arm3, arm4, grip in '0' mode
+  This will be useful for those who want to make a robotic arm and observe its movements.
+  '''
   def __init__(self,*arg,**kw):
     Plan.__init__(self,*arg,**kw)
     r = self.app.robot.at
@@ -43,7 +62,13 @@ class MoveArm( Plan ):
           % (bend,skew,wrist,grip))
     
 class ArmApp( JoyApp ):
+  '''
+  This class implements the above plan on joystick input using start and stop functions
+
+  This does that in onEvent
+  '''
   def __init__(self,robot=dict(count=5),*arg,**kw):
+    #initialize an arm with default gain vlaues
     cfg = dict(
       armGain = 50, #250,
       gripGain = 8500,

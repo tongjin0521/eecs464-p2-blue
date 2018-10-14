@@ -3,10 +3,10 @@
 #
 #  The library is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 #
 # (c) Shai Revzen, U Penn, 2010
-#  
+#
 """
 misc.py defines several useful functions that don't rightly belong in any obvious location
 
@@ -41,7 +41,7 @@ def curry(fn, *cargs, **ckwargs):
 
 def printExc( exinfo=None ):
   """
-  Print a formatted stack-trace to standard error 
+  Print a formatted stack-trace to standard error
   """
   # Print the stack trace so far to stderr
   if exinfo is None:
@@ -55,7 +55,7 @@ def loadCSV( fn ):
   """
   Load a CSV file into a list of lists, converting empty cells into
   None, numbers as floats and quoted strings as strings.
- 
+
   In addition to standard CSV format, empty (white only) lines and
   lines starting with "#" are ignored
   """
@@ -84,9 +84,9 @@ def loadCSV( fn ):
 
 def inlineCSV( txt ):
   """
-  Similar to loadCSV, but takes the CSV text from a multiline 
+  Similar to loadCSV, but takes the CSV text from a multiline
   python string, e.g.
-  
+
   >>> sheet = inlineCSV('''
   ... # Non-CSV Unix shell style comments and empty lines are ignored
   ... ,         "sparrow",  "banana"
@@ -94,4 +94,3 @@ def inlineCSV( txt ):
   ... ''')
   """
   return loadCSV(( l for l in txt.split("\n") ))
-
