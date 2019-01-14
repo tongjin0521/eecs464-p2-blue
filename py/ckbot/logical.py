@@ -21,9 +21,6 @@ from traceback import extract_stack
 
 from ckmodule import *
 
-import canmodules
-import TAB
-
 from defaults import *
 
 def nids2str( nids ):
