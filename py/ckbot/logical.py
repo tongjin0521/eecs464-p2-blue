@@ -21,10 +21,6 @@ from traceback import extract_stack
 
 from ckmodule import *
 
-import polowixel
-import pololu
-import hitec
-import dynamixel
 import canmodules
 import TAB
 
