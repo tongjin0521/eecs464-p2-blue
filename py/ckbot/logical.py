@@ -443,16 +443,9 @@ class Cluster(dict):
       return self._getAttrOfClp(clp,'set')
     return DelayedPermissionError("Property '%s' is not writable" % clp)
 
-canmodules._register_types(Module.Types)
 Module.Types.update(
     # Inherit all module ID strings defined in dynamixel.MODELS
     { tc : mc for tc,(mm,mc) in dynamixel.MODELS.iteritems() },
-    PolServoModule = pololu.ServoModule,
-    PoloWixelModule = polowixel.ServoModule,
-    HitecServoModule = hitec.ServoModule,
-    HitecMotorModule = hitec.MotorModule,
-    TABDriver = TAB.TABModule
 )
 Module.Types[MissingModule.TYPECODE] = MissingModule
 Module.Types[DebugModule.TYPECODE] = DebugModule
-Module.Types['TAB-FAKE']       =  TAB.MissingTAB
