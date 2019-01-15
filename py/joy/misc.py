@@ -55,6 +55,7 @@ def loadCSV( fn ):
   """
   Load a CSV file into a list of lists, converting empty cells into
   None, numbers as floats and quoted strings as strings.
+
   In addition to standard CSV format, empty (white only) lines and
   lines starting with "#" are ignored
   """

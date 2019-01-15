@@ -21,6 +21,7 @@ from traceback import extract_stack
 
 from ckmodule import *
 
+import polowixel
 import pololu
 import dynamixel
 
@@ -450,6 +451,7 @@ Module.Types.update(
     # Inherit all module ID strings defined in dynamixel.MODELS
     { tc : mc for tc,(mm,mc) in dynamixel.MODELS.iteritems() },
     PolServoModule = pololu.ServoModule,
+    PoloWixelModule = polowixel.ServoModule,
 )
 Module.Types[MissingModule.TYPECODE] = MissingModule
 Module.Types[DebugModule.TYPECODE] = DebugModule

@@ -1,4 +1,3 @@
-
 '''
 FILE demo-FunctionCyclePlan.py
 

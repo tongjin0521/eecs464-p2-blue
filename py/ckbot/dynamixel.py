@@ -102,8 +102,9 @@ class DynamixelMemMap:
       -- create a dictionary _ADDR_DCR_ that holds the memory location, name, and type (B, >H)
          generate a set of properties with the commmand name and it equivalent location
     """
+
     _ADDR_DCR = {
-    '\x00' : ("model", "<H") # superclass only knows where to find model number
+        '\x00' : ("model", "<H") # superclass only knows where to find model number
     }
     MODEL_ADDR = pack('B',0) #: Address of model number, shared for all models
     MODEL_ADDR_LEN = 2 #: Length of model number
@@ -147,6 +148,7 @@ class DynamixelMemMap:
 		  cls._ADDR_DCR.update(ADDR)
       for adr,(nm,fmt) in cls._ADDR_DCR.iteritems():
           setattr(cls,nm,adr)
+
 DynamixelMemMap._prepare()
 
 class MemMapOpsMixin:
@@ -424,6 +426,7 @@ class Bus( AbstractBus ):
           dat -- string -- data from which to compute checksum
         OUTPUTS:
           return -- int -- value of checksum between 0 and 0xFF
+
         THEORY OF OPERATION:
           Compute checksum using not bit operator for only the lowest
           byte of the sum
@@ -642,6 +645,7 @@ class Bus( AbstractBus ):
     def send_sync_write( self, nid, addr, pars ):
         """
         Build a SYNC_WRITE message writing a value
+
         INPUTS:
           nid -- int -- node ID of module
           addr -- string -- address
@@ -660,6 +664,7 @@ class Bus( AbstractBus ):
                 +addr
                 +pack('BB', len(pars),nid)
                 +pars
+           )
         msg = Dynamixel.SYNC+body+pack("B",self._chksum(body))
         if 'x' in self.DEBUG:
           progress('[Dynamixel] sync_write --> [%s] %s\n' % (self.dump(msg),repr(msg)))
@@ -775,6 +780,14 @@ class ProtocolNodeAdaptor( AbstractNodeAdaptor ):
           self.mm = (MODELS[tc][0])
         except KeyError, ke:
           raise KeyError('Unknown module typecode "%s"' % tc)
+
+    def reset(self):
+        """
+        Send a reset command to the node.
+        NOTE: this is a FACTORY RESET code. It is very likely to change the
+          node's baud-rate and make it unreachable.
+        """
+        return self.p.reset_nid(self.nid)
 
     def mem_write_fast( self, addr, val ):
         """
@@ -1147,6 +1160,12 @@ class Protocol( AbstractProtocol ):
       """
       self.bus.off()
 
+    def reset_nid(self, nid):
+        """
+        Reset a node
+        """
+        return self.b.reset_nid(nid)
+
     def mem_write( self, nid, addr, pars ):
         """
         Send a memory write command and don't wait for a response
@@ -1240,13 +1259,14 @@ class Protocol( AbstractProtocol ):
             break
         self.pollRing.extend(nxt)
         
-    def update( self, timeout=0.01 ):
+    def update( self, t=None, timeout=0.01 ):
         """ 
         The update method handles current incomplete message requests and ensures that 
         nodes are pinged to check for their existance
 
         INPUTS:
-          None
+          t -- time -- ignored; uses now() to get real time
+          timeout -- time -- time interval for processing updates
         OUTPUTS: 
           num_requests -- int -- length of request queue 
         PRECONDITIONS:
@@ -1429,6 +1449,8 @@ class DynamixelModule( AbstractServoModule ):
         ccw_limit = self.pna.mem_read_sync(self.mcu.ccw_angle_limit)
         if cw_limit==0 and ccw_limit==0:
             self.mode = 1
+        elif cw_limit==self.MAX_POS and ccw_limit==self.MAX_POS:
+            self.mode = 2
         else:
             self.mode = 0
         return self.mode
@@ -1607,6 +1629,14 @@ class DynamixelModule( AbstractServoModule ):
         """
         return self.dynamixel2voltage(self.mem_read(self.mcu.present_voltage))
 
+    def RESET(self):
+        """
+        Send a FACTORY RESET command to this module.
+
+        WARNING: this will change the module ID to 1 and reset the baud rate
+        """
+        return self.pna.reset()
+
 class DX_MX_Module(DynamixelModule):
     def __init__(self, *arg, **kw):
         DynamixelModule.__init__( self, *arg, **kw )
@@ -1747,10 +1777,10 @@ class MX28Module(DX_MX_Module):
 
     # Scaling for Dynamixel speed
     SPEED_SCL = 0.114
-    # Scaling for Dynamixel voltage
-    VOLTAGE_SCL = 0.1
     # Scaling for loads (unused)
     LOAD_SCL = 0.001
+    # Scaling for Dynamixel voltage
+    VOLTAGE_SCL = 0.1
 
     SCL = float(MAX_POS - MIN_POS)/(MAX_ANG - MIN_ANG)
     OFS = (MAX_POS - MIN_POS)/2 + MIN_POS

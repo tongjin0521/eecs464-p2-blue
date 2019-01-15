@@ -795,7 +795,7 @@ class JoyApp( object ):
     Hitting <escape> or closing the window will cause it to quit.    
     """
     if evt.type != TIMEREVENT:
-      progress( describeEvt(evt) )
+        progress( describeEvt(evt) )
     if self.logger:
         self.logger.write('event',**describeEvt(evt,parseOnly=1))
     if self.fig and evt.type==KEYDOWN:

@@ -103,6 +103,8 @@ class Sink( Plan ):
   def onEvent( self, evt ):
     if evt.type != TIMEREVENT:
       return
+    if self.allow:
+      self._clearQueue()
     for k in xrange(self.rate):
       try:
         # Create event from the next packet
@@ -138,9 +140,9 @@ class Sink( Plan ):
       # If custom events are allowed --> add to queue
       if self.allow:
         now = self.app.now
-        self._clearQueue()
         # Store new timestamp and packet
         self.queue.append( (now,dic) )
+        continue
     return False
   
   def _clearQueue(self):

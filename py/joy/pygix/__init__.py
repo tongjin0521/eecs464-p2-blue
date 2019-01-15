@@ -231,4 +231,3 @@ JOY_EVENT_NAMES = {
     TIMEREVENT : "TimerEvent",
     MIDIEVENT : "MIDIEvent"
   }
-

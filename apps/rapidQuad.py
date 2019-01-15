@@ -26,8 +26,8 @@ class Buehler(object):
       OUTPUT:                                                                              
         res -- phase -- from -pi to pi                                                     
     """
-    t -= floor(t) # wrap at 1
-    if t<self.duty:
+    t = (t % self.tc)
+    if t<self.duty*self.tc:
       res = t * (self.sweep / (self.duty*self.tc)) - self.offset
     else:
       res = (t-self.duty*self.tc)*(2*pi-self.sweep)/(self.tc-self.duty*self.tc) + self.sweep - self.offset
