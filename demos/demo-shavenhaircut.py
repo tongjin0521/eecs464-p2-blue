@@ -1,24 +1,47 @@
-from joy import *
+'''
+FILE demo-shaveandhaircut.py
+
+This file demonstrates how to use plans sequentially or to use a single plan based
+on the argument given. It operates plans sequentially by passing multiple plans as
+arguments and yielding one after the other.
+'''
+from joy.decl import *
+from joy import JoyApp, Plan
 
 class ShaveNHaircutPlan( Plan ):
   """
   ShaveNHaircutPlan shows a simple example of sequential composition:
   its behavior is to run the shave plan followed by the haircut plan.
+  *use two modules
+  
+  It starts shave and haircut sequentially by yielding the plans one after the other
+
+  It is a useful demonstration of operation of multiple plans. It expects the motors
+  to have mode=0
   """
   def __init__(self,app,shave,haircut,*arg,**kw):
     Plan.__init__(self,app,*arg,**kw)
     self.shave = shave
     self.haircut = haircut
-    
+  
   def behavior( self ):
     progress("Both: starting 'Shave' sequence")
     yield self.shave
+    #this will start shave and wait for its completion
     progress("Both: starting 'Haircut' sequence")
     yield self.haircut    
+    #this starts haircut plan and waits for its completions
     progress("Both: done")
     
 class ShaveNHaircutApp( JoyApp ):
-  # Load both patterns from their CSV files
+  '''
+  This decides the sequence based on users input
+
+  it uses onEvent to receive user input and starts the plans accordingly which are based on
+  a CSV spreadsheet and uses sheetPlan to execute the plans
+
+  Its useful for those who want to use plans sequentially
+  '''
   SHAVE = loadCSV("shave.csv")
   HAIRCUT = loadCSV("haircut.csv")
 
@@ -48,6 +71,7 @@ class ShaveNHaircutApp( JoyApp ):
     self.both = ShaveNHaircutPlan(self, self.shaveplan, self.hairplan)
 
   def onEvent(self,evt):
+    """Main event handler"""
     if evt.type != KEYDOWN:
       return
     # assertion: must be a KEYDOWN event 
@@ -68,23 +92,29 @@ class ShaveNHaircutApp( JoyApp ):
         self.stop()
 
 if __name__=="__main__":
+  #give default values to the command line arguements
   robot = None
   scr = None
   shaveSpec = "#shave "
   hairSpec = "#haircut "
+  #process the command line arguements
   args = list(sys.argv[1:])
   while args:
     arg = args.pop(0)
     if arg=='--mod-count' or arg=='-c':
+    #detects number of modules specified after -c
       N = int(args.pop(0))
       robot = dict(count=N)
     elif arg=='--shave' or arg=='-s':
+    #detects the shavespec specified after -s  which basically controls the type of output we will see for shave
       shaveSpec = args.pop(0)
       if shaveSpec[:1]==">": scr = {}
     elif arg=='--haircut' or arg=='-h':
+    #detects the shavespec specified after -s  which basically controls the type of output we will see for shave
       hairSpec = args.pop(0)
       if hairSpec[:1]==">": scr = {}
     elif arg=='--help' or arg=='-h':
+    #help
       sys.stdout.write("""
   Usage: %s [options]
   
@@ -117,6 +147,5 @@ if __name__=="__main__":
     """ % sys.argv[0])
       sys.exit(1)
     # ENDS cmdline parsing loop
-  
   app = ShaveNHaircutApp(shaveSpec,hairSpec,robot=robot,scr=scr)
   app.run()

@@ -1,3 +1,8 @@
+'''
+FILE demo-makeinchwormCSV.py
+
+This file is used to create a CSV file for a five moduled inchworm robot
+'''
 from numpy import *
 import sys
 
@@ -44,4 +49,5 @@ for phi in linspace(0,1,30,endpoint=False):
 sys.stderr.write("""
 This program is a quick hack for creating a gait table for an inchworm gait.  
 To use this program, pipe its output into a .csv file
+Do this by executing 'python demo+makeinchworm.CSV > file.CSV' in linux terminal outside pylab
 """)

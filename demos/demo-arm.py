@@ -1,15 +1,34 @@
-from joy import *
+'''
+FILE demo-arm.py
+
+This file demonstrates the movement of robotic arm and gripper using 5 motors and a joystick. It does that by calculating the position
+of each servo when user gives the skew and bend values and bringing the motors rto that position using set_pos function
+'''
+from joy.decl import *
+from joy import JoyApp, Plan, Stckfilter
 
 class MoveArm( Plan ):
+  '''
+  This is a concrete class which creates a plan for arm movement based on joystick input
+
+  It calculates the angles to be set based on bend and skew given by joystick input. It receives input through the getValue function of the
+  stickfilter which its owner JoyApp class had created. It also  calculates wrist and grip movement values based on user input. It implements
+  these calculations on a robot by setting the motors' position using set_pos function
+
+  Expects its owner Joyapp to have:
+  1. An .sf StickFilter which can be used to obtain input
+  2. A robot with 5 modules arm1, arm2, arm3, arm4, grip in '0' mode
+  This will be useful for those who want to make a robotic arm and observe its movements.
+  '''
   def __init__(self,*arg,**kw):
     Plan.__init__(self,*arg,**kw)
     r = self.app.robot.at
     self.seg = [r.arm1,  r.arm3, r.arm4, r.arm5] # r.arm2,
     self.grip = r.grip
-    
+
   def onStart( self ):
     progress("Arm motion started")
-  
+
   def onStop( self ):
     progress("Going slack")
     for mod in [self.grip]+self.seg:
@@ -20,7 +39,7 @@ class MoveArm( Plan ):
     oncePer = self.app.onceEvery(0.5)
     while True:
       yield
-      # Read joystick from application's StickFilter 
+      # Read joystick from application's StickFilter
       sf = self.app.sf
       bend = sf.getValue('joy0axis0')
       skew = sf.getValue('joy0axis1')
@@ -41,16 +60,22 @@ class MoveArm( Plan ):
       if oncePer():
         progress("Arm: bend %6f skew %6f wrist %6f grip %6f"
           % (bend,skew,wrist,grip))
-    
+
 class ArmApp( JoyApp ):
+  '''
+  This class implements the above plan on joystick input using start and stop functions
+
+  This does that in onEvent
+  '''
   def __init__(self,robot=dict(count=5),*arg,**kw):
+    #initialize an arm with default gain vlaues
     cfg = dict(
       armGain = 50, #250,
       gripGain = 8500,
       wristGain = 50, #250,
       )
     JoyApp.__init__(self,robot=robot,cfg=cfg,*arg,**kw)
-  
+
   def onStart(self):
     sf = StickFilter(self,dt=0.05)
     sf.setIntegrator( 'joy0axis0',10 )
@@ -59,8 +84,8 @@ class ArmApp( JoyApp ):
     sf.setLowpass( 'joy0axis3', 20 )
     sf.start()
     self.sf = sf
-    self.ma = MoveArm(self) 
-      
+    self.ma = MoveArm(self)
+
   def onEvent(self,evt):
     if evt.type == JOYAXISMOTION:
       # Forward a copy of the event to the StickFilter plan
@@ -79,7 +104,7 @@ class ArmApp( JoyApp ):
 
   def onStop(self):
     self.ma.onStop()
-      
+
 if __name__=="__main__":
   app = ArmApp()
   app.run()

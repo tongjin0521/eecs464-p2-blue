@@ -22,8 +22,10 @@ class Protocol( AbstractProtocol ):
     AbstractProtocol.__init__(self,*args,**kw)
     self.hintNodes([])
     
-  def update(self):
-    self._ts[0] = now()
+  def update(self,t=None):
+    if t is None:
+        t = now()
+    self._ts[0] = t
   
   def hintNodes( self, nodes ):
     self._ts = [now(),"No message"]

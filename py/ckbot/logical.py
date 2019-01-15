@@ -1,9 +1,9 @@
 """
   The ckbots.logical module provides classes to create representations
   of modules inside a cluster. It directly includes classes representing
-  modules classes from pololu, dynamixel and hitec. 
-  The top of the classes heirarchy for modules and their NodeAdaptor-s 
-  are found in ckmodule.
+  modules on a CAN-bus (for historical reasons), and imports additional
+  module classes from pololu and hitec. The top of the classes heirarchy
+  for modules and their NodeAdaptor-s are found in ckmodule.
 
   Main uses of this module:
   (*) query the object dictionary of a module by its logical name
@@ -11,7 +11,7 @@
 
   The top level of this module is cluster. Typically users will create a 
   cluster  to represent a set of modules that can communicate on the same 
-  Bus. Modules can be  addressed through logical names via the Attributes 
+  CANBus. Modules can be  addressed through logical names via the Attributes 
   class. 
 """
 import re
@@ -21,8 +21,6 @@ from traceback import extract_stack
 
 from ckmodule import *
 
-import pololu
-import hitec
 import dynamixel
 
 from defaults import *
@@ -197,6 +195,8 @@ class Cluster(dict):
     else:
       exc = None
     required = set(required)
+    if names != {} and count is None:
+       count = len(names)
     nids = self.discover(count,timeout,timestep,required,raiseClass = exc)
     for nid in nids:
       name = names.get(nid, autonamer(nid))
@@ -255,10 +255,12 @@ class Cluster(dict):
           timeout=timeout, found=nids, required=required, count=count )
     return nids
 
-  def update(self):
-    """Allow stateful members to update; propagates to """
+  def update(self,t=None):
+    """Allow stateful members to update; propagates to sub-objects"""
+    if t is None:
+        t = now()
     for m in self._updQ:
-      m.update()
+      m.update(t)
 
   def off( self ):
     """Make all servo or motor modules go slack"""
@@ -443,11 +445,9 @@ class Cluster(dict):
       return self._getAttrOfClp(clp,'set')
     return DelayedPermissionError("Property '%s' is not writable" % clp)
 
-Module.Types[MissingModule.TYPECODE] = MissingModule
-Module.Types['PolServoModule'] = pololu.ServoModule
-Module.Types['HitecServoModule'] = hitec.ServoModule
-Module.Types['HitecMotorModule'] = hitec.MotorModule
-# Inherit all module ID strings defined in dynamixel.MODELS
 Module.Types.update(
-  { tc : mc for tc,(mm,mc) in dynamixel.MODELS.iteritems() }
-  )
+    # Inherit all module ID strings defined in dynamixel.MODELS
+    { tc : mc for tc,(mm,mc) in dynamixel.MODELS.iteritems() },
+)
+Module.Types[MissingModule.TYPECODE] = MissingModule
+Module.Types[DebugModule.TYPECODE] = DebugModule

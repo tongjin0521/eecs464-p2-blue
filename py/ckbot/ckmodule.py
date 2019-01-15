@@ -33,6 +33,8 @@ PYCKBOTPATH = getenv('PYCKBOTPATH',None)
 if PYCKBOTPATH is None:
   if __file__.rfind('py%sckbot'%sep)>-1:
      PYCKBOTPATH = __file__[:__file__.rfind('py%sckbot'%sep)]
+  else:
+     PYCKBOTPATH = "."+sep
 elif PYCKBOTPATH[-1:] != sep:
   PYCKBOTPATH=PYCKBOTPATH+sep
 if not GLOB_GLOB(PYCKBOTPATH+"py%sckbot%sckmodule.py" % (sep,sep)):
@@ -64,7 +66,7 @@ class AbstractProtocol( object ):
     """
     self.heartbeats = {}
 
-  def update( self ):
+  def update( self, t=None ):
     """
     *PURE* perform Protocol housekeeping operations
     """
@@ -490,7 +492,7 @@ class GenericModule( Module ):
       RuntimeWarning("CAN node 0x%02X reported unknown typecode '%s'. Falling back on GenericModule class"% (nid, str(typecode))) 
     )
     
-class MissingModule( Module ):
+class MissingModule( AbstractServoModule ):
   """
   Concrete class representing required modules that were not discovered during
   the call to Cluster.populate
@@ -559,6 +561,12 @@ class MissingModule( Module ):
     self.pos = val
     if self.msg is not None:
       self.msg("%s.set_pos(%d)" % (self.name,val))  
+
+  def set_pos_UNSAFE( self, val ):
+    self.slack = False
+    self.pos = val
+    if self.msg is not None:
+      self.msg("%s.set_pos_UNSAFE(%d)" % (self.name,val))
   
   def set_speed( self, val ):
     self.slack = False
@@ -577,8 +585,24 @@ class MissingModule( Module ):
       self.msg("%s.get_pos() --> %d" % (self.name,self.pos))  
     return self.pos
     
+  def get_pos_async(self):
+    if self.msg is not None:
+      self.msg("%s.get_pos_async() --> %d" % (self.name,self.pos))
+    return self.pos
+
   def get_speed(self):
     if self.msg is not None:
       self.msg("%s.get_speed() --> %d" % (self.name,self.speed))  
     return self.speed
 
+class DebugModule( MissingModule ):
+    """Concrete class DebugModule
+
+    A MissingModule which logs all API calls by default.
+
+    Typically used by setting nobus.NID_CLASS[nid]=DebugModule
+    """
+    TYPECODE = ">>DEBUG<<"
+    def __init__(self,*arg,**kw):
+      MissingModule.__init__(self,*arg,**kw)
+      self.msg = progress

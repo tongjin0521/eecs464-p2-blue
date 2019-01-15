@@ -420,8 +420,10 @@ class Protocol(AbstractProtocol):
       if (now - ts) > self.ping_period * uniform(0.75,1.0):
         pna.ping()
     
-  def update(self):
+  def update(self,t=None):
     """
+    INPUT
+      t -- time -- ignored; uses time() for IO processing
     Complete any outstanding async requests and collect heartbeats
     """
     now = time()

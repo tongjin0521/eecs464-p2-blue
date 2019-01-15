@@ -1,6 +1,7 @@
 import pygame.midi as pygm
 import sys
-from joy.events import MIDIEVENT, JoyEvent
+from joy.decl import MIDIEVENT
+from joy.events import JoyEvent
 
 DEV = None
 
