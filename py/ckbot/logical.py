@@ -21,6 +21,7 @@ from traceback import extract_stack
 
 from ckmodule import *
 
+import pololu
 import dynamixel
 
 from defaults import *
@@ -448,6 +449,7 @@ class Cluster(dict):
 Module.Types.update(
     # Inherit all module ID strings defined in dynamixel.MODELS
     { tc : mc for tc,(mm,mc) in dynamixel.MODELS.iteritems() },
+    PolServoModule = pololu.ServoModule,
 )
 Module.Types[MissingModule.TYPECODE] = MissingModule
 Module.Types[DebugModule.TYPECODE] = DebugModule
