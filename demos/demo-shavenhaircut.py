@@ -7,7 +7,7 @@ arguments and yielding one after the other.
 '''
 from joy.decl import *
 from joy.misc import *
-from joy import JoyApp, Plan
+from joy import JoyApp, Plan, SheetPlan
 
 class ShaveNHaircutPlan( Plan ):
   """
