@@ -6,6 +6,7 @@ on the argument given. It operates plans sequentially by passing multiple plans 
 arguments and yielding one after the other.
 '''
 from joy.decl import *
+from joy.misc import *
 from joy import JoyApp, Plan
 
 class ShaveNHaircutPlan( Plan ):
