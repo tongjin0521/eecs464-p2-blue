@@ -12,6 +12,11 @@ from socket import (
 from pylab import randn,dot,mean,exp,newaxis
 
 class MoveForward(Plan):
+  """
+  Plan simulates robot moving forward or back over a period of time.
+
+  (MODIFY THIS FOR YOUR ROBOT)
+  """
   def __init__(self,app,simIX):
     Plan.__init__(self,app)
     self.simIX = simIX
@@ -32,6 +37,11 @@ class MoveForward(Plan):
       yield self.forDuration(dt)
 
 class Turn(Plan):
+  """
+  Plan simulates robot turning over a period of time.
+
+  (MODIFY THIS FOR YOUR ROBOT)
+  """
   def __init__(self,app,simIX):
     Plan.__init__(self,app)
     self.simIX = simIX
@@ -61,12 +71,20 @@ class RobotSimulatorApp( JoyApp ):
      environment for Project 1
   """
   def __init__(self,wphAddr=WAYPOINT_HOST,*arg,**kw):
+    """
+    Initialize the simulator
+    """
     JoyApp.__init__( self,
       confPath="$/cfg/JoyApp.yml", *arg, **kw
       )
     self.srvAddr = (wphAddr, APRIL_DATA_PORT)
+    # ADD pre-startup initialization here, if you need it
 
   def onStart( self ):
+    """
+    Sets up the JoyApp and configures the simulation
+    """
+    ### DO NOT MODIFY ------------------------------------------
     # Set up socket for emitting fake tag messages
     s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
     s.bind(("",0))
@@ -74,16 +92,21 @@ class RobotSimulatorApp( JoyApp ):
     # Set up the sensor receiver plan
     self.sensor = SensorPlanTCP(self,server=self.srvAddr[0])
     self.sensor.start()
-    self.robSim = SimpleRobotSim(fn=None)
-    self.moveP = MoveForward(self,self.robSim)
-    self.turnP = Turn(self,self.robSim)
     self.timeForStatus = self.onceEvery(1)
     self.timeForLaser = self.onceEvery(1/15.0)
     self.timeForFrame = self.onceEvery(1/20.0)
     progress("Using %s:%d as the waypoint host" % self.srvAddr)
     self.T0 = self.now
+    ### MODIFY FROM HERE ------------------------------------------
+    self.robSim = SimpleRobotSim(fn=None)
+    self.moveP = MoveForward(self,self.robSim)
+    self.turnP = Turn(self,self.robSim)
 
   def showSensors( self ):
+    """
+    Display sensor readings
+    """
+    # This code should help you understand how you access sensor information
     ts,f,b = self.sensor.lastSensor
     if ts:
       progress( "Sensor: %4d f %d b %d" % (ts-self.T0,f,b)  )
@@ -97,6 +120,7 @@ class RobotSimulatorApp( JoyApp ):
 
   def emitTagMessage( self ):
     """Generate and emit and update simulated tagStreamer message"""
+    #### DO NOT MODIFY --- it WILL break the simulator
     self.robSim.refreshState()
     # Get the simulated tag message
     msg = self.robSim.getTagMsg()
@@ -104,6 +128,7 @@ class RobotSimulatorApp( JoyApp ):
     self.sock.sendto(msg, self.srvAddr)
 
   def onEvent( self, evt ):
+    #### DO NOT MODIFY --------------------------------------------
     # periodically, show the sensor reading we got from the waypointServer
     if self.timeForStatus():
       self.showSensors()
@@ -114,7 +139,7 @@ class RobotSimulatorApp( JoyApp ):
     # update the robot and simulate the tagStreamer
     if self.timeForFrame():
       self.emitTagMessage()
-
+    #### MODIFY FROM HERE ON ----------------------------------------
     if evt.type == KEYDOWN:
       if evt.key == K_UP and not self.moveP.isRunning():
         self.moveP.dist = 100.0
@@ -132,8 +157,8 @@ class RobotSimulatorApp( JoyApp ):
         self.turnP.ang = -0.5
         self.turnP.start()
         return progress("(say) Turn right")
-    # Use superclass to show any other events
-      else:
+    ### DO NOT MODIFY -----------------------------------------------
+      else:# Use superclass to show any other events
         return JoyApp.onEvent(self,evt)
     return # ignoring non-KEYDOWN events
 
