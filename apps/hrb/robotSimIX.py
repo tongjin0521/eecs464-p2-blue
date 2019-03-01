@@ -6,7 +6,7 @@ Created on Thu Sep  4 20:31:13 2014
 """
 from gzip import open as opengz
 from json import dumps as json_dumps
-from numpy import asfarray, dot, c_, newaxis, mean, exp, sum, sqrt
+from numpy import asfarray, dot, c_, newaxis, mean, exp, sum, sqrt, any, isnan
 from numpy.linalg import svd
 from numpy.random import randn
 from waypointShared import *
@@ -137,44 +137,41 @@ class RobotSimInterface( object ):
     OUTPUT: string of human readable message (not what is in log)
     """
     x = findXing( self.laserScreen, self.laserAxis )
+    if any(isnan(x)):
+        return "Laser: <<DISQUALIFIED>>"
     if self.out:
       self.out.write("%.2f, 1, %d, %d\n" % (now,n+1,x[0],x[1]))
     return "Laser: %d,%d " % tuple(x)
 
+class SimpleRobotSim( RobotSimInterface ):
+    def __init__(self, *args, **kw):
+        RobotSimInterface.__init__(self, *args, **kw)
+        self.dNoise = 0.1 # Distance noise
+        self.aNoise = 0.02 # Angle noise
+        self.lNoise = 0.01 # Laser pointing noise
+        # Model the tag
+        tag = dot(self.tagPos,[1,1j])
+        self.zTag = tag-mean(tag)
+        self.pos = mean(tag)
+        self.ang = 1+0j
 
-class DummyRobotSim( RobotSimInterface ):
-  def __init__(self, *args, **kw):
-    RobotSimInterface.__init__(self, *args, **kw)
-    self.dNoise = 0.1
-    self.aNoise = 0.1
+    def move(self,dist):
+        # Move in direction of self.ang
+        #  If we assume Gaussian errors in velocity, distance error will grow
+        #  as sqrt of goal distance
+        self.pos += self.ang * dist + randn()*self.dNoise*sqrt(abs(dist))
 
-  def move( self, dist ):
-    """
-    Move forward some distance
-    """
-    # Compute a vector along the forward direction
-    fwd = dot([1,-1,-1,1],self.tagPos)/2
-    # Move all tag corners forward by distance, with some noise
-    self.tagPos = self.tagPos + fwd[newaxis,:] * dist * (1+randn()*self.dNoise)
+    def turn(self,ang):
+        # Turn by ang (plus noise)
+        self.ang *= exp(1j*(ang + randn()*self.aNoise))
 
-  def turn( self, angle ):
-    """
-    Turn by some angle
-    """
-    z = dot(self.tagPos,[1,1j])
-    c = mean(z)
-    zr = c + (z-c) * exp(1j * (angle+randn()*self.aNoise))
-    self.tagPos[:,0] = zr.real
-    self.tagPos[:,1] = zr.imag
-
-  def refreshState( self ):
-    """
-    Make state ready for use by client.
-
-    ALGORITHM:
-    Since the entire robot state is captured by the location of the
-    robot tag corners, update the laser axis from the robot tag location
-    """
-    self.laserAxis = dot([[1,1,0,0],[0,0,1,1]],self.tagPos)/2
-    da = dot([1,-1],self.laserAxis)
-    self.laserAxis[1] += randn(2) * sqrt(sum(da*da)) * 0.01
+    def refreshState(self):
+        # Compute tag points relative to tag center, with 1st point on real axis
+        tag = self.zTag * self.ang + self.pos
+        # New tag position is set by position and angle
+        self.tagPos = c_[tag.real,tag.imag]
+        # Laser points along tag axis
+        self.laserAxis = dot([[1,1,0,0],[0,0,1,1]],self.tagPos)/2
+        # Add some axis error in direction perpendicular to axis
+        ax = dot(dot([1,-1],self.laserAxis),[1,1j]) * self.lNoise * 1j * randn()
+        self.laserAxis[1] = self.laserAxis[1] + [ax.real,ax.imag]

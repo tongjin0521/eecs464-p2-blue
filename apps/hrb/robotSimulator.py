@@ -1,7 +1,7 @@
 # file robotSimulator.py simulates a robot in an arena
 
 from sensorPlanTCP import SensorPlanTCP
-from robotSimIX import DummyRobotSim,RobotSimInterface
+from robotSimIX import SimpleRobotSim,RobotSimInterface
 from joy import JoyApp, progress
 from joy.decl import *
 from joy.plans import Plan
@@ -21,17 +21,14 @@ class MoveForward(Plan):
     self.dur = 3
     # Number of intermediate steps
     self.N = 10
-    # Noise level for forward motion
-    self.dNoise = 0.05
 
   def behavior(self):
     s = self.simIX
     # Compute step along the forward direction
-    step = (dot([1,-1,-1,1],s.tagPos)*2.0/float(self.N)*self.dist)[newaxis,:]
+    step = self.dist / float(self.N)
     dt = self.dur / float(self.N)
     for k in xrange(self.N):
-      # Move all tag corners forward by distance, with some noise
-      s.tagPos = s.tagPos + step * (1+randn()*self.dNoise)
+      s.move(step)
       yield self.forDuration(dt)
 
 class Turn(Plan):
@@ -44,23 +41,14 @@ class Turn(Plan):
     self.dur = 3.0
     # Number of intermediate steps
     self.N = 10
-    # Noise level for turn motion
-    self.aNoise = 0.005
 
   def behavior(self):
     s = self.simIX
     # Compute rotation step
     dt = self.dur / float(self.N)
-    rot = exp(1j * self.ang / float(self.N))
+    step = self.ang / float(self.N)
     for k in xrange(self.N):
-      # Get current tag location
-      z = dot(s.tagPos,[1,1j])
-      c = mean(z)
-      # Rotate with angle noise
-      zr = c + (z-c) * rot * exp(1j*randn()*self.aNoise)
-      # Store as new tag
-      s.tagPos[:,0] = zr.real
-      s.tagPos[:,1] = zr.imag
+      s.turn(step)
       yield self.forDuration(dt)
 
 
@@ -86,7 +74,7 @@ class RobotSimulatorApp( JoyApp ):
     # Set up the sensor receiver plan
     self.sensor = SensorPlanTCP(self,server=self.srvAddr[0])
     self.sensor.start()
-    self.robSim = DummyRobotSim(fn=None)
+    self.robSim = SimpleRobotSim(fn=None)
     self.moveP = MoveForward(self,self.robSim)
     self.turnP = Turn(self,self.robSim)
     self.timeForStatus = self.onceEvery(1)
@@ -129,19 +117,19 @@ class RobotSimulatorApp( JoyApp ):
 
     if evt.type == KEYDOWN:
       if evt.key == K_UP and not self.moveP.isRunning():
-        self.moveP.dist = 1.0
+        self.moveP.dist = 100.0
         self.moveP.start()
         return progress("(say) Move forward")
       elif evt.key == K_DOWN and not self.moveP.isRunning():
-        self.moveP.dist = -1.0
+        self.moveP.dist = -100.0
         self.moveP.start()
         return progress("(say) Move back")
       if evt.key == K_LEFT and not self.turnP.isRunning():
-        self.turnP.ang = 0.3
+        self.turnP.ang = 0.5
         self.turnP.start()
         return progress("(say) Turn left")
       if evt.key == K_RIGHT and not self.turnP.isRunning():
-        self.turnP.ang = -0.3
+        self.turnP.ang = -0.5
         self.turnP.start()
         return progress("(say) Turn right")
     # Use superclass to show any other events
