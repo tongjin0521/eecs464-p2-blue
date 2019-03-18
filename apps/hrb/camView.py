@@ -14,10 +14,8 @@ def _animation(fig):
   while True:
     ok,img = c.read()
     if ok:
-      yield
-      continue
-    ax.cla()
-    ax.imshow(img[::-1,...])
+      ax.cla()
+      ax.imshow(img[::-1,...])
     yield
 
 class App(JoyApp):
