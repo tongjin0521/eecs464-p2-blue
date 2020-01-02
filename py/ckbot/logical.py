@@ -14,19 +14,15 @@
   CANBus. Modules can be  addressed through logical names via the Attributes
   class.
 """
-import re
+from re import compile as re_compile
 from time import sleep, time as now
 from warnings import warn
 from traceback import extract_stack
 
 from .ckmodule import *
-
-#OLD: from . import polowixel -> led to relative import errors
 from . import polowixel
 from . import pololu
 from . import dynamixel
-from . import TAB
-
 from .defaults import *
 
 def nids2str( nids ):
@@ -135,12 +131,12 @@ class Cluster(dict):
           nobus -- software simulated modules for no-hardware-needed
             testing of code.
           polowixel -- pololu Maestro via Wixel wireless, with wixel position feedpack
-          
+
       port -- specification of the communication port to use, as per
         ckbot.port2port.newConnection. port defaults to DEFAULT_PORT, and
         is ignored if arch is an initialized AbstractProtocol instance.
         If DEFAULT_PORT is None (default value), looks for DEFAULT_PORT in arch
-        
+
         This can be used to specify serial devices and baudrates, e.g.
         port = 'tty={glob="/dev/ttyACM1",baudrate=115200}'
 
@@ -368,9 +364,9 @@ class Cluster(dict):
     "build a hardware address for a property from node and index"
     return "%02x:%04x" % (nid,index)
 
-  REX_HW = re.compile("([a-fA-F0-9]{2})(:)([a-fA-F0-9]{4})")
-  REX_PROP = re.compile("([a-zA-Z_]\w*)(/)((?:[a-zA-Z_]\w*)|(?:0x[a-fA-F0-9]{4}))")
-  REX_ATTR = re.compile("([a-zA-Z_]\w*)(/@)([a-zA-Z_]\w*)")
+  REX_HW = re_compile("([a-fA-F0-9]{2})(:)([a-fA-F0-9]{4})")
+  REX_PROP = re_compile("([a-zA-Z_]\w*)(/)((?:[a-zA-Z_]\w*)|(?:0x[a-fA-F0-9]{4}))")
+  REX_ATTR = re_compile("([a-zA-Z_]\w*)(/@)([a-zA-Z_]\w*)")
 
   @classmethod
   def parseClp( cls, clp ):
