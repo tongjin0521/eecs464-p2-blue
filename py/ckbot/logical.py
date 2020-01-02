@@ -98,8 +98,7 @@ class Cluster(dict):
 
   A Cluster instance is itself a dictionary of modules, addressed by
   their node ID-s. This dictionary is populated by the .populate()
-  method. Clusters also implement the reflection iterators itermodules,
-  iterhwaddr, and iterprop.
+  method. Clusters also implement the reflection iterators itermodules, and iterprop.
 
   Typically, users will use the convenience attribute .at, which
   provides syntactic sugar for naming modules in a cluster using names
@@ -111,7 +110,6 @@ class Cluster(dict):
     >>> c.populate(3,{ 0x91 : 'left', 0xb2 : 'head',0x5d : 'right'} )
     >>> for m in c.itervalues():
     >>>   m.get_od(c.p)
-    >>> c.at.head.od.set_pos( 3000 ) # via object dictionary
     >>> c.at.head.set_pos(4500) # via process message
   """
   def __init__(self,arch=None,port=None,*args,**kwargs):
@@ -326,13 +324,6 @@ class Cluster(dict):
     for mnm in self.at:
       yield getattr(self.at,mnm)
 
-  def iterhwaddr( self ):
-    nids = list(self.keys())
-    nids.sort()
-    for nid in nids:
-      for index in self[nid].iterhwaddr():
-        yield Cluster.build_hwaddr( nid, index )
-
   def iterprop( self, attr=False, perm='' ):
     for mod in self.itermodules():
       if attr:
@@ -359,12 +350,6 @@ class Cluster(dict):
       if ts + limit > t0 ) )
     return s
 
-  @staticmethod
-  def build_hwaddr( nid, index ):
-    "build a hardware address for a property from node and index"
-    return "%02x:%04x" % (nid,index)
-
-  REX_HW = re_compile("([a-fA-F0-9]{2})(:)([a-fA-F0-9]{4})")
   REX_PROP = re_compile("([a-zA-Z_]\w*)(/)((?:[a-zA-Z_]\w*)|(?:0x[a-fA-F0-9]{4}))")
   REX_ATTR = re_compile("([a-zA-Z_]\w*)(/@)([a-zA-Z_]\w*)")
 
@@ -376,10 +361,9 @@ class Cluster(dict):
     use this method to validate class property name syntax.
 
     OUTPUT: kind, head, tail
-        where kind is one of ":", "/", "/@"
+        where kind is one of "/", "/@"
     """
-    m = cls.REX_HW.match(clp)
-    if not m: m = cls.REX_PROP.match(clp)
+    m = cls.REX_PROP.match(clp)
     if not m: m = cls.REX_ATTR.match(clp)
     if not m:
       raise ValueError("'%s' is not a valid cluster property name" % clp )
@@ -390,9 +374,6 @@ class Cluster(dict):
     Find the module containing a given property
     """
     kind,head,tail = self.parseClp(clp)
-    # Hardware names
-    if kind==":":
-      return self[int(head,16)]
     # Property or Attribute
     if kind[:1]=="/":
       return getattr( self.at, head )
@@ -402,21 +383,6 @@ class Cluster(dict):
     Obtain python attribute of a cluster property identified by a clp
     """
     kind,head,tail = self.parseClp(clp)
-    # Hardware names
-    if kind==":":
-      nid = int(head,16)
-      index = int(tail,16)
-      try:
-        od = self[nid].od
-      except KeyError:
-        raise KeyError("Unknown node ID 0x%02x" % nid)
-      if od is None:
-        raise ValueError("Node %s (ID 0x%02x) was not scanned for properties. Use get_od() or populate(...,walk=1) " % (self[nid].name,nid))
-      try:
-        return getattr(od.index_table[index],attr)
-      except KeyError:
-        raise KeyError("Unknown Object Dictionary index 0x%04x" % index)
-
     # Property or Attribute
     if kind[:1]=="/":
       try:
