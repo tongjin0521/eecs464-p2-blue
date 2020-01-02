@@ -450,8 +450,6 @@ Module.Types.update(
     { tc : mc for tc,(mm,mc) in dynamixel.MODELS.items() },
     PolServoModule = pololu.ServoModule,
     PoloWixelModule = polowixel.ServoModule,
-    TABDriver = TAB.TABModule
 )
 Module.Types[MissingModule.TYPECODE] = MissingModule
 Module.Types[DebugModule.TYPECODE] = DebugModule
-Module.Types['TAB-FAKE']       =  TAB.MissingTAB
