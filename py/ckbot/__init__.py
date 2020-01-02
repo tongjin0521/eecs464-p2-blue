@@ -7,7 +7,7 @@
 # in the comments in the beginning of the file.
 #
 import os
-from . import logical, pololu, port2port, nobus, TAB, dynamixel, polowixel
+from . import logical, pololu, port2port, nobus, dynamixel, polowixel
 from .ckmodule import PYCKBOTPATH
 
-__all__ = [ 'logical','port2port','nobus', 'pololu', 'TAB', 'dynamixel', 'polowixel' ]
+__all__ = [ 'logical','port2port','nobus', 'pololu', 'dynamixel', 'polowixel' ]
