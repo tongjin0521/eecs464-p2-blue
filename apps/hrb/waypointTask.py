@@ -139,6 +139,13 @@ class Sensor( object ):
         "%d" % res, ha='center',va='center' )
     return int(res)
 
+if len(argv)<2:
+  SERVER_PORT = 8080
+else:
+  SERVER_PORT = int(argv[1])
+
+print "Using server port ", SERVER_PORT
+
 def _animation(f1):
   global s, app
   # Open socket
@@ -150,7 +157,7 @@ def _animation(f1):
     srv = socket(AF_INET, SOCK_STREAM )
     while True:
       try:
-        srv.bind(("0.0.0.0",8080))
+        srv.bind(("0.0.0.0",SERVER_PORT))
         break
       except SocketError,se:
         if se.errno == EADDRINUSE:
@@ -262,7 +269,7 @@ def _animation(f1):
       roi = array( [ mean(pts[nmi],0) for nmi in corners ] )
       # Homography mapping roi to ref
       nprj = fitHomography( roi, ref )
-    except KeyError, ck:
+    except KeyError as ck:
       progress("-- missing corner %s" % str(ck))
     #
     # If no previous homography --> try again
