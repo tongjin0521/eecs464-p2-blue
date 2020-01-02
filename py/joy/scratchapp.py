@@ -126,7 +126,7 @@ class ServoWrapper(Plan):
 
 class ScratchApp( JoyApp ):
     def __init__(self,*arg,**kw):
-        if not kw.has_key("scr"):
+        if "scr" not in kw:#not kw.has_key("scr"):
             kw.update(scr={})
         JoyApp.__init__(self,*arg,**kw)
         self.sm = ModulesByName()

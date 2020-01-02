@@ -140,7 +140,7 @@ class InchwormApp( JoyApp ):
       return False
     #
     # [enter] toggles gait on and off
-    if evt.key==K_ENTER:
+    if evt.key==K_KP_ENTER:
       if self.gait.isRunning():
         self.gait.stop()
         progress( "Gait stopped" )
@@ -177,7 +177,7 @@ class InchwormApp( JoyApp ):
       return True
       
 if __name__=="__main__":
-  print """
+  print ("""
   Inchworm Robot Demo
   -------------------
   
@@ -212,7 +212,7 @@ if __name__=="__main__":
     [space] -- freeze in place
     [1]...[9],[0] -- jump to a relative location in the cycle [1] start, [0] end
     [enter] -- toggle gait on and off.
-  """
+  """)
   app=InchwormApp()
   app.run()
 

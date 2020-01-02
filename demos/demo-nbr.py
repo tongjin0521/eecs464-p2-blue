@@ -21,7 +21,7 @@ class App(JoyApp):
   '''
   def onStart(self):
     #fn is the path of the port
-    self.nbr = NBRPlan(self,fn="/dev/ttyUSB1")
+    self.nbr = NBRPlan(self,fn="/dev/ttyUSB0")
     self.nbr.start()
   
   def onEvent(self, evt):

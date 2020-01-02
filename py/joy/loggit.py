@@ -27,7 +27,7 @@ Data Format:
 """
 import gzip, yaml
 import types
-from pygix import now as time
+from . pygix import now as time
 from sys import stdout
 from speak import say
 

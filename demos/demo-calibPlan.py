@@ -28,7 +28,7 @@ class CalibrationPlan( Plan ):
         mx = adc
       if mn>adc:
 	    mn = adc
-      print "Move module to both limits then hit a key !!! min adc = " , mn , " max adc = " , mx
+      print ("Move module to both limits then hit a key !!! min adc = " , mn , " max adc = " , mx)
     #enter command mode
     self.mod.od.set_calmode(1)
     #send 0
@@ -44,14 +44,14 @@ class CalibrationPlan( Plan ):
         midVal -= 100
       self.mod.od.set_pos(midVal)
       time.sleep(.1)
-      print "!!! Adjusting middle value to" ,midVal
+      print ("!!! Adjusting middle value to" ,midVal)
     #slowly increment until maximum pot value is reached
     mxRaw = midVal
     while self.mod.od.get_rawADC() < (mx):
 	  #remember maximum raw value
       mxRaw += 25
       self.mod.od.set_pos(mxRaw)
-      print "!!! Moving to " , mxRaw
+      print ("!!! Moving to " , mxRaw)
       time.sleep(.025)
     #send 0
     self.mod.od.set_pos(midVal)
@@ -63,21 +63,21 @@ class CalibrationPlan( Plan ):
       self.mod.od.set_pos(mnRaw)
       print "!!! Moving to " , mnRaw
       time.sleep(.025)
-    print "!!! Position min = ", mnRaw
-    print "!!! Position max = ", mxRaw
-    print "!!! Feedback min = ", mn
-    print "!!! Feedback max = ", mx
+    print ("!!! Position min = ", mnRaw)
+    print ("!!! Position max = ", mxRaw)
+    print ("!!! Feedback min = ", mn)
+    print ("!!! Feedback max = ", mx)
     #raw amplitude = maximum raw - minimum raw
-    print "!!! Pamp = ", (mxRaw-mnRaw)/2
+    print ("!!! Pamp = ", (mxRaw-mnRaw)/2)
     self.mod.od.set_calPamp((mxRaw-mnRaw)/2)
     #raw average = (maximum raw + minimum raw)/2
-    print "!!! Pctr = ", (mxRaw+mnRaw)/2.0
+    print ("!!! Pctr = ", (mxRaw+mnRaw)/2.0)
     self.mod.od.set_calPctr((mxRaw+mnRaw)/2.0)
     #feedback amplitude = maximum feedback - minimum feedback
-    print "!!! Famp = ", (mx-mn)/2
+    print ("!!! Famp = ", (mx-mn)/2)
     self.mod.od.set_calFamp((mx-mn)/2)
     #feedback average = (maximum feedback + minimum feedback)/2
-    print "!!! Fctr = ", (mx+mn)/2.0
+    print ("!!! Fctr = ", (mx+mn)/2.0)
     self.mod.od.set_calFctr((mx+mn)/2.0)
     #turn off raw mode
     self.mod.od.set_calmode(0)
@@ -108,14 +108,14 @@ class CalibrationApp( JoyApp ):
       self.stop()
       
 if __name__=="__main__":
-  print """
+  print("""
   Calibration tool
   ----------------
 
   Given a module ID (in hex) on the commandline, 
   calibrate this module.
   
-  """
+  """)
   import sys
   if len(sys.argv) != 2:
     sys.stderr.write("""

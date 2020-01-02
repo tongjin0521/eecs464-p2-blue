@@ -23,9 +23,8 @@ class GaitCyclePlanApp( JoyApp ):
   
   def __init__(self,*arg,**kw):
     JoyApp.__init__(self,scr={},*arg,**kw)
-    
+  #initializes a plan based on the arguemnets passed on __init__function  
   def onStart( self ):
-    # initializes a plan based on the arguemnets passed on __init__function
     if self.robot is not None:
       self.plan = GaitCyclePlan( self, self.SHEET, maxFreq = 0.3,
         x='front/@set_pos', y='rear/@set_pos')
@@ -41,7 +40,7 @@ class GaitCyclePlanApp( JoyApp ):
   #acts on our inputs
   def onEvent(self, evt):
     if evt.type==KEYDOWN:
-      if evt.key in [K_q,K_ESCAPE]: # 'q' and [esc] stop program
+      if evt.key in [K_q,27]: # 'q' and [esc] stop program
         self.stop()
         #
       elif evt.key==K_SPACE: # [space] stops cycles
@@ -74,7 +73,7 @@ class GaitCyclePlanApp( JoyApp ):
       JoyApp.onEvent(self,evt)
       
 if __name__=="__main__":
-  print """
+  print("""
   Demo of SheetPlan class
   -----------------------
   
@@ -87,10 +86,10 @@ if __name__=="__main__":
   pass robot={} to work on real robot
   pas scr={} to work in scratch
   The application can be terminated with 'q' or [esc]
-  """
+  """)
   import joy
-  # starts an interface
+  #starts an interface
   app=GaitCyclePlanApp()
-  # directs  to onStart function
+  #directs  to onStart function
   app.run()
 

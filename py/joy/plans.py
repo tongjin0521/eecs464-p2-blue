@@ -5,18 +5,18 @@ from os import O_NONBLOCK
 from fcntl import F_SETFL, F_GETFL, fcntl
 from errno import EAGAIN
 
-from pygix import EventType
-from decl import *
+from . pygix import EventType
+from . decl import *
 
 from math import pi,exp,floor
 from warnings import warn
 
 # Logging interface
-from loggit import progress, debugMsg, dbgId
+from . loggit import progress, debugMsg, dbgId
 
-from misc import curry,printExc
+from . misc import curry,printExc
 
-from events import describeEvt
+from . events import describeEvt
 DEBUG = []
 
 class Plan( object ):
@@ -99,7 +99,7 @@ class Plan( object ):
 
   def _initBindings( self, app, binding, allowOverride = False ):
     """(protected) initialize bindings, resolving any string valued bindings"""
-    for key,func in binding.iteritems():
+    for key,func in binding.items():
       if hasattr(self,key) and not allowOverride:
         raise KeyError("Plan already has an attribute '%s' -- bind another name" % key )
       if type(func) is str:
@@ -229,7 +229,7 @@ class Plan( object ):
         ctx = self.__stack.pop()
         try:
           ctx.close()
-        except StandardError:
+        except Exception:
           printExc()
     self.onStop()
 
@@ -259,7 +259,7 @@ class Plan( object ):
         sub = top.throw( *exinfo )
         # If reached exception was handled --> keep remaining stack
         break
-      except StandardError:
+      except Exception:
         # exception was not caught, killing top
         # tracebacks are now concatenated, so get new head of traceback
         exinfo = sys.exc_info()
@@ -281,9 +281,9 @@ class Plan( object ):
     idle = True
     while self.__evts:
       evt = self.__evts.pop(0)
-      try:        
+      try:    
         rc = self.onEvent(evt)
-      except StandardError, se:
+      except Exception as se:
         printExc()
         rc = False        
       if rc is True: 
@@ -302,9 +302,10 @@ class Plan( object ):
     """
     S = self.__stack
     top = S.pop()
+    
     try:
       if 'p' in self.DEBUG: debugMsg(self,"stepping from "+repr(top))      
-      sub = top.next()
+      sub = next(top)
       if 'p' in self.DEBUG: debugMsg(self,"   -->"+dbgId(sub))      
       # if reached iteration did not terminate normally or by exception
       #   --> put top back on stack
@@ -313,7 +314,7 @@ class Plan( object ):
       # Top of stack terminated -- step is done  
       sub = None
       if 'p' in self.DEBUG: debugMsg(self,"   <<terminated>> "+dbgId(sub)+repr(S))
-    except StandardError:
+    except Exception:
       # An exception occurred -- unwind the stack to expose its origin
       sub = self._unwind( sys.exc_info() )
     return sub
@@ -325,6 +326,7 @@ class Plan( object ):
     This method is called every time the .onEvent handler returns True for
     one or more events in a time-slice.
     """
+
     if not self.isRunning():
       raise RuntimeError("Cannot step() %s -- not isRunning()" % dbgId(self))
     if 'p' in self.DEBUG: debugMsg(self,"begin step "+repr(self.__stack))
@@ -421,7 +423,7 @@ class SheetPlan( Plan ):
     NOTE: if the new sheet has different bindings form the old one, Weird Things Will Happen!
     """
     if self.isRunning():
-      raise TypeError,"Cannot update sheet while plan is running"
+      raise TypeError("Cannot update sheet while plan is running")
     if not kw:
       kw = self._autoBinding(sheet)
     self._initBindings( self.app, kw, allowOverride = True )
@@ -462,7 +464,7 @@ class SheetPlan( Plan ):
           func(val)
         if 'G' in self.DEBUG: 
           debugMsg(self,"%s(%s)" % (dbgId(func),repr(val))) 
-    except StandardError:
+    except Exception:
       printExc()
 
   def _parseSheet( self, sheet ):
@@ -481,7 +483,7 @@ class SheetPlan( Plan ):
     # Ensure rows are equal length
     w = len(headings)+1
     lb = sheet[0][0]-1
-    for li in xrange(len(sheet)):
+    for li in range(len(sheet)):
       l = sheet[li]
       if len(l)!=w:
         raise ValueError(
@@ -570,7 +572,7 @@ class CyclePlan( Plan ):
     Scan actions table, construct lookup index and resolve bindings
     """
     steps = []
-    for phi,act in actions.iteritems():
+    for phi,act in actions.items():
       if phi<0 or phi>1:
         raise KeyError("Phase %g is outside valid range [0,1]"%phi)
       if type(act)==str:
@@ -594,7 +596,7 @@ class CyclePlan( Plan ):
     l = 0
     u = len(lst)
     while u>l:
-      m = (u+l)/2
+      m = (u+l)//2
       if k>lst[m]:
         l = m+1
       else:
@@ -706,13 +708,13 @@ class CyclePlan( Plan ):
       debugMsg(self,'doActions %s ~%5.2g  ~%5.2g ' % (repr(slc),
         self._lookup[slc.start],self._lookup[slc.stop - slc.step]))
     self.seq = slc.indices(len(self._lookup))
-    for self._pos in xrange(*self.seq):
+    for self._pos in range(*self.seq):
       self.phase = self._lookup[self._pos]
       if 'C' in self.DEBUG:
         debugMsg(self,'   -- do %d ~%5.2g' % (self._pos,self.phase))
       try:
         self.actions[self.phase](self)  
-      except StandardError:
+      except Exception:
         printExc()
   
   def resetPhase(self, phi0=0):
@@ -774,7 +776,7 @@ class FunctionCyclePlan( CyclePlan ):
     if knots is None:
       if N is None or N != int(N) or N<1:
         raise ValueError('Must specify either positive integer N or knots')      
-      knots = [ float(x)/N for x in xrange(N) ]
+      knots = [ float(x)/N for x in range(N) ]
     if not callable(atPhiFun):
       raise TypeError('atPhiFun must be callable')
     self._func = atPhiFun
@@ -975,7 +977,7 @@ class StickFilter( Plan ):
     """
     # Search for key name of this event
     key,val = self.nameValFor(evt)
-    if (key is None) or (not self.flt.has_key(key)): 
+    if (key is None) or (key not in self.flt): 
       return 
     # Retrieve filter state
     flt = self.flt[key]
@@ -992,7 +994,7 @@ class StickFilter( Plan ):
     """
     # Search for key name of this event
     key,val = self.nameValFor(evt)
-    if (key is None) or (not self.flt.has_key(key)): 
+    if (key is None) or (key not in self.flt): 
       raise KeyError("No filter for %s" % repr(evt))       
     # Retrieve filter state
     flt = self.flt[key]
@@ -1219,15 +1221,20 @@ class MultiClick( Plan ):
     #
     A = self._acts
     res = False
+    self._when = self.app.now + self.delay
     if evt.type in [KEYDOWN,MOUSEBUTTONDOWN,JOYBUTTONDOWN]:
       A[nm] = (evt,self.app.now)
-      self._when = self.app.now + self.delay
+      #self._when = self.app.now + self.delay
     elif evt.type in [KEYUP,MOUSEBUTTONUP,JOYBUTTONUP]:
-      if A.has_key(nm):
+      if nm in A:
+        #print(type(self.app.now)) #ERROR (<) comparison
+        #print(self.app.now)
+        #print(type(self._when))
+        #print(self._when) 
         if self.app.now<self._when:
           res = self.onClick(evt)
-        elif len(A)==1:
-          self._when =self.app.now + self.delay
+        #elif len(A)==1:
+        #  self._when =self.app.now + self.delay
         del A[nm]
     return (res is True)
   
@@ -1332,7 +1339,7 @@ class NBRPlan( Plan ):
         while len(self.ln)<self.iterLimit:
           self.ln.append(self.f.readline())
           self.ts.append(self.app.now)
-      except IOError,ioe:
+      except IOError as ioe:
         if ioe.errno == EAGAIN:
           # We are done reading
           yield

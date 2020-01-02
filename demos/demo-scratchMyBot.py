@@ -26,7 +26,7 @@ class ScrMyBot(JoyApp):
     self.limit = 5000
   #creates a node for our robot
   def onStart( self ):
-    self.aNode = self.robot.values()[1]
+    self.aNode = list(self.robot.values())[1]
   # This functio gives the output as we move the cat in the scratch window.
   # SCRATCHUPDATE will detect the cat movement and use set_pos function to
   # give out respective move on the motor
@@ -43,14 +43,15 @@ class ScrMyBot(JoyApp):
       JoyApp.onEvent(self,evt)
       
 if __name__=="__main__":
-  print '''
+  print('''
   DEMO: connecting Scratch sprite to robot
   ----------------------------------------
   
   When this program runs, the x position of the cat sprite on 
   the screen controls a servo in the robot.
   
-  '''
+  ''')
   smb = ScrMyBot()
+  #directs to onStart
   smb.run()
   

@@ -56,7 +56,7 @@ class CyclePlanApp( JoyApp ):
     #if any key is pressed
     if evt.type==KEYDOWN:
       #quit
-      if evt.key in [K_q,K_ESCAPE]: # 'q' and [esc] stop program
+      if evt.key in [K_q,27]: # 'q' and [esc] stop program
         self.stop()
       #changes the period to 0 cycle
       elif evt.key==K_SPACE: # [space] stops cycles
@@ -87,7 +87,7 @@ class CyclePlanApp( JoyApp ):
       JoyApp.onEvent(self,evt)
       
 if __name__=="__main__":
-  print """
+  print("""
   Demo of SheetPlan class
   -----------------------
   
@@ -95,13 +95,13 @@ if __name__=="__main__":
   
   When any key is pressed, starts a SheetPlan making the 
   cat move around a square.
-  This will create a cycle with explicitely declared callbacks
+  This will basically create a cycle with explicitely declared callbacks
   The application can be terminated with 'q' or [esc]
-  """
+  """)
   import joy
   joy.DEBUG[:]=[]
-  # Starts an interface
+  #strats an interface
   app=CyclePlanApp()
-  # Directs to the onStart function and starts a cycle plan(like an infinite loop)
+  #directs to the onStart function and starts a cycle plan(like an infinite loop)
   app.run()
 

@@ -182,7 +182,7 @@ class KorgNanoKontrol( MidiInput ):
     (4,'slider',9) : (184, 7),
     (4,'knob',9) : (184, 10),
   } # ENDS: N2C
-  C2N = dict( [(x,y) for y,x in N2C.iteritems()] )
+  C2N = dict( [(x,y) for y,x in N2C.items()] )
 
   def __init__(self,*argv,**kw):
     MidiInput.__init__(self,*argv,**kw)
@@ -203,7 +203,7 @@ def joyEventIter():
   """(protected) generate all pending events as JoyApp events
   This is used internally by JoyApp's event pump to collect midi events
   """
-  for k,dev in DEV.iteritems():
+  for k,dev in DEV.items():
     for sc,kind,index,value in dev.eventIter():
       yield JoyEvent( MIDIEVENT,
         dev=k,sc=sc,kind=kind,index=index,value=value
@@ -230,8 +230,8 @@ if 1: # function to help create an N2C dictionary
       nm.pop(0)
     last = (None,None)
     for k in nm:
-       print "(%d,'%s',%d)" % k,
-       sys.stdout.flush()
+       print ("(%d,'%s',%d)" % k,
+       sys.stdout.flush())
        while True:
            time.sleep(0.1)
            l = list(DEV[3].rawEventIter())
@@ -240,7 +240,7 @@ if 1: # function to help create an N2C dictionary
            if l[-1][0][:2] != last[:2]:
              break
        last = l[-1][0]  
-       print ": (%d,%d)," % (last[0],last[1])
+       print (": (%d,%d)," % (last[0],last[1]))
        sys.stdout.flush()
      
 def init():
@@ -253,7 +253,7 @@ def init():
      return
    DEV = {}
    pygm.init()
-   for k in xrange(pygm.get_count()):
+   for k in range(pygm.get_count()):
      _,nm,inp,_,_ = pygm.get_device_info(k)
      if not inp:
        continue
@@ -267,14 +267,14 @@ if __name__=="__main__":
   from time import sleep, time as now
   from joy.events import describeEvt
   from sys import stdout
-  print "Running test"
+  print("Running test")
   init()
   t0 = now()
   while True:
     for evt in joyEventIter():
-      print "\r%6.2f "%(now()-t0),
-      print describeEvt(evt), "   ",
-      sys.stdout.flush()
+      print ("\r%6.2f "%(now()-t0)),
+      print (describeEvt(evt), "   ",
+      sys.stdout.flush())
     sleep(0.05)
     
   

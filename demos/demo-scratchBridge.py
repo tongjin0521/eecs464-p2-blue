@@ -39,10 +39,10 @@ class ScratchBridge(JoyApp):
       return None
     # Search for extracted CLP
     clp = m.group(1)
-    progress("CLP="+clp)
+    print("ClP="+clp)
     try:
       fun = self.setterOf(clp)
-    except (KeyError,AttributeError,ValueError), ex:
+    except (KeyError,AttributeError,ValueError) as ex:
       fun = ex
     # If failed --> invalid property name
     if isinstance(fun,StandardError):
@@ -56,22 +56,22 @@ class ScratchBridge(JoyApp):
     if evt.type==SCRATCHUPDATE:
       # Lookup in cache for a setter function
       fun = self.cache.get(evt.var,None)
-      progress(evt.var+" Event Value "+str(evt.value))
-      progress("Function before if:"+str(fun))
+      print(evt.var+" Event Value "+str(evt.value))
+      print("Function before if:"+str(fun))
       # If cache hit --> call setter function
       if fun: 
         fun(int(evt.value))
-        progress("function")
+        print("function")
       elif fun is False: # cached as a bad name --> ignore
-        progress("None")
+        print("None")
         pass
       else: # New --> lookup in robot, and cache result
         assert fun is None
         fun = self.newSetter( evt.var )
-        progress("Function in else:"+str(fun))
-        progress("New function")
+        print("Function in else:"+str(fun))
+        print("New function")
         if fun:
-          progress("New function created")
+          print("New function created")
           fun(int(evt.value))
     elif evt.type != TIMEREVENT:
       self.scratchifyEvent(evt)
@@ -79,7 +79,7 @@ class ScratchBridge(JoyApp):
       
 if __name__=="__main__":
   import sys
-  print '''
+  print('''
   Scratch to CKBot Bridge
   -----------------------
   
@@ -102,7 +102,7 @@ if __name__=="__main__":
   the number of modules to be given as a parameter, but the 
   ScratchBridge class does not require this. If the number of 
   modules is not specified, the default Cluster.populate() settings are used.
-  '''
+  ''')
   if len(sys.argv)==2:
     sb = ScratchBridge(count=int(sys.argv[1]),walk=True)
   else:

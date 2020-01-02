@@ -9,41 +9,43 @@
   (*) query the object dictionary of a module by its logical name
   (*) send a position command using a process message
 
-  The top level of this module is cluster. Typically users will create a 
-  cluster  to represent a set of modules that can communicate on the same 
-  CANBus. Modules can be  addressed through logical names via the Attributes 
-  class. 
+  The top level of this module is cluster. Typically users will create a
+  cluster  to represent a set of modules that can communicate on the same
+  CANBus. Modules can be  addressed through logical names via the Attributes
+  class.
 """
 import re
 from time import sleep, time as now
 from warnings import warn
 from traceback import extract_stack
 
-from ckmodule import *
+from .ckmodule import *
 
-import polowixel
-import pololu
-import dynamixel
+#OLD: from . import polowixel -> led to relative import errors
+from . import polowixel
+from . import pololu
+from . import dynamixel
+from . import TAB
 
-from defaults import *
+from .defaults import *
 
 def nids2str( nids ):
   return ",".join(["Nx%02x" % nid for nid in nids])
-  
+
 class ModulesByName(object):
   """
   Concrete class with a cluster's attributes.
 
-  The cluster dynamically adds named attributes to instances of this class to 
+  The cluster dynamically adds named attributes to instances of this class to
   provide convenient names for modules
-  """ 
+  """
   def __init__(self):
     self.__names = set()
-  
+
   def _add( self, name, value ):
     setattr( self, name, value )
     self.__names.add(name)
-    
+
   def _remove( self, name ):
     delattr( self, name )
     self.__names.remove(name)
@@ -53,7 +55,7 @@ class ModulesByName(object):
     plan.sort()
     return iter(plan)
 
-class DiscoveryError( StandardError ):
+class DiscoveryError( Exception ):
   """
   Exception class for discovery failures
   """
@@ -65,7 +67,7 @@ class DiscoveryError( StandardError ):
         found -- set -- node ID-s found
         count -- number -- node count required
     """
-    StandardError.__init__(self,msg)
+    Exception.__init__(self,msg)
     self.timeout = kw.get('timeout',0)
     self.count = kw.get('count',0)
     self.required = kw.get('required',set([]))
@@ -76,17 +78,17 @@ class DelayedPermissionError( PermissionError ):
   Callable object returned when setters or getters with
   are obtained for cluster properties that cannot be (resp.)
   written or read.
-  
+
   A DelayedPermissionError stores the stack at its initialization
-  to make it easier for the subsequent error to be traced back to 
+  to make it easier for the subsequent error to be traced back to
   its original source.
-]  
+]
   If called, a DelayedPermissionError raises itself.
   """
   def __init__(self, *arg, **kw):
     PermissionError.__init__(self,*arg,**kw)
     self.init_stack = extract_stack()
-  
+
   def __call__( self, *arg, **kw ):
     raise self
 
@@ -96,14 +98,14 @@ class Cluster(dict):
   modules residing on the same bus.
 
   A Cluster contains a Protocol class to manage communication with the
-  modules. 
-  
+  modules.
+
   A Cluster instance is itself a dictionary of modules, addressed by
   their node ID-s. This dictionary is populated by the .populate()
   method. Clusters also implement the reflection iterators itermodules,
   iterhwaddr, and iterprop.
-  
-  Typically, users will use the convenience attribute .at, which 
+
+  Typically, users will use the convenience attribute .at, which
   provides syntactic sugar for naming modules in a cluster using names
   defined when the cluster is .populate()-ed. These allow ipython tab
   completion to be used to quickly explore which modules are available.
@@ -119,32 +121,32 @@ class Cluster(dict):
   def __init__(self,arch=None,port=None,*args,**kwargs):
     """
     Create a new cluster. Optionally, also .populate() it
-    
+
     INPUT:
       arch -- optional -- python module containing arch.Bus and
         arch.Protocol to use for low level communication. Defaults
         to DEFAULT_ARCH
-        
+
         Can also be a Protocol instance ready to be used.
-        
+
         Supported architectures include:
-          can -- CAN-bus CKBot 1.4 and earlier
-          hitec -- modified hitec servos
           dynamixel -- Robotis Dynamixel RX, EX and MX
           pololu -- pololu Maestro servo controllers
-          nobus -- software simulated modules for no-hardware-needed 
+          nobus -- software simulated modules for no-hardware-needed
             testing of code.
+          polowixel -- pololu Maestro via Wixel wireless, with wixel position feedpack
           
       port -- specification of the communication port to use, as per
         ckbot.port2port.newConnection. port defaults to DEFAULT_PORT, and
         is ignored if arch is an initialized AbstractProtocol instance.
+        If DEFAULT_PORT is None (default value), looks for DEFAULT_PORT in arch
         
         This can be used to specify serial devices and baudrates, e.g.
         port = 'tty={glob="/dev/ttyACM1",baudrate=115200}'
-      
+
       *argc, **kw -- if any additional parameters are given, the
         .populate(*argc,**kw) method is invoked after initialization
-        
+
     ATTRIBUTES:
       p -- instance of Protocol for communication with modules
       at -- instance of the Attributes class.
@@ -156,6 +158,8 @@ class Cluster(dict):
       arch = DEFAULT_ARCH
     if port is None:
       port = DEFAULT_PORT
+    if port is None:
+      port = arch.DEFAULT_PORT
     if isinstance(arch,AbstractProtocol):
       self.p = arch
     else:
@@ -175,10 +179,10 @@ class Cluster(dict):
     seconds have elapsed. While waiting, checks bus once every timestep seconds.
     If timed out, raises an IOError exception.
 
-    If the bus already got all the heartbeats needed, populate() should 
+    If the bus already got all the heartbeats needed, populate() should
     terminate without sleeping.
-    
-    If provided, names gives a dictionary of module names based on their node 
+
+    If provided, names gives a dictionary of module names based on their node
     ID.	Node IDs that aren't found in the dictionary have a name automatically
     generated from the ID by calling autonamer.
 
@@ -206,14 +210,14 @@ class Cluster(dict):
       self.add(mod)
       if walk:
         mod.get_od()
-    if fillMissing:      
+    if fillMissing:
       if type(fillMissing) is not type:
         fillMissing = MissingModule
       for nid in required - nids:
         name = names.get(nid, autonamer(nid))
         mod = fillMissing( nid, name )
-        self.add(mod)           
-          
+        self.add(mod)
+
   def discover( self, count = 0, timeout=2, timestep=0.1, required=set(), raiseClass=DiscoveryError ):
     """
     Discover which nodes are in the cluster.
@@ -230,7 +234,7 @@ class Cluster(dict):
       required -- set -- requires that all these nids are found
       raiseClass -- class -- exception class to raise on timeout
     OUTPUT:
-      python set of node ID numbers    
+      python set of node ID numbers
     """
     required = set(required)
     # If any number of nodes is acceptable --> wait and collect them
@@ -239,7 +243,7 @@ class Cluster(dict):
       sleep(timeout)
       nids = self.getLive(timeout)
       progress("Discover: done. Found %s" % nids2str(nids))
-      return nids 
+      return nids
     elif required and (count is 0 or len(required)==count):
       # If we only want the required nodes, hint them to protocol
       self.p.hintNodes( required )
@@ -279,28 +283,26 @@ class Cluster(dict):
     while now()-t0<t:
       lst = []
       for nid in self.getLive():
-        if self.has_key(nid):
+        if nid in self:
           lst.append( '%02X:%s' % (nid,self[nid].name) )
         else:
           lst.append( '%02X:<?>' % nid )
-      print "%.2g:" % (now()-t0),", ".join(lst)
+      print("%.2g:" % (now()-t0),", ".join(lst))
       sleep(1)
 
   def add( self, *modules ):
     """
-    Add the specified modules (as returned from .newModuleIX()) 
+    Add the specified modules (as returned from .newModuleIX())
     """
     for mod in modules:
       progress("Adding %s %s" % (mod.__class__.__name__,mod.name) )
-
-      ##V: How to properly do this?
-      assert isinstance(mod,Module) or isinstance(mod, pololu2_vv.PololuServoModule) or isinstance(mod, hitec.HitecServoModule)
+      assert isinstance(mod,Module)
       self.at._add(mod.name, mod)
       if hasattr(mod,"update") and callable(mod.update):
         self._updQ.append(mod)
       self[mod.node_id] = mod
     return self
-    
+
   def newModuleIX(self,nid,name=None):
     """
     Build the interface for a module
@@ -329,12 +331,12 @@ class Cluster(dict):
       yield getattr(self.at,mnm)
 
   def iterhwaddr( self ):
-    nids = self.keys()
+    nids = list(self.keys())
     nids.sort()
     for nid in nids:
       for index in self[nid].iterhwaddr():
         yield Cluster.build_hwaddr( nid, index )
-  
+
   def iterprop( self, attr=False, perm='' ):
     for mod in self.itermodules():
       if attr:
@@ -347,7 +349,7 @@ class Cluster(dict):
     """
     Use heartbeats to get set of live node ID-s
     INPUT:
-      limit -- float -- heartbeats older than limit seconds in 
+      limit -- float -- heartbeats older than limit seconds in
          the past are ignored
     OUTPUT:
       python set of node ID numbers
@@ -356,8 +358,8 @@ class Cluster(dict):
       limit = self.limit
     t0 = now()
     self.p.update()
-    s = set( ( nid 
-      for nid,(ts,_) in self.p.heartbeats.iteritems()
+    s = set( ( nid
+      for nid,(ts,_) in self.p.heartbeats.items()
       if ts + limit > t0 ) )
     return s
 
@@ -365,20 +367,20 @@ class Cluster(dict):
   def build_hwaddr( nid, index ):
     "build a hardware address for a property from node and index"
     return "%02x:%04x" % (nid,index)
-  
+
   REX_HW = re.compile("([a-fA-F0-9]{2})(:)([a-fA-F0-9]{4})")
   REX_PROP = re.compile("([a-zA-Z_]\w*)(/)((?:[a-zA-Z_]\w*)|(?:0x[a-fA-F0-9]{4}))")
   REX_ATTR = re.compile("([a-zA-Z_]\w*)(/@)([a-zA-Z_]\w*)")
-    
+
   @classmethod
   def parseClp( cls, clp ):
     """
     parse a class property name into head and tail parts
-    
+
     use this method to validate class property name syntax.
-    
+
     OUTPUT: kind, head, tail
-        where kind is one of ":", "/", "/@"        
+        where kind is one of ":", "/", "/@"
     """
     m = cls.REX_HW.match(clp)
     if not m: m = cls.REX_PROP.match(clp)
@@ -386,7 +388,7 @@ class Cluster(dict):
     if not m:
       raise ValueError("'%s' is not a valid cluster property name" % clp )
     return m.group(2),m.group(1),m.group(3)
-        
+
   def modOfClp(self, clp ):
     """
     Find the module containing a given property
@@ -398,7 +400,7 @@ class Cluster(dict):
     # Property or Attribute
     if kind[:1]=="/":
       return getattr( self.at, head )
-    
+
   def _getAttrOfClp( self, clp, attr ):
     """(private)
     Obtain python attribute of a cluster property identified by a clp
@@ -418,7 +420,7 @@ class Cluster(dict):
         return getattr(od.index_table[index],attr)
       except KeyError:
         raise KeyError("Unknown Object Dictionary index 0x%04x" % index)
-        
+
     # Property or Attribute
     if kind[:1]=="/":
       try:
@@ -426,21 +428,21 @@ class Cluster(dict):
         return mod._getModAttrOfClp( kind+tail, attr )
       except AttributeError:
         raise KeyError("'%s' is not the name of a module in .at" % head )
-    
+
   def getterOf( self, clp ):
     """
     Obtain a getter function for a cluster property
-    
+
     If property is not readable, returns a DelayedPermissionError
     """
     if self._getAttrOfClp(clp,'isReadable')():
       return self._getAttrOfClp(clp,'get_sync')
     return DelayedPermissionError("Property '%s' is not readable" % clp)
-  
+
   def setterOf( self, clp ):
     """
     Obtain a setter function for a cluster property
-    
+
     If property is not writeable, returns a DelayedPermissionError
     """
     if self._getAttrOfClp(clp,'isWritable')():
@@ -449,9 +451,11 @@ class Cluster(dict):
 
 Module.Types.update(
     # Inherit all module ID strings defined in dynamixel.MODELS
-    { tc : mc for tc,(mm,mc) in dynamixel.MODELS.iteritems() },
+    { tc : mc for tc,(mm,mc) in dynamixel.MODELS.items() },
     PolServoModule = pololu.ServoModule,
     PoloWixelModule = polowixel.ServoModule,
+    TABDriver = TAB.TABModule
 )
 Module.Types[MissingModule.TYPECODE] = MissingModule
 Module.Types[DebugModule.TYPECODE] = DebugModule
+Module.Types['TAB-FAKE']       =  TAB.MissingTAB

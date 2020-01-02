@@ -210,8 +210,8 @@ class DofSelectorApp( JoyApp ):
         self.setter[dof](val)
       
 if __name__=="__main__":
-  print """
-  """
+  print("""
+  """)
   import sys
   app = DofSelectorApp(robot={})
   app.DEBUG[:]=['b']

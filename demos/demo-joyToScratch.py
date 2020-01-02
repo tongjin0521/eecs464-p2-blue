@@ -46,7 +46,7 @@ class JoyToScr(JoyApp):
       JoyApp.onEvent(self,evt)
       
 if __name__=="__main__":
-  print '''
+  print ('''
   DEMO: connecting joystick to Scratch
   ------------------------------------
   
@@ -54,8 +54,8 @@ if __name__=="__main__":
   Scratch sensors j0ax0 and j0ax1; joystick buttons 0 and 1 are
   mapped to events j0btn0 and j0btn1
   
-  '''
-  #creates an interface which will work for the output on the scratch window
+  ''')
+  #creates an interface whcih will work forthe output on the scratch window
   j2s = JoyToScr()
   j2s.run()
   

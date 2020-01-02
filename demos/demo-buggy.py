@@ -12,11 +12,11 @@ from joy.decl import *
 class Buggy( Plan ):
   '''
   Concrete class buggy
-
+  
   This class creates a plan to move the motors while receiving joystick values
   when joystick motion is detected
 
-  It receives input through the getValue function of the stickfilter which its parent
+  It receives input through the getValue function of the stickfilter which its parent 
   class starts and moves the motors through set_torque function
 
   Expects its owner Joyapp to have:
@@ -27,11 +27,11 @@ class Buggy( Plan ):
   def __init__(self,*arg,**kw):
     Plan.__init__(self,*arg,**kw)
     self.r = self.app.robot.at
-
+    
+  # Start message
   def onStart( self ):
-    """Start message"""
     progress("Buggy started")
-
+  
   def onStop( self ):
     """End message"""
     progress("Stopping")
@@ -39,17 +39,17 @@ class Buggy( Plan ):
     self.r.lwheel.set_torque(0)
     self.r.rwheel.set_torque(0)
   #acts on our inputs
-  def behavior( self ):
+  def behavior( self ): 
     oncePer = self.app.onceEvery(0.5)
     while True:
       yield
-      # Read joystick from application's StickFilter
+      # Read joystick from application's StickFilter 
       sf = self.app.sf
       # the front-back values of the left and right joysticks
       lspeed = sf.getValue('joy0axis1')
       rspeed = sf.getValue('joy0axis2')
       #progress("SPD %d %d" % ( lspeed,rspeed))
-
+      
       self.r.lwheel.set_torque(lspeed)
       self.r.rwheel.set_torque(rspeed)
 
@@ -57,7 +57,7 @@ class Buggy( Plan ):
       if oncePer():
         progress("Buggy: left wheel %6f right wheel %6f"
           % (lspeed,rspeed))
-
+    
 class BuggyApp( JoyApp ):
   '''
   This is a concrete ByggyApp which starts/stops the above plan plan on Joystick input
@@ -67,7 +67,7 @@ class BuggyApp( JoyApp ):
 
 
   '''
-  This searches for two modules named 'lwheel' and 'rwheel'
+  This searches for two modules named 'front' and 'rear'
   in the /pyckbot/cfg/joyapp.yml file
   '''
   def __init__(self,robot=dict(count=2),*arg,**kw):
@@ -75,7 +75,7 @@ class BuggyApp( JoyApp ):
     cfg = dict ()
     # initializes the application's app.robot attribute
     JoyApp.__init__(self,robot=robot,cfg=cfg,*arg,**kw)
-
+  
   def onStart(self):
     # we need stickFilter functionality to connect to the joystick
     # dt means the time step for the filter. .5 represents 20 timers per sec
@@ -92,7 +92,7 @@ class BuggyApp( JoyApp ):
     self.ma = Buggy(self)
     self.robot.at.lwheel.set_mode("Motor")
     self.robot.at.rwheel.set_mode("Motor")
-
+      
   def onEvent(self,evt):
     if evt.type == JOYAXISMOTION:
       if evt.joy == 0 and evt.axis == 2 and evt.value == 0:
@@ -113,6 +113,10 @@ class BuggyApp( JoyApp ):
   def onStop(self):
     self.ma.onStop()
 
+
+#main function      
 if __name__=="__main__":
+  #creates an interface object and starts the interface
   app = BuggyApp()
+  #directs to the onStart function and starts a plan which creates thread
   app.run()

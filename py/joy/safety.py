@@ -8,7 +8,7 @@ Main classes:
   BatteryVoltage -- a safety check that uses get_voltage calls and
     enforces a lower bound on voltage
 """
-from loggit import progress
+from . loggit import progress
 
 class SafetyError( RuntimeError ):
   """

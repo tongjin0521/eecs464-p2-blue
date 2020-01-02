@@ -1,7 +1,7 @@
 from ckbot.logical import Cluster
 
 """
-Unlike most of the other demos in this directory, demo-clp is primarily text-file documentation of the CLP functionality in ckbot.logical.Cluster. As such, it sits in the infrastructure _under_ JoyApp applications.
+Unlike most of the other demos in this directory, demo-clp is primarily text-file documentation of the CLP functionality in ckbot.logical.Cluster. As such, it sits in the infrastructure _under_ JoyApp applications. 
 
 What is a CLP?
 ==============
@@ -46,10 +46,10 @@ Clusters have factory methods .getterOf(clp) and .setterOf(clp) that return gett
 def getAllOD( clst ):
   """
   Get all readable object dictionary properties in a Cluster.
-
+  
   INPUT:
     clst -- a Cluster
-
+    
   OUTPUT:
     dictionary with Hardware CLP mapping to value
   """
@@ -66,24 +66,25 @@ def getAllOD( clst ):
 
 def getDofByNID( clst ):
   """
-  Get an array of position setting functions for all servo Modules,
+  Get an array of position setting functions for all servo Modules, 
   sorted in order of increasing node-id.
-
+  
   INPUT:
     clst -- a Cluster
-
+    
   OUTPUT:
     list of setter functions
-
+  
   NOTE: this does not require walking the OD-s
   """
   res = []
   for node in clst.itervalues():
     try:
       s = clst.setterOf("%s/@set_pos" % node.name)
-    except KeyError, ke:
-      print ke
+    except KeyError as ke:
+      print(ke)
       continue
     res.append((node.node_id,s))
   res.sort()
   return res
+

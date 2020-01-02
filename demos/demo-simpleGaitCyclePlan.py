@@ -30,12 +30,12 @@ class GaitCyclePlanApp( JoyApp ):
     #which  _action function gives output to the scratch window
     self.plan = GaitCyclePlan( self, 
       self.SHEET, x='>catX',y='>catY')
-    #sets period to 10 seconds
+    #sets period to units
     self.plan.setPeriod(10)
   
   def onEvent(self, evt):
     if evt.type==KEYDOWN:
-      if evt.key in [K_q,K_ESCAPE]: # 'q' and [esc] stop program
+      if evt.key in [K_q,27]: # 'q' and [esc] stop program
         self.stop()
         #
       elif evt.key==K_SPACE: # [space] toggles motion
@@ -47,7 +47,7 @@ class GaitCyclePlanApp( JoyApp ):
           progress('Started motion')
       
 if __name__=="__main__":
-  print """
+  print ("""
   Demo of SheetPlan class
   -----------------------
   
@@ -58,7 +58,7 @@ if __name__=="__main__":
   cat move around a shape defined in the CSV file.
 
   The application can be terminated with 'q' or [esc]
-  """
+  """)
   import joy
   app=GaitCyclePlanApp()
   app.run()

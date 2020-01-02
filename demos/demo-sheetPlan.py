@@ -22,7 +22,7 @@ class SheetPlanApp( JoyApp ):
   It's useful for those who want to move along a predefined trajectory, or give a predefined motion. It expexts the motors
   to have mode=0 and names 'front' and 'rear' in the JoyApp.yml file
   '''
-  SHEET = loadCSV('/home/birds/pyckbot/demos/M4ModLab.csv')
+  SHEET = loadCSV('./M4ModLab.csv')
   #initializes the object
   def __init__(self,bind,*arg,**kw):
     JoyApp.__init__(self,*arg,**kw)
@@ -40,7 +40,7 @@ class SheetPlanApp( JoyApp ):
       self.plan.start()
 
 if __name__=="__main__":
-  print """
+  print ("""
   Demo of SheetPlan class
   -----------------------
   
@@ -57,7 +57,7 @@ if __name__=="__main__":
   When any key is pressed, starts the SheetPlan moving through the gait table.
 
   The application can be terminated with 'q' or [esc]
-  """
+  """)
   import sys
   app = None
   if len(sys.argv)>1:

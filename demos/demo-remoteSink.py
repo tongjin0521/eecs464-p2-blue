@@ -35,9 +35,9 @@ class RemoteSinkApp( JoyApp ):
       if self.rs.queue:
         progress("Queue has %d messages:" % len(self.rs.queue))
         for n,msg in enumerate(self.rs.queue):
-	  progress('[%0d] %s' % (n,msg))
+	        progress('[%0d] %s' % (n,msg))
     
-    # Detect if the mouse is on the window. If yes, receive inputs 
+    #The mouse has to be on the source window to receive inputs correctly
     if evt.type == ACTIVEEVENT:
       if evt.gain==1 and self.rs.isRunning():
         progress("(say) ignoring remote events")
@@ -50,11 +50,11 @@ class RemoteSinkApp( JoyApp ):
     elif evt.type==MOUSEMOTION:
       # suppressed for output readability
       return
-    # This will print the normal events posted from remoteSource 
+    #This will print the normal events posted from remoteSource 
     JoyApp.onEvent(self,evt)
       
 if __name__=="__main__":
-  print """
+  print("""
     Demonstration of RemoteSink plan
     ------------------------------------
     
@@ -63,7 +63,7 @@ if __name__=="__main__":
     Use in combination with the RemoteSource demo
     
     Remote events are suppressed while the mouse is over the window
-  """
+  """)
   app = RemoteSinkApp()
   app.run()
 

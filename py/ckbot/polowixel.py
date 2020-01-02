@@ -6,94 +6,128 @@ continuous rotation servos with position feedback.
 
 """
 from __future__ import division
-from ckmodule import AbstractServoModule, AbstractNodeAdaptor, progress
+from warnings import warn
 from struct import unpack, error as struct_error
-from pololu import (
-  Bus as Bus0,
-  Protocol as Protocol0,
-  ProtocolNodeAdaptor as ProtocolNodeAdaptor0
+from .ckmodule import AbstractServoModule, AbstractNodeAdaptor, progress, AbstractBusError
+from .pololu import (
+  Bus as pololu_Bus,
+  Protocol as pololu_Protocol,
+  ProtocolNodeAdaptor as pololu_ProtocolNodeAdaptor
 )
 
+DEFAULT_PORT = dict(
+    TYPE='tty',
+    glob="/dev/ttyACM*",
+    baudrate=115200
+)
+DEBUG = {}
 
-class Bus( Bus0 ):
+def _DBG(fun,fmt,*argv):
+    """
+    DEBUG assist function
+
+    If fun is callable
+        call with format and argv
+    otherwise
+        log message using format and argv
+
+    USAGE:
+       if key in self.DEBUG:
+           _DBG(key,fmt,*argv)
+    """
+    if not callable(fun):
+        progress(fmt % argv)
+    else:
+        fun(fmt,*argv)
+
+class Bus( pololu_Bus ):
+    """
+    Concrete class Bus extending the pololu_Bus class
+
+    This class adds an update function that pulls all data from the bus,
+    and a read function that aligns to the \xFF\xFF sync byte pattern
+    used in our wixel code
+    """
+
+    # Communications timeout
+    TIMEOUT = 1.0
+
     def __init__(self, *arg, **kw):
-        Bus0.__init__(self,*arg,**kw)
-        self.buf = []
+        pololu_Bus.__init__(self,*arg,**kw)
+        self.buf = b''
         self.n = 0
-        self.itermax = 14
+        self.lastUpdT = None
+        self.t = None
 
-    def update(self, t=None):
-        #progress('bus update')
-        """
-        update buffer by executing up to self.itermax read operations
-        on the serial bus. Reading stops if no data is available
-        """
-        for n in xrange(self.itermax):
-          #if not self.ser.inWaiting():
-          #  return
-          w = self.ser.read()
-          self.buf.append(w)
-          self.n += len(w)
-          #progress("%r" %self.buf)
+    def update(self,t):
+        self.t = t
 
-    def read(self,l):
-        #progress( 'bus read' )
+    def read(self,l,skip=False):
         """
-        Read l characters from the serial bus after the next sync bytes,
-        in an atomic read operation. If the data isn't available, read nothing
+        Read an l character frame from the serial from after the next sync
+        bytes, in an atomic read operation.
+
+        When skip is true, tries to read the last frame of length l by skipping
+        to the end of the buffer minus length of frame with l bytes
+
+        If the requested data isn't available, returns None
         """
-        if not self.buf:
-          progress("no data")
-          return # no data
-        if len(self.buf)>1:
-          self.buf = ["".join(self.buf)]
-        b = self.buf[0]
+        w = self.ser.read(self.ser.inWaiting())
+        if w:
+            self.lastUpdT = self.t
+        elif not (self.lastUpdT is None or self.t is None) and (self.t-self.lastUpdT)>self.TIMEOUT:
+            raise AbstractBusError("Communication timed out")
+        b = self.buf + w
+        # If skip requested, and possible --> do it
+        if skip and len(b)>(l+2):
+            b = b[-l-2:]
         s = b.find(b'\xff\xff')
         if s<0:
-          progress("no sync")
-          return # no sync bytes
-        if self.n<s+2+l:
-          res = ''
-        else:
-          res = self.buf[0][s+2:s+l+2]
-          self.buf = [self.buf[0][s+4+l:]]
-          self.n -= s+2+l
+          # Only report an error if sync search failed with bytes in buffer
+          if len(b):
+              progress("%s no sync (%d bytes)" % (repr(self),len(b)))
+          self.buf = b
+          return None # no sync bytes
+        # If not enough bytes for atomic read --> return nothing
+        if len(b)<s+2+l:
+          self.buf = b
+          return None
+        # Read selected number of bytes
+        res = b[s+2:s+l+2]
+        self.buf = b[s+4+l:]
+        self.n -= s+2+l
         return res
 
-class Protocol( Protocol0 ):
+class Protocol( pololu_Protocol ):
     def __init__(self, *arg, **kw):
-        kw.update(bus=Bus())
-        if kw.has_key('posmap'):
-          assert len(kw['posmap']) # is a sequence type
-          self.posmap = kw['posmap']
-          del kw['posmap']
-        else:
-          raise RuntimeError("Need a posmap from readings to nid")
-        Protocol0.__init__(self,*arg,**kw)
-        self.count = 6
+        port = dict(TYPE='TTY', glob="/dev/ttyACM*", baudrate=115200)
+        port.update(kw.get('port',{}))
+        kw.update(bus=Bus(port=port))
+        pololu_Protocol.__init__(self,*arg,**kw)
+        self.DEBUG=DEBUG
 
-        #progress('bus %r' % self.bus)
-
-    def update(self,t=None):
-        #progress( 'P update' )
+    def update(self, t = None):
         # Superclass update
-        Protocol0.update(self)
-        # trying to fix the bus issue
-        # pull data from serial, if there is any
+        pololu_Protocol.update(self)
+        # Bus update
         self.bus.update(t)
-        # Try to read positions of servos
-        l = self.bus.read(self.count * 2)
-        if not l:
-          return
+        # Read the latest update off of the bus
+        l = self.bus.read(self.count * 2,skip=True)
+        if l is None:
+            return
         # Push position into PNAs
         try:
-          for ii,val in enumerate(unpack("h"*len(self.posmap),l)):
-            nid = self.posmap[ii]
-            if self.pnas.has_key(nid):
-              self.pnas[nid].feedPos(val)
-        except struct_error, er:
-            progress("Error unpacking message ('%s', %r)" % (er,l))
-            
+          msg = unpack("h"*self.count,l)
+        except struct_error as er:
+          progress("Error unpacking message ('%s', %r)" % (er,l))
+          return
+        for nid,ii in self.nodes.iteritems():
+          val = msg[ii]
+          if nid in self.pnas:
+            self.pnas[nid].feedPos(val)
+            if 'P' in self.DEBUG:
+                _DBG(self.DEBUG['P'],"RAW nid%d pos = %g",nid,val)
+
     def generatePNA(self, nid):
         """
         Generates a pololu.ProtocolNodeAdaptor, associating a pololu protocol with
@@ -111,45 +145,37 @@ class ProtocolNodeAdaptor( AbstractNodeAdaptor ):
    # MiniSSCII Protocol Sync Value (must ALWAYS be 0xFF) specified by Pololu Documentation
   MINISSC2_BYTE = 0xFF
 
-  # Compact Protocol Sync Value (must be 0x9F)
-  COMPACT_BYTE = 0x8F
-
-  # Pololu Protocol Sync Value (must be 0xAA)
-  # This is also to initialize the Maestro to begin receiving commands using the PololuProtocol
-  POLOLU_BYTE = 0xAA
-
-  ##V: Need to put this in a proper location
-  SLACK_MESSAGE = 0
-
+  DEFAULT_LB = 300
+  DEFAULT_UB = 2700
   def __init__(self,*arg,**kw):
-    self.rawpna = ProtocolNodeAdaptor0(*arg,**kw)
+    self.rawpna = pololu_ProtocolNodeAdaptor(*arg,**kw)
     self.nid = self.rawpna.nid
     self.go_slack = self.rawpna.go_slack
-    self.lb = 600
-    self.ub = 2800
-    self.relpos = 0
+    self.lb = self.DEFAULT_LB
+    self.ub = self.DEFAULT_UB
+    self.relpos = None
 
   def feedPos(self,pos):
-    #progress( 'feed pos' )
     """
     Feed a position reading from
     """
     # Update calibration range
     if pos > self.ub:
-        self.ub = pos+1
+        self.ub = pos
     if pos < self.lb:
-        self.lb = pos-1
+        self.lb = pos
     # Position as a fraction of calibrated range
-    p = (pos - self.lb)/float(self.ub - self.lb)*360
+    p = (pos - self.lb)/float(self.ub - self.lb)
     self.relpos = p
+
+  def isCalibrated(self):
+      return (self.ub != self.DEFAULT_UB) and (self.lb != self.DEFAULT_LB)
 
   def get_relpos(self):
     return self.relpos
 
   def sendCmd( self, cmd ):
-    #progress('cmd send %r ' % self.nid)
     self.rawpna.p.send_cmd( self.MINISSC2_BYTE, self.nid, (cmd,) )
-    #progress('cmd %r' % cmd)
 
   def get_typecode( self ):
     return "PoloWixelModule"
@@ -168,6 +194,10 @@ class ServoModule( AbstractServoModule ):
   on p.6
   """
   MAXRPM = 140
+  # Scale of positions
+  SCL = 36000.
+  # Offset of zero position
+  OFS = 18000.
 
   def __init__(self, node_id, typecode, pna, *argv, **kwarg):
     AbstractServoModule.__init__(self, node_id, typecode, pna, *argv, **kwarg )
@@ -177,73 +207,177 @@ class ServoModule( AbstractServoModule ):
       get_pos="1R",
       is_slack="1R"
       )
+    self.setDefaults()
 
-    ##V: How should these be initialized? I just initialize them in set_pos / go_slack for now
-    self.slack = None; # Initialized to True or False
-    self.pos = None; # Initialized to start position of module
-    self.punch = 7
+  def setDefaults(self):
+    self.pos = None
     self.goalPos = 0
-    self.Kp = 5.0
+    self.DEBUG=DEBUG
+    self.tCal = None
+    self.set(
+        p_punch = 6,
+        n_punch = -6,
+        Kp = 100.,
+        mode = 0,
+        torque_rpm = 0,
+        slack = True,
+    )
+
+  def set(self,**kw):
+      """
+      Set multiple attributes
+      """
+      ATTR={'slack','p_punch','n_punch','Kp','mode','torque_rpm'}
+      for k,v in kw.iteritems():
+          if not k in ATTR:
+              raise KeyError("Cannot set '%s'" % k)
+      self.__dict__.update(kw)
+      if kw.get('slack',False):
+          self.go_slack()
+
+  def set_mode(self, mode):
+    """
+    0 - Servo Mode
+    1 - Motor Mode
+    2 - Continuous Rotation Mode
+    """
+    if type(mode)==str:
+        mode = mode.upper()
+        ptn = {'S':'SERVO','M':'MOTOR','C':'CONTINUOUS'}[mode[0]]
+        if not ptn.startswith(mode):
+            raise KeyError("Unknown mode '%s'" % mode)
+        mode = 'SMC'.find(mode[0])
+    elif mode < 0 or mode > 2:
+        raise KeyError("Unknown mode %d" % mode)
+    self.mode = mode
+
+  def get_mode(self):
+    """
+    Returns the current mode
+    """
+    return self.mode
+
+  def set_torque(self, rpm):
+      if self.mode == 1:
+          self.torque_rpm = rpm
+          self.slack = False
+      else:
+          raise ValueError("Cannot set_torque() in mode %d" % self.mode)
+
+  def get_torque(self):
+      return self.torque_rpm
 
   def set_rpm(self, target):
-    #progress( 'set rpm' )
     """
-    Sends a command to the Pololu device over serial via Protocol.send_cmd()
+    Sets the rpm
 
     INPUT:
     target -- float -- rate of rotation
-    data -- int -- the payload data to send to the module
     """
-    if abs(target)>self.MAXRPM:
-        raise ValueError("RPM value must be between 0 and %d" % self.MAXRPM)
-    if target>0:
-        sgn = 1
-    elif target<0:
-        sgn = -1
+    self.slack = False
+    if self.mode == 1:
+        self.torque_rpm = target
     else:
-        sgn = 0
-    # Essentially passes on the call to the protocol, includes the nid
-    cmd = int( 127 + sgn*self.punch + float(target)*(127-sgn*self.punch)/self.MAXRPM )
-    #progress("%g" % (float(target)*(127-self.punch)/self.MAXRPM))
-    #progress('t %r' % target)
-    #progress("%r -> %s" % (target,cmd))
+        return self._set_rpm(target)
+
+  def _set_rpm(self, target):
+    """(private)
+    Sets the rpm via the pna interface
+
+    INPUT:
+    target -- float -- rate of rotation
+    """
+    M = float(self.MAXRPM)
+    cmd = max(0,min(254,int(127+128*target/M)))
+    if 'r' in self.DEBUG:
+        _DBG(self.DEBUG['r'], "nid%d.set_rpm(%g) --> %g",
+             self.node_id, target,cmd)
     self.pna.sendCmd(cmd)
 
-  def update( self, t ):
-    #progress('servo update')
-    """
-    Perform a periodic update for controlling motor position
+  def isCalibrated(self):
+      return self.tCal is not None
 
-    Implements a proportional feedback controller
-    """
-    self.pos = self.pna.get_relpos()
-    #progress( "ServoModule.update %r,%r" % (self,self.pos))
-    if not self.Kp or self.slack:
-      return
-    # Implement proportional feedback
-    er = (self.pos - self.goalPos + 0.5) % 1.0 - 0.5
-    #er = (1 - self.goalPos + 0.5) % 1.0 - 0.5
-    self.set_rpm( self.Kp * er )
+  def update(self,t):
+      """
+      Update function that is used at startup
 
-  def set_pos( self, pos ):
-    self.goalPos = pos % 1.0
+      Runs calibration; then replaces itself with _line_update
+      """
+      # If uncalibrated --> rotate
+      if not self.pna.isCalibrated():
+          self.set_rpm(20)
+          return
+      # If newly calibrated --> Store calibration time
+      if self.tCal is None:
+          self.tCal = t
+          return
+      # For a while, pound with stop, go slack commands
+      if t-self.tCal<0.5:
+          self.torque_rpm = 0
+          self.set_rpm(0)
+          self.go_slack()
+      else: # and then switch to controller
+          self.update = self._live_update
+
+  def _live_update( self, t ):
+        """
+        Perform a periodic update for controlling motor position
+        """
+        # Get current position; range is 0-1
+        np = self.pna.get_relpos()
+        if np is None:
+            return
+        self.pos = np
+        # Do nothing else if slack
+        if self.slack:
+            return
+        if self.mode == 0: # servo
+            err = self.goalPos - np
+            rpm = -self.Kp*err
+        elif self.mode == 1: # motor mode
+            rpm = self.torque_rpm
+        elif self.mode == 2: # continuous
+            err = self.goalPos - np
+            if err>0.5:
+                err -= 1
+            elif err<-0.5:
+                err += 1
+            rpm = -self.Kp*err
+        else:
+            assert False,"Bad mode %d" % self.mode
+        if 'u' in self.DEBUG:
+            _DBG(self.DEBUG['u'],"nid%d update pos %g goal %g rpm %g mode %d",
+                self.node_id, np, self.goalPos, rpm, self.mode)
+        if rpm>0:
+            rpm += self.p_punch
+        elif rpm<0:
+            rpm += self.n_punch
+        return self._set_rpm(rpm)
+
+  def set_pos( self, pos):
+        """sets goal position in centi-degrees (-18000 to 18000)"""
+        if self.mode == 1: # motor mode
+            raise ValueError("Cannot set_pos() in mode 1 MOTOR")
+        p = (int(pos) + self.OFS) % self.SCL
+        self.goalPos = p/self.SCL
+        self.slack = False
 
   def is_slack(self):
-    """
-    Returns true if the module is slack, none if go_slack has not been called yet.
+        """
+        Returns true if the module is slack, none if go_slack has not been called yet.
 
-    WARNING: This function does NOT actually read states from the pololu device, returns an attribute that is updated by calls to set_pos and go_slack. If any external communications fail, then this function may report incorrect states
-    """
-    return self.slack
+        WARNING: This function does NOT actually read states from the pololu device, returns an attribute that is updated by calls to set_pos and go_slack. If any external communications fail, then this function may report incorrect states
+        """
+        return self.slack
 
   def get_pos(self):
-    """
-    Return the most recent position recorded from module.
+        """
+        Return the most recent position recorded from module.
 
-    NOTE: before the module has made a complete rotation, this result is highly
-    suspect...
-    """
-    return self.pos
+        NOTE: before the module has made a complete rotation, this result is highly
+        suspect...
+        """
+        return self.pos*self.SCL-self.OFS
 
   def get_pos_async(self):
     """

@@ -4,7 +4,7 @@ multiple Protocol instances under a single umbrella, allowing multiple robot
 communication busses and protocols to be used from a single user application
 """
 
-from ckmodule import AbstractProtocol, AbstractBus
+from .ckmodule import AbstractProtocol, AbstractBus
 
 class NidMapper( object ):
     """class NidMapper implements a mapping between "external" and "internal"
@@ -22,11 +22,11 @@ class NidMapper( object ):
         self.tbl = {}
         self.itbl = {}
         self.bitShift = bits
-        self.mask = (1L<<bits)-1
+        self.mask = (1<<bits)-1
     
     def iterowners( self ):
         """Iterate over all the node owners"""
-        return self.tbl.itervalues()
+        return iter(self.tbl.values())
         
     def addOwner( self, owner, oid=None ):
         """
@@ -41,7 +41,7 @@ class NidMapper( object ):
             oid = len(self.tbl)+1
         else:
             oid = int(oid)
-        if self.tbl.has_key(oid):
+        if oid in self.tbl:
             raise KeyError("Owner ID %d re-uses existing ID" % oid )
         self.tbl[oid] = owner
         self.itbl[hash(owner)] = oid
@@ -116,7 +116,7 @@ class MultiProtocol( AbstractProtocol ):
         for p in self.nim.iterowners():
             p.update(t)
             # Collect heartbeats from the protocols
-            for inid,val in p.heartbeats.iteritems():
+            for inid,val in p.heartbeats.items():
                 xnid = self.nim.mapI2X(p,inid)
                 hb[xnid] = val
         self.heartbeats = hb
@@ -127,12 +127,12 @@ class MultiProtocol( AbstractProtocol ):
         # Collect nodes by owner
         for xnid in nodes:
             o,inid = self.nim.mapX2I(xnid)
-            if tbl.has_key(o):
+            if o in tbl:
                 tbl[o].append(inid)
             else:
                 tbl[o] = [inid]
         # Hint the relevant nodes to each sub-protocol
-        for p,nids in tbl.iteritems():
+        for p,nids in tbl.items():
             p.hintNodes(nids)
             
     def generatePNA( self, nid ):

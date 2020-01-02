@@ -7,13 +7,13 @@ between processes that may even be running on different machines
 
 """
 
-from plans import Plan
+from . plans import Plan
 from joy.events import JoyEvent, describeEvt
-from pygix import TIMEREVENT, KEYUP, KEYDOWN, JOYBUTTONUP, JOYBUTTONDOWN, postEvent
+from . pygix import TIMEREVENT, KEYUP, KEYDOWN, JOYBUTTONUP, JOYBUTTONDOWN, postEvent
 from socket import socket, AF_INET, SOCK_DGRAM, SOL_SOCKET, SO_REUSEADDR, error as SocketError
 from errno import EAGAIN
 from json import loads as json_loads, dumps as json_dumps
-from loggit import progress
+from . loggit import progress
 
 # Default UDP port used for communications
 DEFAULT_PORT = 0xBAA
@@ -58,7 +58,7 @@ class Sink( Plan ):
     if convert is None:
       def default_convert( dic ):
         # Non-event messages --> passthrough
-        if not dic.has_key('type'):
+        if not 'type' in dic:
           return dic
         # Filter events by type_code
         tc = dic['type_code']
@@ -105,19 +105,19 @@ class Sink( Plan ):
       return
     if self.allow:
       self._clearQueue()
-    for k in xrange(self.rate):
+    for k in range(self.rate):
       try:
         # Create event from the next packet
         pkt = self.sock.recv(1024)
         dic = json_loads(pkt)
       #
-      except SocketError,err:
+      except SocketError as err:
         # If socket is out of data --> we're done
         if err.errno == EAGAIN:
           break
         raise
       #
-      except ValueError,ve:
+      except ValueError as ve:
         # Value errors come from JSON decoding problems. 
         # --> Log and continue
         progress('Received bad UDP packet: %s' % repr(pkt))
@@ -125,13 +125,13 @@ class Sink( Plan ):
       #
       # Process the event packet
       #
-      if dic.has_key('type'):
+      if 'type' in dic:
        dic = self.convert(dic)
       # If converter dropped event --> next
       if not dic:
         continue
       # If has a 'type' --> JoyEvent
-      if type(dic) is dict and dic.has_key('type'):
+      if type(dic) is dict and 'type' in dic:
         # Put event on event queue
         nev = JoyEvent( **dic )
         #DBG progress('Remote event:'+str(nev))
@@ -159,7 +159,7 @@ class Sink( Plan ):
          pkt -- dictionary -- packet contents
     """
     if self.allow is None:
-      raise IndexError,"No custom packets allowed -- use allowMisc parameter to Sink constructor"
+      raise IndexError("No custom packets allowed -- use allowMisc parameter to Sink constructor")
     while self.queue:
       if (self.app.now-self.queue[0][0]) < self.allow:
         yield self.queue[0]
@@ -214,11 +214,13 @@ class Source( Plan ):
     WARNING: if you use "type" inappropriately, the sink
       will error out and stop running
     """
-    assert not msg.has_key("t"), "Reserved for sender timestamp"
+
+    assert not "t" in msg, "Reserved for sender timestamp"
     msg['t'] = self.app.now
     jsn = json_dumps(msg, ensure_ascii = True )
-    self.sock.sendto( jsn, self.dst )
+
     progress( "Sending '%s' to %s:%d" % ((jsn,)+self.dst) )
+    self.sock.sendto( str.encode(jsn), self.dst ) #DOUBLE CHECK CONVERSIONS TO BYTE
     
   def onEvent( self, evt ):
     if evt.type == TIMEREVENT:

@@ -1,7 +1,7 @@
 '''
 FILE demo-remoteSource.py
 
-This file is used in combination with the RemoteSink demo. 
+This file is used in combination with the RemoteSink demo.
 It sends commands to RemoteSink using the specified port and hostname specified  by the user
 '''
 from joy import JoyApp
@@ -11,9 +11,9 @@ from joy.remote import Source as RemoteSource
 class RemoteSourceApp( JoyApp ):
   '''
   This class is used to send events to remoteSink from the host to the port specified by the user
-  
-  It creates a remoteSource object and passes the destination port specified by thes user to the 
-  remoteSource. This remotesource binds the hostname to a socket to send messages to the specified 
+
+  It creates a remoteSource object and passes the destination port specified by thes user to the
+  remoteSource. This remotesource binds the hostname to a socket to send messages to the specified
   port
 
   This would be useful to you if you want to remotely connect a user interface to another computer.
@@ -21,53 +21,66 @@ class RemoteSourceApp( JoyApp ):
   def __init__(self,*arg,**kw):
     #it extracts the sink destination port from the arguement and deletes it thereafter
     self.dst = kw.get('sink',RemoteSource.DEFAULT_SINK)
-    if kw.has_key('sink'):
+    if 'sink' in kw:
       del kw['sink']
+    self.evts = kw.get('evts',{KEYDOWN,KEYUP,JOYAXISMOTION,JOYBUTTONDOWN})
+    if 'evts' in kw:
+      del kw['evts']
     JoyApp.__init__(self,*arg,**kw)
-    
+
   def onStart( self ):
     #this passes the extracted port as an arguement to a RemoteSource object
     self.rs = RemoteSource(self, self.dst)
     self.rs.start()
-    
+
   def onEvent( self, evt ):
     '''
     it pushes the below events to the remotesource object and this events will be sent to remoteSink
     which will print the events
-    ''' 
-    if evt.type in set([KEYDOWN,KEYUP,JOYAXISMOTION,JOYBUTTONDOWN]):
-      # Process keydown events 
+    '''
+    if evt.type in self.evts:
+      # For KEYDOWN --> process locally, AND send over
       if evt.type == KEYDOWN:
         JoyApp.onEvent(self,evt)
+      # For pressing space --> send a custom message instead
       if evt.type == KEYDOWN and evt.key == K_SPACE:
         self.rs.sendMsg( note = "This is a custom message" )
-      else:
+      else: # else --> send the event
         self.rs.push( evt )
       return
-    # mousemotion events are ignored here
+    #mousemotion events are ignored here
     elif evt.type == MOUSEMOTION:
       return
     JoyApp.onEvent(self,evt)
 
 if __name__=="__main__":
-  print """
+  from argparse import ArgumentParser
+  p = ArgumentParser(description="""
     Demonstration of RemoteSource plan
     ------------------------------------
-    
+
     Sends keyboard events to a remote JoyApp, specified on the commandline as two parameters: host port
     If the port is not specified, default port is used
-    
-  """
-  import sys
-  from joy.remote import DEFAULT_PORT
-  if len(sys.argv)>1:
-    if len(sys.argv)>2:
-      port = int(sys.argv[2])
-    else:
-      port = DEFAULT_PORT
-      progress("**** Using default port "+str(DEFAULT_PORT))
-    app = RemoteSourceApp(sink=(sys.argv[1],port))
-  else:
-    app = RemoteSourceApp()
-  app.run()
 
+  """)
+  from joy import decl
+  evnm = {nm : getattr(decl,nm) for nm in [
+    'MIDIEVENT', 'MOUSEBUTTONDOWN', 'MOUSEBUTTONUP', 'MOUSEMOTION',
+    'JOYAXISMOTION', 'JOYBALLMOTION', 'JOYBUTTONDOWN', 'JOYBUTTONUP', 'JOYHATMOTION', 'KEYDOWN', 'KEYUP', 'HAT_CENTERED', 'HAT_DOWN', 'HAT_LEFT', 'HAT_LEFTDOWN', 'HAT_LEFTUP', 'HAT_RIGHT', 'HAT_RIGHTDOWN', 'HAT_RIGHTUP', 'HAT_UP', 'CKBOTPOSITION', 'ACTIVEEVENT'
+  ]}
+  p.add_argument('--events','-e',action='append', help='Include event type '+repr(evnm.keys()))
+  p.add_argument('--dst','-d',action='store',default=RemoteSource.DEFAULT_SINK[0],help='Address of event receiver')
+  p.add_argument('--dport','-p',action='store',default=str(RemoteSource.DEFAULT_SINK[1]),help='Port of event receiver')
+  from sys import argv
+  args = p.parse_args(argv[1:])
+
+  evts = set()
+  if args.events is not None:
+      evts = { evnm[nm.upper()] for nm in args.events }
+  else:
+      evts = {KEYDOWN,KEYUP,JOYAXISMOTION,JOYBUTTONDOWN}
+  progress("*** Events "+repr(evts) )
+  sink = (args.dst,int(args.dport))
+  progress("*** Destination "+repr(sink) )
+  app = RemoteSourceApp(sink=sink,evts=evts)
+  app.run()

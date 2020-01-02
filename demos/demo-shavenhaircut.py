@@ -6,8 +6,7 @@ on the argument given. It operates plans sequentially by passing multiple plans 
 arguments and yielding one after the other.
 '''
 from joy.decl import *
-from joy.misc import *
-from joy import JoyApp, Plan, SheetPlan
+from joy import JoyApp, Plan
 
 class ShaveNHaircutPlan( Plan ):
   """
@@ -70,9 +69,9 @@ class ShaveNHaircutApp( JoyApp ):
     # Set up a ShaveNHaircutPlan using both of the previous plans
     #
     self.both = ShaveNHaircutPlan(self, self.shaveplan, self.hairplan)
-
+  
+  #acts if a key is pressed
   def onEvent(self,evt):
-    """Main event handler"""
     if evt.type != KEYDOWN:
       return
     # assertion: must be a KEYDOWN event 
@@ -148,5 +147,7 @@ if __name__=="__main__":
     """ % sys.argv[0])
       sys.exit(1)
     # ENDS cmdline parsing loop
+  #start an interface
   app = ShaveNHaircutApp(shaveSpec,hairSpec,robot=robot,scr=scr)
+  #directs to onStart
   app.run()

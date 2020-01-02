@@ -18,17 +18,13 @@ from constants import *
 # we can run in simulated time
 from time import time as now
 
-from os import getenv
-SCHD=getenv("PYGIXSCHD","")
-del getenv
-
 # NOTE: for ASAP simulation, set env variable PYGIXSCHD to ASAP
 #  for FAST (and CPU hungry) execution, set env variable PYGIXSCHD to FAST
 #  Prepend "FORCE-" to force scheduler despite pygame being available
 #  this will import K_* constants and event types from pygame, but will
 #  otherwise function as if running headless. In particular, in FORCE-
 #  environments the Event objects are the headless classes
-if IMPL == 'pygame' and not SCHD.startswith("FORCE-"):
+if IMPL == 'pygame':
   # Pygame dependencies
   import pygame
   import pygame.joystick

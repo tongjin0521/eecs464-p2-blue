@@ -5,11 +5,16 @@ import sys
 import select
 import re
 from warnings import warn
+if sys.version == 3:
+  bytesHelper = bytes
+else:
+  def bytesHelper(val):
+    return bytes(bytearray(val))
 
 class FramedSock( object ):
   def __init__(self, host="127.0.0.1", port=42001):
     self.addr = (host,port)
-    self.iterLimit = 32
+    self.Limit = 32
     self.sock = None
   
   def isConnected( self ):
@@ -27,19 +32,19 @@ class FramedSock( object ):
       self.sock = None
     
   def recv( self ):
-    hdr = self.sock.recv(4)
+    hdr = bytesHelper(self.sock.recv(4))
     if len(hdr) != 4:
       raise IOError("Failed to read header from socket")
-    H = struct.unpack(">L",hdr)[0]
+    H = struct.unpack(">L", hdr)[0]
     N = 0
     msg = []
     while N<H:
       msg.append( self.sock.recv(H-N) )
       N += len(msg[-1])
-    return "".join(msg)
+    return b"".join(msg)
   
   def send( self, msg ):
-    hdr = struct.pack(">L",len(msg))
+    hdr = bytesHelper(len(msg))
     self.sock.send( hdr+msg )
   
   def recv_async( self, timeout=0.01 ):
@@ -50,7 +55,7 @@ class FramedSock( object ):
     return None
 
   def __iter__(self):
-    for k in xrange(self.iterLimit):
+    for k in range(self.Limit):
       msg = self.recv_async()
       if msg is None:
         break
@@ -106,7 +111,7 @@ class Board( object ):
     try:
       self._fsk.connect()
       return True
-    except IOError, ioe:
+    except IOError as ioe:
       sys.stderr.write( "Failed to connect: %s\n" % ioe )
       self._fsk.close()
     return False
@@ -117,7 +122,7 @@ class Board( object ):
     upds = {}
     evts = set()
     for msg in self._fsk:
-      tok = self._tokenize(msg)
+      tok = self._tokenize(msg.decode('utf-8'))
       if tok is None:
         warn("Failed to parse Scratch message '%s'" % msg)
         continue
@@ -132,10 +137,10 @@ class Board( object ):
   def sensorUpdate(self, **kw):
     if not self._autoConnect(): return
     msg = ['sensor-update']
-    for k,v in kw.iteritems():
+    for k,v in kw.items():
       msg.append('"%s"' % k)
-      msg.append(str(v))
-    self._fsk.send( " ".join(msg) )
+      msg.append(bytes(v))
+    self._fsk.send( b" ".join(msg) )
   
   def broadcast(self,*arg):
     if not self._autoConnect(): return
@@ -145,7 +150,7 @@ class Board( object ):
     
     
 if __name__=="__main__":
-  print "Connecting to Scratch at default host:port"
+  print("Connecting to Scratch at default host:port")
   try:
     sk = FramedSock()
     sk.connect()

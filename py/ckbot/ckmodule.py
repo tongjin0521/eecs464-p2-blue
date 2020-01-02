@@ -70,19 +70,19 @@ class AbstractProtocol( object ):
     """
     *PURE* perform Protocol housekeeping operations
     """
-    raise TypeError,"pure method called"
+    raise TypeError("pure method called")
     
   def hintNodes( self, nodes ):
     """
     *PURE* use hint that specified nodes are available
     """
-    raise TypeError,"pure method called"
+    raise TypeError("pure method called")
     
   def generatePNA( self, nid ):
     """
     *PURE* Generate a ProtocolNodeAdaptor for the specified nid
     """
-    raise TypeError,"pure method called"    
+    raise TypeError("pure method called")  
   
 class AbstractBus( object ):
   """abstract superclass of all Bus classes
@@ -113,15 +113,15 @@ class PermissionError( RuntimeError ):
   def __init__(self,*arg,**kw):
     RuntimeError.__init__(self,*arg,**kw)
 
-class AbstractBusError( StandardError ):
+class AbstractBusError( Exception ):
   "(organizational) abstract superclass of all BusError classes"
   def __init__(self,*arg,**kw):
-    StandardError.__init__(self,*arg,**kw)
+    Exception.__init__(self,*arg,**kw)
 
-class AbstractProtocolError( StandardError ):
+class AbstractProtocolError( Exception ):
   "(organizational) abstract superclass of all ProtocolError classes"
   def __init__(self,*arg,**kw):
-    StandardError.__init__(self,*arg,**kw)
+    Exception.__init__(self,*arg,**kw)
 
 class AttributeGetter( object ):
   """
@@ -222,7 +222,7 @@ class Module(object):
     """
     if self.od is None:
       return iter([])
-    return self.od.index_table.iterkeys()
+    return iter(self.od.index_table.keys())
  
   def iterprop(self, perm=''):
     """
@@ -237,7 +237,7 @@ class Module(object):
     """
     if self.od is None or perm not in 'RW':
       return iter([])
-    idx = self.od.name_table.iterkeys()
+    idx = iter(self.od.name_table.keys())
     if perm=='R':
       return (nm for nm in idx if self.od.name_table[nm].isReadable())
     elif perm=='W':
@@ -254,7 +254,7 @@ class Module(object):
     OUTPUT:
       property names returned as strings
     """
-    plan = self._attr.iteritems()
+    plan = iter(self._attr.items())
     if perm:
       return (nm for nm,acc in plan if perm in acc)
     return (nm for nm,_ in plan)

@@ -33,28 +33,40 @@
    - newConnection
 """
 
+from pdb import set_trace as BRK
+
+#Just a  test comment
+import sys
 from time import time as now, sleep
-from sys import platform as SYS_PLATFORM, stdout
 from struct import pack, unpack, calcsize
-from array import array
-from serial import Serial
-from subprocess import Popen, PIPE
-from glob import glob
-from random import uniform
 from collections import deque
 
-from ckmodule import Module, AbstractNodeAdaptor, AbstractProtocol, AbstractBus, progress, AbstractServoModule, AbstractProtocolError, AbstractBusError, MemInterface, MissingModule
-from port2port import newConnection
+from .ckmodule import Module, AbstractNodeAdaptor, AbstractProtocol, AbstractBus, progress, AbstractServoModule, AbstractProtocolError, AbstractBusError, MemInterface, MissingModule
+from .port2port import newConnection
 
 DEFAULT_PORT = dict(TYPE='tty', baudrate=115200, timeout=0.01)
 
 class DynamixelServoError( AbstractBusError ):
   "(organizational) Error for Dynamixel Servo """
   def __init__(self,*arg,**kw):
-    StandardError.__init__(self,*arg,**kw)
+    AbstractBusError.__init__(self,*arg,**kw)
 
 def crop( val, lower, upper ):
   return max(min(val,upper),lower)
+
+#########################
+if sys.version == 3:
+  bytesHelper = bytes
+else:
+  def bytesHelper(val):
+    return bytes(bytearray(val))
+
+def addBytes(orig, *args):
+  return orig+bytes(args)
+
+def byteUnpack(orig):
+  return str(orig)
+#########################
 
 DEBUG = []
 
@@ -79,10 +91,9 @@ class Dynamixel( object ):
   CMD_RESET = 0x06 #: from command table EX-106 section 3-2
   CMD_SYNC_WRITE = 0x83 #: from command table EX-106 section 3-2
   MEM_LEN = 0x39 #: length of control table EX-106 section 3-4
-  SYNC = '\xff\xff' #: synchronization pattern at start of packets EX-106 section 3-2
+  SYNC = b'\xff\xff' #: synchronization pattern at start of packets EX-106 section 3-2
   MAX_ID = 0xFD #: maximal value of ID field EX-106 section 3-2
   BROADCAST_ID = 0xFE #: broadcast address EX-106 section 3-2
-
 
 class DynamixelMemMap:
     """
@@ -104,7 +115,7 @@ class DynamixelMemMap:
     """
 
     _ADDR_DCR = {
-        '\x00' : ("model", "<H") # superclass only knows where to find model number
+        b'\x00' : ("model", "<H") # superclass only knows where to find model number
     }
     MODEL_ADDR = pack('B',0) #: Address of model number, shared for all models
     MODEL_ADDR_LEN = 2 #: Length of model number
@@ -116,37 +127,37 @@ class DynamixelMemMap:
       This classmethod must be called on every subclass after it is declared
       """
       if ADDR:
-		  cls._ADDR_DCR.update({
-		  '\x02' : ("version", "B"),
-		  '\x03' : ("ID", "B"),
-		  '\x04' : ("baud", "B"),
-		  '\x05' : ("ret_delay", "B"),
-		  '\x06' : ("cw_angle_limit", "<H"),
-		  '\x08' : ("ccw_angle_limit", "<H"),
-		  '\x0b' : ("max_temp", "B"),
-		  '\x0c' : ("min_voltage", "B"),
-		  '\x0d' : ("max_voltage", "B"),
-		  '\x0e' : ("max_torque", "<H"),
-		  '\x10' : ("status", "B"),
-		  '\x11' : ("alarm_LED", "B"),
-		  '\x12' : ("alarm_shutdown", "B"),
-		  '\x18' : ("torque_en", "B"),
-		  '\x19' : ("LED", "B"),
-		  '\x1e' : ("goal_position", "<H"),
-		  '\x20' : ("moving_speed", "<H"),
-		  '\x22' : ("torque_limit", "<H"),
-		  '\x24' : ("present_position", "<H"),
-		  '\x26' : ("present_speed", "<H"),
-		  '\x28' : ("present_load", "<H"),
-		  '\x2a' : ("present_voltage", "B"),
-		  '\x2b' : ("present_temperature", "B"),
-		  '\x2c' : ("registered_instruction", "B"),
-		  '\x2e' : ("moving", "B"),
-		  '\x2f' : ("lock", "B"),
-		  '\x30' : ("punch", "<H")
-		  })
-		  cls._ADDR_DCR.update(ADDR)
-      for adr,(nm,fmt) in cls._ADDR_DCR.iteritems():
+        cls._ADDR_DCR.update({
+          b'\x02' : ("version", "B"),
+          b'\x03' : ("ID", "B"),
+          b'\x04' : ("baud", "B"),
+          b'\x05' : ("ret_delay", "B"),
+          b'\x06' : ("cw_angle_limit", "<H"),
+          b'\x08' : ("ccw_angle_limit", "<H"),
+          b'\x0b' : ("max_temp", "B"),
+          b'\x0c' : ("min_voltage", "B"),
+          b'\x0d' : ("max_voltage", "B"),
+          b'\x0e' : ("max_torque", "<H"),
+          b'\x10' : ("status", "B"),
+          b'\x11' : ("alarm_LED", "B"),
+          b'\x12' : ("alarm_shutdown", "B"),
+          b'\x18' : ("torque_en", "B"),
+          b'\x19' : ("LED", "B"),
+          b'\x1e' : ("goal_position", "<H"),
+          b'\x20' : ("moving_speed", "<H"),
+          b'\x22' : ("torque_limit", "<H"),
+          b'\x24' : ("present_position", "<H"),
+          b'\x26' : ("present_speed", "<H"),
+          b'\x28' : ("present_load", "<H"),
+          b'\x2a' : ("present_voltage", "B"),
+          b'\x2b' : ("present_temperature", "B"),
+          b'\x2c' : ("registered_instruction", "B"),
+          b'\x2e' : ("moving", "B"),
+          b'\x2f' : ("lock", "B"),
+          b'\x30' : ("punch", "<H")
+        })
+        cls._ADDR_DCR.update(ADDR)
+      for adr,(nm,fmt) in cls._ADDR_DCR.items():
           setattr(cls,nm,adr)
 
 DynamixelMemMap._prepare()
@@ -163,7 +174,9 @@ class MemMapOpsMixin:
       """ Parse the message bytes returned when reading address addr """
       if isinstance(val,Exception):
         raise val
-      return unpack( cls._ADDR_DCR[addr][1], val )[0]
+      val_bytes_object = bytesHelper(val)
+
+      return unpack( cls._ADDR_DCR[addr][1], val_bytes_object)[0]
 
     @classmethod
     def val2pkt( cls, addr, val ):
@@ -179,7 +192,8 @@ class MemMapOpsMixin:
     def show( cls, addr, val ):
       """ Provide human readable representation of a value from address addr"""
       nm,fmt = cls._ADDR_DCR[addr]
-      return "%s = %d" % (nm, unpack(fmt, val)[0])
+      nm_bytes_object = bytesHelper(nm)
+      return "%s = %d" % (nm, unpack(fmt, nm_bytes_object)[0])
 
 class MX64Mem( DynamixelMemMap):
     """
@@ -189,16 +203,17 @@ class MX64Mem( DynamixelMemMap):
     """
     pass
 
+##ADDED b
 MX64Mem._prepare({
-    '\x14' : ("multi_turn_offset", "<H"),
-    '\x16' : ("resolution_divider","B"),
-    '\x1a' : ("D_gain", "B"),
-    '\x1b' : ("I_gain", "B"),
-    '\x1c' : ("P_gain", "B"),
-    '\x44' : ("current", "<H"),
-    '\x46' : ("torque_control_mode_enable", "B"),
-    '\x47' : ("goal_torque", "<H"),
-    '\x49': ("goal_acceleration", "B")
+    b'\x14' : ("multi_turn_offset", "<H"),
+    b'\x16' : ("resolution_divider","B"),
+    b'\x1a' : ("D_gain", "B"),
+    b'\x1b' : ("I_gain", "B"),
+    b'\x1c' : ("P_gain", "B"),
+    b'\x44' : ("current", "<H"),
+    b'\x46' : ("torque_control_mode_enable", "B"),
+    b'\x47' : ("goal_torque", "<H"),
+    b'\x49': ("goal_acceleration", "B")
 })
 
 class MX28Mem( DynamixelMemMap):
@@ -209,12 +224,12 @@ class MX28Mem( DynamixelMemMap):
     """
     pass
 MX28Mem._prepare({
-    '\x14' : ("multi_turn_offset","<H"),
-    '\x16' : ("resolution_divider","B"),
-    '\x1a' : ("D_gain", "B"),
-    '\x1b' : ("I_gain", "B"),
-    '\x1c' : ("P_gain", "B"),
-    '\x49' : ("goal_acceleration", "B")
+    b'\x14' : ("multi_turn_offset","<H"),
+    b'\x16' : ("resolution_divider","B"),
+    b'\x1a' : ("D_gain", "B"),
+    b'\x1b' : ("I_gain", "B"),
+    b'\x1c' : ("P_gain", "B"),
+    b'\x49' : ("goal_acceleration", "B")
 })
 
 class RX64Mem(DynamixelMemMap):
@@ -227,10 +242,10 @@ class RX64Mem(DynamixelMemMap):
     """
     pass
 RX64Mem._prepare({
-    '\x1a' : ("cw_compliance_margin", "B"),
-    '\x1b' : ("ccw_compliance_margin", "B"),
-    '\x1c' : ("cw_compliance_slope", "B"),
-    '\x1d' : ("ccw_compliance_slope", "B")
+    b'\x1a' : ("cw_compliance_margin", "B"),
+    b'\x1b' : ("ccw_compliance_margin", "B"),
+    b'\x1c' : ("cw_compliance_slope", "B"),
+    b'\x1d' : ("ccw_compliance_slope", "B")
 })
 
 class EX106Mem( DynamixelMemMap ):
@@ -244,12 +259,12 @@ class EX106Mem( DynamixelMemMap ):
     pass
 
 EX106Mem._prepare({
-    '\x0a' : ("drive_mode", "B"),
-    '\x1a' : ("cw_compliance_margin", "B"),
-    '\x1b' : ("ccw_compliance_margin", "B"),
-    '\x1c' : ("cw_compliance_slope", "B"),
-    '\x1d' : ("ccw_compliance_slope", "B"),
-    '\x38' : ("sense_current","<H")
+    b'\x0a' : ("drive_mode", "B"),
+    b'\x1a' : ("cw_compliance_margin", "B"),
+    b'\x1b' : ("ccw_compliance_margin", "B"),
+    b'\x1c' : ("cw_compliance_slope", "B"),
+    b'\x1d' : ("ccw_compliance_slope", "B"),
+    b'\x38' : ("sense_current","<H")
 })
 
 class MX106RMem( DynamixelMemMap ):
@@ -260,17 +275,17 @@ class MX106RMem( DynamixelMemMap ):
     """
     pass
 MX106RMem._prepare({
-    '\x0a' : ("drive_mode", "B"),
-    '\x14' : ("multi_turn_offset", "<H"),
-    '\x16' : ("resolution_divider","B"),
-    '\x1a' : ("D_gain", "B"),
-    '\x1b' : ("I_gain", "B"),
-    '\x1c' : ("P_gain", "B"),
-    '\x1d' : ("ccw_compliance_slope", "B"),
-    '\x38' : ("sense_current","<H"),
-    '\x46' : ("torque_control_mode_enable", "B"),
-    '\x47' : ("goal_torque", "<H"),
-    '\x49' : ("goal_acceleration", "B")
+    b'\x0a' : ("drive_mode", "B"),
+    b'\x14' : ("multi_turn_offset", "<H"),
+    b'\x16' : ("resolution_divider","B"),
+    b'\x1a' : ("D_gain", "B"),
+    b'\x1b' : ("I_gain", "B"),
+    b'\x1c' : ("P_gain", "B"),
+    b'\x1d' : ("ccw_compliance_slope", "B"),
+    b'\x38' : ("sense_current","<H"),
+    b'\x46' : ("torque_control_mode_enable", "B"),
+    b'\x47' : ("goal_torque", "<H"),
+    b'\x49' : ("goal_acceleration", "B")
 })
 
 class DynamixelMemWithOps( DynamixelMemMap, MemMapOpsMixin ):
@@ -365,7 +380,7 @@ class Bus( AbstractBus ):
         """
         The purpose of this method is to reset the state of the Bus to initial values
         """
-        self.buf = ''
+        self.buf = b''
         self.expect = 6
         self.eSync = 0
         self.eChksum = 0
@@ -383,7 +398,7 @@ class Bus( AbstractBus ):
         """
         Flush software and hardware buffers
         """
-        self.buf = ''
+        self.buf = b''
         self.ser.flush()
         if 'x' in self.DEBUG:
           progress('[Dynamixel] flush bus\n')
@@ -431,15 +446,15 @@ class Bus( AbstractBus ):
           Compute checksum using not bit operator for only the lowest
           byte of the sum
         """
-        return 0xFF ^ (0xFF & sum([ ord(c) for c in dat ]))
+        return bytearray((0xFF ^ (0xFF & sum(dat)),))
 
     @classmethod
     def parseErr( cls, pkt, noRaise=False ):
         """ (private)
         Parse and output error returned from dynamixel servos as per 3-4-1 pp. 25
         """
-        nid = ord(pkt[0])
-        err = ord(pkt[2])
+        nid = pkt[0]
+        err = pkt[2]
         msg = ["ID 0x%02x" % nid]
         if err & 0x01:
           msg.append("Voltage out of operating range")
@@ -479,7 +494,10 @@ class Bus( AbstractBus ):
           the messages in human-readable form
         """
         out = []
-        b = [ ord(m) for m in msg ]
+        if type(msg) is str:
+          b = [ ord(m) for m in msg ]
+        else:
+          b = msg # was a bytearray
         while len(b)>5:
           if b[0] != 0xff or b[1] != 0xff:
             out.append("<<bad SYNC %02X %02X>>" % (b[0],b[1]))
@@ -501,7 +519,7 @@ class Bus( AbstractBus ):
             out.append(" ".join("%02X" % bb for bb in b[3:l+1]) )
           else:
             out.append('addr = 0x%02X for %d' % (b[3],b[4]))
-            for k in xrange(5,l,3):
+            for k in range(5,l,3):
               out.append('nid %02X %02X %02X' % tuple(b[k:k+3]))
           chk = sum(b[:l+1])
           if 0xFF & (b[l+1]+chk) != 0xFF:
@@ -520,11 +538,12 @@ class Bus( AbstractBus ):
         if (n % SWEEP_EVERY) == 0:
           # If so, find packets that are older than SWEEP_EVERY
           #   and remove them from the table
-          for key in tbl.keys():
+          for key in list(tbl.keys()):
             if tbl[key] < n - SWEEP_EVERY:
               del tbl[key]
         # should packet be suppressed?
-        if tbl.has_key(pkt):
+        pkt = byteUnpack(pkt)
+        if pkt in tbl:
           # yes; don't suppress if seen again
           del tbl[pkt]
           return True
@@ -561,9 +580,16 @@ class Bus( AbstractBus ):
             # If we don't have at least self.expect bytes --> nothing to do
             # if len(self.buf)+self.ser.inWaiting()<self.expect:
             #  return None
-            rd = self.ser.read( self.ser.inWaiting() )
+            rdhold = bytes(self.ser.read(self.ser.inWaiting()))
+
+            rd = bytearray()
+            rd.extend(rdhold)
+
+            ##MUST CHANGE HERE UP ABOVE, self.buf might be wrong along with self.count
+
             self.buf += rd
             self.count += len(rd)
+
             # Expecting sync byte
             if not self.buf.startswith(SYNC):
                 # --> didn't find sync; drop the first byte
@@ -571,12 +597,12 @@ class Bus( AbstractBus ):
                 continue
             ## assert self.buf.startswith(SYNC)
             # Make sure that our nid makes sense
-            ID = ord(self.buf[2])
+            ID = self.buf[2]
             if ID > MAX_ID: # Where 0xFD is the maximum ID
                 self._dropByte('eID')
                 continue
             # Pull out the length byte and compute total length
-            L = 4+ord(self.buf[3])
+            L = 4+self.buf[3]
             # Ensure that length is within valid range. 6 is minimum possible packet length
             if L > maxlen or L < 6:
               self._dropByte('eLen')
@@ -585,9 +611,9 @@ class Bus( AbstractBus ):
               self.expect = L
               continue
             assert len(self.buf)>=L
-            chk = self._chksum( self.buf[2:L-1] )
-            #print ">>"," ".join([ "%02x" % (ord(b)) for b in self.buf[:6] ]),"chk",hex(chk),hex(ord(self.buf[L-1])),L
-            if ord(self.buf[L-1]) != chk:
+            chk = self._chksum(self.buf[2:L-1])
+            ##print ">>"," ".join([ "%02x" % (ord(b)) for b in self.buf[:6] ]),"chk",hex(chk),hex(ord(self.buf[L-1])),L
+            if self.buf[L-1] != chk[0]:
               self._dropByte('eChksum')
               continue
             # At this point we have a packet that passed the checksum in
@@ -595,6 +621,7 @@ class Bus( AbstractBus ):
             #   payload portion
             pkt = self.buf[2:L-1]
             fl_pkt = self.buf[:L]
+
             self.buf = self.buf[L:]
             # Check if this is an echo
             if self._testForEcho(fl_pkt):
@@ -607,12 +634,13 @@ class Bus( AbstractBus ):
               progress('[Dynamixel] recv --> [%s] %s\n' % (self.dump(fl_pkt),repr(fl_pkt)))
             # Run error check
             self.parseErr(pkt)
+            #print("PKT TYPE: ", type(pkt))
             return pkt
         # ends parsing loop
         # Function terminates returning a valid packet payload or None
         return None
 
-    def send( self, nid, cmd, pars = '' ):
+    def send( self, nid, cmd, pars = b'' ):
         """
         Build a message and  transmit, update rxPkts, and return message string
 
@@ -632,14 +660,19 @@ class Bus( AbstractBus ):
           Compute checksum, transmit and then return string
 
         """
-        body = pack('BBB',nid,len(pars)+2,cmd)+pars
-        msg = Dynamixel.SYNC+body+pack("B",self._chksum(body))
+        #TODO: make sure that this change is valid.
+
+        ##PROFESSOR REVZEN CHANGES
+        body = bytearray([nid,len(pars)+2, cmd] + list(pars))
+        crc = self._chksum(body)
+        msg = Dynamixel.SYNC + body + crc
+
         if 'x' in self.DEBUG:
           progress('[Dynamixel] send --> [%s] %s\n' % (self.dump(msg),repr(msg)))
         self.ser.write(msg)
         self.txPkts+=1
         self.txBytes+=len(msg)
-        self.suppress[msg] = self.txPkts
+        self.suppress[bytes(msg)] = self.txPkts
         return msg[2:]
 
     def send_sync_write( self, nid, addr, pars ):
@@ -660,16 +693,21 @@ class Bus( AbstractBus ):
         THEORY OF OPERATION:
           Set a value remotely, without expecting a reply
         """
-        body = ( pack('BBB', Dynamixel.BROADCAST_ID, len(pars)+5, Dynamixel.CMD_SYNC_WRITE)
-                +addr
-                +pack('BB', len(pars),nid)
-                +pars
-           )
-        msg = Dynamixel.SYNC+body+pack("B",self._chksum(body))
+
+        body = bytearray([Dynamixel.BROADCAST_ID, len(pars)+5, Dynamixel.CMD_SYNC_WRITE] + list(addr) + [len(pars), nid] + list(pars))
+
+        #body = ( pack('BBB', Dynamixel.BROADCAST_ID, len(pars)+5, Dynamixel.CMD_SYNC_WRITE)
+        #        +addr
+        #        +pack('BB', len(pars), nid)
+        #        +pars
+
+        crc = self._chksum(body)
+        msg = Dynamixel.SYNC + body + crc
+
         if 'x' in self.DEBUG:
           progress('[Dynamixel] sync_write --> [%s] %s\n' % (self.dump(msg),repr(msg)))
         self.ser.write(msg)
-        self.suppress[msg] = self.txPkts
+        self.suppress[bytes(msg)] = self.txPkts
         self.txPkts+=1
         self.txBytes+=len(msg)
         return msg[2:]
@@ -727,7 +765,10 @@ class Bus( AbstractBus ):
         """
         if nid==Dynamixel.BROADCAST_ID:
           raise ValueError('Broadcasts get no replies -- cannot send_cmd_sync')
-        for k in xrange(retries+1):
+        for k in range(retries+1):
+          #print("NID TYPE1: ", type(nid))
+          #print("NID1: ", nid)
+
           hdr0 = self.send(nid, cmd, pars)[0]
           t0 = now()
           # Put a sensible amount of time to wait for a response in
@@ -756,7 +797,11 @@ class Bus( AbstractBus ):
         cmd -- command code in message
         tail -- remainder of the message, as a string
       """
-      return unpack('BBB',reply[:3])+(reply[3:],)
+      #replyholder = reply.encode('hex')
+      #reply_bytes_object = pack('BBB', int(replyholder[0], 16), int(replyholder[1], 16), int(replyholder[2], 16))
+      #return unpack('BBB',reply_bytes_object)+(reply[3:],)
+
+      return reply[0],reply[1],reply[2],reply[3:]
 
 class ProtocolError( AbstractProtocolError ):
   def __init__(self,*arg, **kw):
@@ -778,7 +823,7 @@ class ProtocolNodeAdaptor( AbstractNodeAdaptor ):
         tc = self.get_typecode()
         try:
           self.mm = (MODELS[tc][0])
-        except KeyError, ke:
+        except KeyError as ke:
           raise KeyError('Unknown module typecode "%s"' % tc)
 
     def reset(self):
@@ -817,6 +862,7 @@ class ProtocolNodeAdaptor( AbstractNodeAdaptor ):
         OUTPUTS:
           msg -- string -- transmitted packet minus SYNC
         """
+        ##POTENTIAL ERROR HERE
         return self.p.mem_write_sync( self.nid, addr, self.mm.val2pkt( addr, val ))
 
     def mem_read_sync( self, addr ):
@@ -1075,6 +1121,7 @@ class Protocol( AbstractProtocol ):
         for nid in nodes:
             self.pollRing.append( nid )
             self.generatePNA( nid )
+
         progress("Dynamixel nodes: %s\n" % repr(list(nodes)))
 
     def scan( self, timeout=1.0, retries=1, get_model=True ):
@@ -1100,14 +1147,14 @@ class Protocol( AbstractProtocol ):
           timeout and number of retries.
         """
         found = []
-        for retry in xrange(0, retries):
+        for retry in range(0, retries):
             self.bus.flush()
             self.bus.send(Dynamixel.BROADCAST_ID, Dynamixel.CMD_PING)
             t0 = now()
             while now()-t0 < float(timeout)/retries:
                 pkt = self.bus.recv()
                 if pkt is not None:
-                    nid = unpack('B',pkt[0])[0]
+                    nid = pkt[0]
                     found.append(nid)
                 sleep(0.01)
         res={}
@@ -1202,8 +1249,9 @@ class Protocol( AbstractProtocol ):
           length -- int -- number of bytes to read
           retries -- int -- number of times to retry if there exist protocol errors
       """
-      for retry in xrange(0,retries):
-          reply = self.bus.send_cmd_sync( nid, Dynamixel.CMD_READ_DATA, addr+pack('B', length))
+      #ERROR 1
+      for retry in range(0,retries):
+          reply = self.bus.send_cmd_sync( nid, Dynamixel.CMD_READ_DATA, addr+pack('B', length)) ##ERROR
           if reply is None:
             return ProtocolError("NID 0x%02x mem_read[0x%02x] timed out"
               % (nid, ord(addr)))
@@ -1258,28 +1306,28 @@ class Protocol( AbstractProtocol ):
             self.request( nid, Dynamixel.CMD_PING )
             break
         self.pollRing.extend(nxt)
-        
+
     def update( self, t=None, timeout=0.01 ):
-        """ 
-        The update method handles current incomplete message requests and ensures that 
+        """
+        The update method handles current incomplete message requests and ensures that
         nodes are pinged to check for their existance
 
         INPUTS:
           t -- time -- ignored; uses now() to get real time
           timeout -- time -- time interval for processing updates
-        OUTPUTS: 
-          num_requests -- int -- length of request queue 
+        OUTPUTS:
+          num_requests -- int -- length of request queue
         PRECONDITIONS:
           instantiation of dynamixel.Bus, dynamixel.Protocol
         POSTCONDITIONS:
-          No response occurs 
-        
+          No response occurs
+
         THEORY OF OPERATION:
           get the allowed timeslice
           while timeslice not done:
             if queue empty --> return
             pop 1st message on queue
-            if message has timed out: 
+            if message has timed out:
               fill promise with ProtocolError(timeout)
               continue
             if message ID is BROADCAST_ID:
@@ -1287,11 +1335,11 @@ class Protocol( AbstractProtocol ):
                 bus.send the message
                 fill promise with None
               else:
-                fill promise with ProtocolError(not CMD_SYNC_WRITE bcast not allowed) 
+                fill promise with ProtocolError(not CMD_SYNC_WRITE bcast not allowed)
               continue
             else:
               bus.send_cmd_sync the message
-              store reply in promise 
+              store reply in promise
         """
         t0 = now()
         self._get_heartbeats(t0)
@@ -1304,14 +1352,14 @@ class Protocol( AbstractProtocol ):
         while (t1-t0 < timeout):
             if not self.bus.recv():
               break
-            
-    
+
+
     def _doRequest(self, now, inc ):
         """
         Process a single incomplete request
         If it requires a response -- complete it or time-out; if not,
         complete with a None reply
-        
+
         TODO finish comment
         """
         if inc.nid == Dynamixel.BROADCAST_ID:
@@ -1327,24 +1375,37 @@ class Protocol( AbstractProtocol ):
             inc.setResponse(reply)
 
 class DynamixelModule( AbstractServoModule ):
-    """ concrete class DynamixelModule provides shared capabilities of 
+    """ concrete class DynamixelModule provides shared capabilities of
     Dynamixel modules. It is usually used as the base class in a mixin,
     with the model specific details provided by the mixin classes.
     """
-    
-    MX_POS =  10000 #: maximal position value for servos
-    MN_POS = -10000 #: minimal position value for servos
-            
+    MAX_POS = 0xFFF #: Maximal position value in control table
+    MIN_POS = 0 #: Minimal position in control table
+    MIN_ANG = -18000 #: Minimal angle value in centidegrees corresponding to MIN_POS
+    MAX_ANG = 18000 #: Maximal angle value in centidegrees corresponding to MAX_POS
+    MAX_LIM = 10000 #: Motion limit (maximum angle) for UBar servo mechanics
+    MIN_LIM = -10000 #: Motion limit (minimum angle) for UBar servo mechanics
+
+    SCL = float(MAX_POS - MIN_POS)/(MAX_ANG - MIN_ANG) #: Scale constant for angles
+    OFS = (MAX_POS - MIN_POS)/2 + MIN_POS #: Offset for angles
+
+    MAX_TORQUE = 0x3FF #: Maximal value for "torque" in control table
+    DIRECTION_BIT = 1<<10 #: Sign bit for "torque" and "speed" in control table
+    TORQUE_SCL = float(MAX_TORQUE/1.0) #: Scaling for torque values to [0.0,1.0] interval
+
+    SPEED_SCL = 0.114 #: Scaling for Dynamixel speed units to RPM
+    VOLTAGE_SCL = 0.1 #: Scaling for Dynamixel voltage units to Volts
+
     @classmethod
     def ang2dynamixel(cls, ang):
         """ Convert angle values to Dynamixel units """
         return int(ang * cls.SCL + cls.OFS)
-  
-    @classmethod 
+
+    @classmethod
     def dynamixel2ang(cls, dynamixel ):
         """Convert dynamixel units to Dynamixel angles"""
-        return int((dynamixel-cls.OFS) / cls.SCL)  
-    
+        return int((dynamixel-cls.OFS) / cls.SCL)
+
     @classmethod
     def torque2dynamixel(cls, torque ):
         """ Convert "torque" commands to Dynamixel commands """
@@ -1352,7 +1413,7 @@ class DynamixelModule( AbstractServoModule ):
             return int(abs(torque)*cls.TORQUE_SCL) | cls.DIRECTION_BIT
         else:
             return int(torque*cls.TORQUE_SCL)
-    
+
     @classmethod
     def dynamixel2rpm(cls, dynamixel ):
         """Convert dynamixel units to rotations per minute"""
@@ -1361,27 +1422,29 @@ class DynamixelModule( AbstractServoModule ):
         if direction == 0:
           return (dynamixel & 0x3FF)*cls.SPEED_SCL
         return -(dynamixel & 0x3FF)*cls.SPEED_SCL
-  
+
     @classmethod
     def rpm2dynamixel(cls, rpm ):
         """Convert rpm to dynamixel units"""
-        return int(rpm/cls.SPEED_SCL)+1
-  
+        if rpm < 0: #10th bit is used for the sign
+            return (int(-rpm/cls.SPEED_SCL)) | cls.DIRECTION_BIT
+        return int(rpm/cls.SPEED_SCL)
+
     @classmethod
     def dynamixel2voltage(cls, dynamixel ):
         """Convert dynamixel units to volts """
         return dynamixel*cls.VOLTAGE_SCL
-      
+
     def __init__( self, node_id, typecode, pna ):
         """
-        Concrete constructor. 
+        Concrete constructor.
 
         ATTRIBUTES:
-        node_id -- int -- address for a unique  module 
-        typecode -- version name of module  
+        node_id -- int -- address for a unique  module
+        typecode -- version name of module
         pna -- ProtocolNodeAdaptor -- specialized for this node_id
         """
-        AbstractServoModule.__init__(self, node_id, typecode, pna) 
+        AbstractServoModule.__init__(self, node_id, typecode, pna)
         self.mcu = self.pna.mm.memMapParent
         self.mem = MemInterface( self )
         self._attr.update(
@@ -1407,10 +1470,10 @@ class DynamixelModule( AbstractServoModule ):
         """Syntactic sugar for setting a bunch of addresses in the dynamixel control table to new values
 
         Keyword arguments may be any of the addresses defined in the .mcu member, e.g. for EX106
-        
+
         TODO: example
         """
-        for nm,val in args.iteritems():
+        for nm,val in args.items():
             if hasattr( self.mcu,nm ):
                 self.mem_write( getattr( self.mcu, nm ), val )
             else:
@@ -1423,14 +1486,14 @@ class DynamixelModule( AbstractServoModule ):
     def mem_read( self, addr ):
         "Read a memory address from the module's microncontroller"
         return self.pna.mem_read_sync( addr )
-     
+
     def mem_getterOf( self, addr ):
         "Return a getter function for a memory address"
         # Create the closure
         def getter():
             return self.mem_read(addr)
         return getter
-     
+
     def mem_setterOf( self, addr ):
         "Return a setter function for a memory address"
         # Create the closure
@@ -1438,24 +1501,80 @@ class DynamixelModule( AbstractServoModule ):
             return self.mem_write(addr,val)
         return setter
 
+    def _set_pos_motor(self,pos):
+        """*PRIVATE*
+        (used in motor mode)
+
+        Raises error (should be warning!)
+        """
+        raise TypeError('set_pos not allowed in Motor mode (mode=0)')
+
+    def _get_mode( self, cw_limit, ccw_limit ):
+        """*PRIVATE*
+
+        Internals of get_mode. Overriding this allows subclasses to
+        extend the number of modes supported while still reading
+        limits only once.
+
+        INPUTS:
+          cw_limit, ccw_limit -- int -- limits as read from module
+        OUTPUTS:
+          mode -- int -- 1 if Motor; 0 if Servo; 2 if Continuous
+        """
+        if cw_limit==0 and ccw_limit==0:
+            self.set_pos = self._set_pos_motor
+            self.set_speed = self._set_speed_motor
+            return 1
+        self.set_pos = self._set_pos_servo
+        self.set_speed = self._set_speed_servo
+        return 0
+
     def get_mode( self ):
         """
         Get the current mode of the dynamixel servo, either Motor or Servo
 
-        OUTPUTS: 
-          mode -- string -- 1 if Motor; 0 if Servo 
-        """      
+        OUTPUTS:
+          mode -- int -- 1 if Motor; 0 if Servo
+        """
         cw_limit = self.pna.mem_read_sync(self.mcu.cw_angle_limit)
         ccw_limit = self.pna.mem_read_sync(self.mcu.ccw_angle_limit)
-        if cw_limit==0 and ccw_limit==0:
-            self.mode = 1
-        elif cw_limit==self.MAX_POS and ccw_limit==self.MAX_POS:
-            self.mode = 2
-        else:
-            self.mode = 0
-        return self.mode
+        return self._get_mode(cw_limit,ccw_limit)
 
-    def set_mode( self, mode, min_pos = MN_POS, max_pos = MX_POS, UNSAFE=False ):
+    def _assert_mode(self,set_pos_mode):
+        """
+        Assert mode using a _set_pos_XXX method
+        Raises TypeError otherwise
+        """
+        if self.set_pos == set_pos_mode:
+            return
+        self.get_mode()
+        if self.set_pos == set_pos_mode:
+            return
+        assert self == set_pos_mode.im_self, "Called with my own bound method"
+        raise TypeError("Incorrect mode; expected set_pos to be '%s'" % set_pos_mode.im_func.func_name)
+
+    def _set_mode( self, mode, min_pos, max_pos ):
+        """*PRIVATE*
+        Internals of the set_mode operation. Overridding this allows
+        subclasses to add additional modes
+
+        INPUTS:
+          mode -- string/int -- either 1/Motor or 0/Servo (any prefix of those strings)
+          pos_upper -- int -- upper range of servo
+          pos_lower -- int -- lower range of servo
+
+        NOTE: this function is "safe" -- it checks that the mode was set
+          in the dynamixel before it returns.
+        """
+        while True:
+          self.mem_write(self.mcu.ccw_angle_limit, max_pos)
+          self.mem_write(self.mcu.cw_angle_limit, min_pos)
+          if self.get_mode() == mode:
+            break
+          sleep(0.001)
+        return mode
+
+    def set_mode( self, mode, min_pos = MIN_LIM, max_pos = MAX_LIM ):
         """
         Set the current mode of the servo, either Motor or Servo
 
@@ -1463,38 +1582,30 @@ class DynamixelModule( AbstractServoModule ):
           mode -- string/int -- either 1/Motor or 0/Servo (any prefix of those strings)
           pos_upper -- int -- upper range of servo
           pos_lower -- int -- lower range of servo
-          UNSAFE -- bool -- set to return without checking for change
+        OUTPUT: mode
+          mode as a number
+
+        NOTE: this function is "safe" -- it checks that the mode was set
+          in the dynamixel before it returns.
         """
-        if type(mode) == str:
-           mode = mode.upper()
-        if mode in [0, 'SERVO']: #mode==0 or 'SERVO'.startswith(mode.upper()):
-            pos_upper = self.ang2dynamixel(self.MX_POS)
-            pos_lower = self.ang2dynamixel(self.MN_POS)
-            mode = 0
-        elif mode in [1, 'MOTOR']: #mode==1 or "MOTOR".startswith(mode.upper()):
-            pos_upper = 0
-            pos_lower = 0
-            mode = 1
-        elif mode in [2, 'CONT']:
-            pos_upper = self.MAX_POS
-            pos_lower = self.MAX_POS
-            self.mem_write(self.mcu.multi_turn_offset,12285)
-            mode = 2
-        else:
-            raise ValueError("Unknown mode %s requested" % repr(mode)) 
-        while True:
-          self.mem_write(self.mcu.ccw_angle_limit, pos_upper)
-          self.mem_write(self.mcu.cw_angle_limit, pos_lower)
-          if UNSAFE:
-              self.mode = mode
-              break
-          elif self.get_mode() == mode:
-              break
+        assert min_pos <= max_pos, "Range of motion is meaningful"
+        if type(mode) is int:
+            if mode != 0 and mode != 1:
+                raise ValueError("Unknown mode %s requested, valid modes are 0 (SERVO) and 1 (MOTOR)" % mode)
+            mode = {0:"SERVO", 1:"MOTOR"}[mode]
+        if "SERVO".startswith(mode): #mode==0 or 'SERVO'.startswith(mode.upper()):
+            return self._set_mode(0,
+                self.ang2dynamixel(min_pos),
+                self.ang2dynamixel(max_pos)
+            )
+        elif "MOTOR".startswith(mode):
+            return self._set_mode(1,0,0)
+        raise ValueError("Unknown mode %s requested" % repr(mode))
 
     def start( self, null=None ):
         """
         Enable module actuation
-        
+
         THEORY OF OPERATION:
         -- set torque_en  as per section 3-4-2 pp. 27
         """
@@ -1503,16 +1614,16 @@ class DynamixelModule( AbstractServoModule ):
     def stop( self ):
         """
         Disable module actuation
-        
+
         THEORY OF OPERATION:
         -- clear torque_en. as per section 3-4-2 pp. 27
         """
         return self.mem_write(self.mcu.torque_en, 0)
-    
+
     def go_slack( self , null=None):
         """
         Disable module actuation
-        
+
         THEORY OF OPERATION:
         -- clear torque_en. as per section 3-4-2 pp. 27
         """
@@ -1527,19 +1638,32 @@ class DynamixelModule( AbstractServoModule ):
 
     def get_pos_async(self):
         """
-	<<Disabled>>        
-	"""
+  <<Disabled>>
+  """
         pass
-        
-    def set_pos(self,val):
+
+    def set_pos(self,pos):
         """
         Sets position of the module, with safety checks.
-    
         INPUT:
           val -- units in 1/100s of degrees between -10000 and 10000
         """
-        return self.pna.mem_write_fast(self.mcu.goal_position, 
-          self.ang2dynamixel(val))
+        # this implementation is only called once, before .get_mode
+        #   is called for the first time. .get_mode overwrites this
+        #   method with the correct one for the current mode
+        self.get_mode()
+        return self.set_pos(pos)
+
+    def _set_pos_servo(self,pos):
+        """ *PRIVATE*
+        (used in servo mode)
+        Sets position of the module, with safety checks.
+        Does not wait for ack from the module
+
+        INPUT:
+          val -- units in 1/100s of degrees between -10000 and 10000
+        """
+        return self.pna.mem_write_fast( self.mcu.goal_position, self.ang2dynamixel(pos))
 
     def set_pos_sync(self,val):
         """
@@ -1548,9 +1672,9 @@ class DynamixelModule( AbstractServoModule ):
         INPUT:
           val -- units in 1/100s of degrees between -10000 and 10000
         """
+        self._assert_mode(self._set_pos_servo)
         return self.mem_write(self.mcu.goal_position,
           self.ang2dynamixel(val))
-
 
     def get_speed( self ):
         """
@@ -1563,7 +1687,7 @@ class DynamixelModule( AbstractServoModule ):
         """
         spd = self.mem_read(self.mcu.present_speed)
         rpm = self.dynamixel2rpm(spd)
-        return rpm 
+        return rpm
 
     def get_moving_speed( self ):
         """
@@ -1576,21 +1700,18 @@ class DynamixelModule( AbstractServoModule ):
         """
         spd = self.mem_read(self.mcu.moving_speed)
         rpm = self.dynamixel2rpm(spd)
-        return rpm 
+        return rpm
 
     def set_torque(self,val):
         """
         Sets torque of the module, with safety checks.
-    
+
         INPUT:
-          val -- units in between -1.0 - 1.0
+          val -- units in between -1.0 to 1.0
         """
-        if self.mode == 0:
-          self.get_mode()
-          if self.mode == 0:
-            raise TypeError('set_torque not allowed for modules in Servo')
-        val = self.torque2dynamixel(val)
-        return self.pna.mem_write_fast(self.mcu.moving_speed, val)
+        self._assert_mode(self._set_pos_motor)
+        cval = self.torque2dynamixel(val)
+        return self.pna.mem_write_fast(self.mcu.moving_speed, cval)
 
     def set_torque_limit( self,val ):
       """
@@ -1598,25 +1719,47 @@ class DynamixelModule( AbstractServoModule ):
       INPUT:
           val -- unit from 0.0 to 1.0 where 1.0 is the maximum torque
       """
-      if val > 1.0:
-        val = 1.0
-      elif val < 0.0:
-        val = 0.0
-      val = int(val*1023)
-      return self.mem_write( self.mcu.torque_limit, val )
-      
+      val = max(min(val,1.0),0.0)
+      cval = int(val*self.MAX_TORQUE)
+      return self.mem_write( self.mcu.torque_limit, cval )
+
 
     def set_speed(self,val):
         """
+        Sets either rotation speed or speed limit, depending on mode
+        (see MX docs for details)
+        INPUT:
+          val -- units in RPM
+        """
+        # this implementation is only called once, before .get_mode
+        #   is called for the first time. .get_mode overwrites this
+        #   method with the correct one for the current mode
+        self.get_mode()
+        return self.set_speed(val)
+
+    def _set_speed_motor(self,val):
+        """
         Sets speed of the module, with safety checks.
-    
+
         INPUT:
           val -- units in rpm from -114 to 114
         """
-        if self.mode == 1:
-            raise TypeError('set_speed not allowed for modules in CR mode')
-        val = self.rpm2dynamixel(val)
-        return self.mem_write(self.mcu.moving_speed, val)
+        self._assert_mode(self._set_pos_motor)
+        cval = self.rpm2dynamixel(val)
+        return self.mem_write(self.mcu.moving_speed, cval)
+
+    def _set_speed_servo(self,val=0):
+        """
+        Sets speed of the module, with safety checks.
+
+        INPUT:
+          val -- units in rpm from 1 to 114; 0 - no speed control
+        """
+        self._assert_mode(self._set_pos_servo)
+        if val<0:
+            raise ValueError("Speed must be positive; got %g" % val)
+        cval = self.rpm2dynamixel(val)
+        return self.mem_write(self.mcu.moving_speed, cval)
 
     def get_voltage( self ):
         """
@@ -1642,9 +1785,50 @@ class DX_MX_Module(DynamixelModule):
         DynamixelModule.__init__( self, *arg, **kw )
         self.current = self.get_pos()
 
+    def _get_mode( self, cw_limit, ccw_limit ):
+        """*PRIVATE*
+        Internals of get_mode
+        INPUTS:
+          cw_limit, ccw_limit -- int -- limits as read from module
+        OUTPUTS:
+          mode -- int -- 1 if Motor; 0 if Servo; 2 if Continuous
+        """
+        # Handle continuous mode
+        if cw_limit==self.MAX_POS and ccw_limit==self.MAX_POS:
+            self.set_pos = self._set_pos_cont
+            self.set_speed = self._set_speed_cont
+            return 2
+        # Punt the rest to superclass
+        return DynamixelModule._get_mode(self,cw_limit,ccw_limit)
 
-    def set_pos_mx(self,val):
+    def set_mode( self, mode, min_pos = DynamixelModule.MIN_LIM, max_pos = DynamixelModule.MAX_LIM ):
+        """
+        Set the current mode of module: Servo, Motor, or Continuous
 
+        INPUTS:
+          mode -- int or string -- 1/Motor, 0/Servo, 2/Continuous
+                  (or any prefix of those strings)
+          min_pos -- int -- upper range of servo (for servo)
+          max_pos -- int -- lower range of servo (for servo)
+        OUTPUT: mode
+          mode as a number
+
+        NOTE: this function is "safe" -- it checks that the mode was set
+          in the dynamixel before it returns.
+        """
+        if type(mode) is int:
+            mode = {0:"SERVO", 1:"MOTOR", 2:"CONTINUOUS"}[mode]
+        else:
+            mode = mode.upper()
+        if "CONTINUOUS".startswith(mode):
+            self.mem_write(self.mcu.multi_turn_offset,12285)
+            return self._set_mode(2,self.MAX_POS,self.MAX_POS)
+        else:
+            self.mem_write(self.mcu.multi_turn_offset, 0)
+        # We only handle CONT mode here; otherwise punt
+        return DynamixelModule.set_mode(self,mode,min_pos,max_pos)
+
+    def _set_pos_cont(self,val):
         """
              Sets position of the module, with safety checks.
              Roughly tracks motors position and flashes the motor when an angle threshold is reached.
@@ -1653,49 +1837,51 @@ class DX_MX_Module(DynamixelModule):
              INPUT:
                val -- Value from 0 to 1. Represents locations on the circle. Must be within .5 of last input/current positon
         """
+        val = int(val) % 36000
 
-        if val == 1:
-            val = 0
+        max_wrap_pos = 6 * 36000 #Reset the multi_turn_offset and motor position when past 6 rotations
+        min_wrap_pos = 1 * 36000 #Reset the multi_turn_offset and motor position when below 1 rotation
+        center_pos = int(3 * 360 / 0.088) #Multi_turn_offset value in centi-degrees
 
-        if self.mode != 2:
-            raise ValueError("Motor in incorrect mode ", self.mode)
-            return
-        if val > 1 or val < 0:
-            raise ValueError("Incorrect input value. Must be between 0 and 1")
-            return
-
-        if self.current > 216000 or self.current < 0:
-            self.pna.mem_write_fast(self.mcu.multi_turn_offset,12285)                       ###
-            self.current = self.get_pos()
-        else:
-            self.current = self.get_pos()
-
-
+        if self.current > max_wrap_pos or self.current < min_wrap_pos:
+            self.pna.mem_write_fast(self.mcu.multi_turn_offset, center_pos)
+        self.current = self.get_pos() #Saved for access by cont
         self.mod = self.current % 36000
-        self.diff = self.mod - (val * 36000)
-
+        self.diff = self.mod - val
+        new_goal_position = self.current
 
         if val == 0:                                                    ####special .5 case
             if self.mod > 18000:
-                self.current += 36000 - self.mod
+                new_goal_position += 36000 - self.mod
             else:
-                self.current -= self.mod
+                new_goal_position -= self.mod
 
         elif abs(self.diff) < 18000:
             if self.diff > 0:
-                self.current -= self.diff
+                new_goal_position -= self.diff
             else:
-                self.current += abs(self.diff)
+                new_goal_position += abs(self.diff)
         else:
             if self.diff > 0:
-                self.current += 36000 - (self.mod - val*36000)
+                new_goal_position += 36000 - (self.mod - val)
             else:
-                self.current -= self.mod + (36000 - val*36000)
+                new_goal_position -= self.mod + (36000 - val)
 
         return self.pna.mem_write_fast(self.mcu.goal_position,
-          self.ang2dynamixel(self.current))
+          self.ang2dynamixel(new_goal_position))
 
+    def _set_speed_cont(self,val=0):
+        """
+        Sets speed of the module, with safety checks.
 
+        INPUT:
+          val -- units in rpm from 1 to 114; 0 - no speed control
+        """
+        self._assert_mode(self._set_pos_cont)
+        if val<0:
+            raise ValueError("Speed must be positive; got %g" % val)
+        cval = self.rpm2dynamixel(val)
+        return self.mem_write(self.mcu.moving_speed, cval)
 
 class MX64Module(DX_MX_Module ):
     """
@@ -1704,55 +1890,10 @@ class MX64Module(DX_MX_Module ):
     RESPONSIBILITIES:
     -- ...
     """
-    #  Scale and offset for converting CKBot angles to and from dynamixel as per MX-64 e-Manual
-    MAX_POS = 0xFFF
-    MIN_POS = 0
-    MIN_ANG = 0 #Min, max angle are listed in centidegrees based on values from the manual
-    MAX_ANG = 36000
-
-    # Scaling for Dynamixel continuous turn torque
-    MAX_TORQUE = 0x3FF
-    DIRECTION_BIT = 1<<10
-    TORQUE_SCL = float(MAX_TORQUE/1.0)
-
-    # Scaling for Dynamixel speed
-    SPEED_SCL = 0.114
-    # Scaling for Dynamixel voltage
-    VOLTAGE_SCL = 0.1
-
-    SCL = float(MAX_POS - MIN_POS)/(MAX_ANG - MIN_ANG)
-    OFS = (MAX_POS - MIN_POS)/2 + MIN_POS
-
-
     def __init__( self, node_id, typecode, pna ):
         """
         """
         DX_MX_Module.__init__(self, node_id, typecode, pna )
-        self.reset_xpos()
-
-    def reset_xpos(self):
-        """
-        Reset rotation count for the extended position read by get_xpos()
-        """
-        self.lastPos = 0
-        self.xrot = 0
-
-    def get_xpos(self):
-        """
-        Get extended position
-
-        Returns position as floating point in units of rotation.
-        This can count an indefinite number of rotations, and may be
-        used in Motor mode to get position
-        """
-        pos = float(self.get_pos()-self.MIN_ANG)/self.MAX_ANG
-        if abs(pos-self.lastPos)>0.5:
-          if pos<self.lastPos:
-            self.xrot += 1
-          else:
-            self.xrot -= 1
-        self.lastPos = pos
-        return self.xrot + pos
 
 class MX28Module(DX_MX_Module):
     """
@@ -1764,28 +1905,6 @@ class MX28Module(DX_MX_Module):
       (*) multi-turn mode
       (*) resolution divider
     """
-    #  Scale and offset for converting CKBot angles to and from dynamixel as per MX-64 e-Manual
-    MAX_POS = 0xFFF
-    MIN_POS = 0
-    MIN_ANG = 0 #Min, max angle are listed in centidegrees based on values from the manual
-    MAX_ANG = 36000
-
-    # Scaling for Dynamixel continuous turn torque
-    MAX_TORQUE = 0x3FF
-    DIRECTION_BIT = 1<<10
-    TORQUE_SCL = float(MAX_TORQUE/1.0)
-
-    # Scaling for Dynamixel speed
-    SPEED_SCL = 0.114
-    # Scaling for loads (unused)
-    LOAD_SCL = 0.001
-    # Scaling for Dynamixel voltage
-    VOLTAGE_SCL = 0.1
-
-    SCL = float(MAX_POS - MIN_POS)/(MAX_ANG - MIN_ANG)
-    OFS = (MAX_POS - MIN_POS)/2 + MIN_POS
-
-
     def __init__( self, node_id, typecode, pna ):
         """
         """
@@ -1799,24 +1918,11 @@ class EX106Module( DynamixelModule ):
     -- ...
     """
 
-    #  Scale and offset for converting CKBot angles to and from dynamixel as per EX106+ manual section 3-4-2 pp. 29
-    MAX_POS = 0xFFF
-    MIN_POS = 0
-    MIN_ANG = 0 #Min, max angle are listed in centidegrees based on values from the manual
-    MAX_ANG = 25092
+    MAX_ANG = 25092 #: EX106 maximal angle is different from default
+    SPEED_SCL = 0.111 #: EX106 speed scaling is different from default
 
-    # Scaling for Dynamixel continuous turn torque
-    MAX_TORQUE = 0x3FF
-    DIRECTION_BIT = 1<<10
-    TORQUE_SCL = float(MAX_TORQUE/1.0)
-
-    # Scaling for Dynamixel speed
-    SPEED_SCL = 0.111
-    # Scaling for Dynamixel voltage
-    VOLTAGE_SCL = 0.1
-
-    SCL = float(MAX_POS - MIN_POS)/(MAX_ANG - MIN_ANG)
-    OFS = (MAX_POS - MIN_POS)/2 + MIN_POS
+    SCL = float(DynamixelModule.MAX_POS - DynamixelModule.MIN_POS)/(MAX_ANG - DynamixelModule.MIN_ANG) #: recalculate for EX106
+    OFS = (DynamixelModule.MAX_POS - DynamixelModule.MIN_POS)/2 + DynamixelModule.MIN_POS #: recalculate for EX106
 
     def __init__( self, node_id, typecode, pna ):
         """
@@ -1830,24 +1936,9 @@ class AX12Module( DynamixelModule ):
     RESPONSIBILITIES:
     -- ...
     """
-    #  Scale and offset for converting CKBot angles to and from dynamixel as per MX-64 e-Manual
-    MAX_POS = 0xFFF
-    MIN_POS = 0
-    MIN_ANG = 0 #Min, max angle are listed in centidegrees based on values from the manual
-    MAX_ANG = 30000
-
-    # Scaling for Dynamixel continuous turn torque
-    MAX_TORQUE = 0x3FF
-    DIRECTION_BIT = 1<<10
-    TORQUE_SCL = float(MAX_TORQUE/1.0)
-
-    # Scaling for Dynamixel speed
-    SPEED_SCL = 0.114
-    # Scaling for Dynamixel voltage
-    VOLTAGE_SCL = 0.1
-
-    SCL = float(MAX_POS - MIN_POS)/(MAX_ANG - MIN_ANG)
-    OFS = (MAX_POS - MIN_POS)/2 + MIN_POS
+    MAX_ANG = 30000 #: AX12 maximal angle
+    SCL = float(DynamixelModule.MAX_POS - DynamixelModule.MIN_POS)/(MAX_ANG - DynamixelModule.MIN_ANG) #: recalculate for AX12
+    OFS = (DynamixelModule.MAX_POS - DynamixelModule.MIN_POS)/2 + DynamixelModule.MIN_POS #: recalculate for AX12
     def __init__( self, node_id, typecode, pna ):
         """
         """
@@ -1862,59 +1953,42 @@ class RX64Module( DynamixelModule ):
     """
 
     #  Scale and offset for converting CKBot angles to and from dynamixel as per RX64 manual section 3-4-2 pp. 28
-    MAX_POS = 0x3FF
-    MIN_POS = 0
-    MIN_ANG = 0 #Min, max angle are listed in centidegrees based on values from the manual
-    MAX_ANG = 30000
-
-    # Scaling for Dynamixel continous turn torque
-    MAX_TORQUE = 0x3FF
-    DIRECTION_BIT = 1<<10
-    TORQUE_SCL = float(MAX_TORQUE/1.0)
-
-    # Scaling for Dynamixel speed
-    SPEED_SCL = 0.111
-    # Scaling for Dynamixel voltage
-    VOLTAGE_SCL = 0.1
-
-    SCL = float(MAX_POS - MIN_POS)/(MAX_ANG - MIN_ANG)
-    OFS = (MAX_POS - MIN_POS)/2 + MIN_POS
+    MAX_POS = 0x3FF #: RX64 max position is different from default
+    MAX_ANG = 30000 #: RX64 max angle is different from default
+    SPEED_SCL = 0.111 #: RX64 speed scale is different from default
+    SCL = float(MAX_POS - DynamixelModule.MIN_POS)/(MAX_ANG - DynamixelModule.MIN_ANG) #: recalculate for RX64
+    OFS = (MAX_POS - DynamixelModule.MIN_POS)/2 + DynamixelModule.MIN_POS #: recalculate for RX64
 
     def __init__( self, node_id, typecode, pna ):
         """
         """
         DynamixelModule.__init__( self, node_id, typecode, pna )
-        
-class MX106RModule( DynamixelModule ):
-    """
-    DESCRIPTION:
-    -- MX106R Specific constants
-    RESPONSIBILITIES:
-    -- ...
-    """
 
-    #  Scale andFF
-    MIN_POS = 0 #offset for converting CKBot angles to and from dynamixel as per MX106R e-manual section H/W Specification
-    MAX_POS = 0xFFF
-    MIN_ANG = 0 #Min, max angle are listed in centidegrees based on values from the manual
-    MAX_ANG = 36000
-
-    # Scaling for Dynamixel continous turn torque
-    MAX_TORQUE = 0x3FF
-    DIRECTION_BIT = 1<<10
-    TORQUE_SCL = float(MAX_TORQUE/1.0)
-    # Scaling for Dynamixel speed
-    SPEED_SCL = 0.114
-    # Scaling for Dynamixel voltage
-    VOLTAGE_SCL = 0.1
-
-    SCL = float(MAX_POS - MIN_POS)/(MAX_ANG - MIN_ANG)
-    OFS = (MAX_POS - MIN_POS)/2 + MIN_POS
-
-    def __init__( self, node_id, typecode, pna ):
+    def _set_speed_motor(self,val):
         """
+        Sets speed of the module, with safety checks.
+
+        INPUT:
+          val -- units in rpm from -53 to 53
         """
-        DynamixelModule.__init__( self, node_id, typecode, pna )
+        ### There's a bug in RX-64, you need to set 2 times the speed you want
+        self._assert_mode(self._set_pos_motor)
+        cval = self.rpm2dynamixel(2 * val)
+        return self.mem_write(self.mcu.moving_speed, cval)
+
+    def _set_speed_servo(self,val=0):
+        """
+        Sets speed of the module, with safety checks.
+
+        INPUT:
+          val -- units in rpm from 1 to 53; 0 - no speed control
+        """
+        self._assert_mode(self._set_pos_servo)
+        ### There's a bug in RX-64, you need to set 2 times the speed you want
+        if val<0:
+            raise ValueError("Speed must be positive; got %g" % val)
+        cval = self.rpm2dynamixel(2 * val)
+        return self.mem_write(self.mcu.moving_speed, cval)
 
 class MX106RModule( DX_MX_Module ):
     """
@@ -1923,25 +1997,6 @@ class MX106RModule( DX_MX_Module ):
     RESPONSIBILITIES:
     -- ...
     """
-
-    #  Scale andFF
-    MIN_POS = 0 #offset for converting CKBot angles to and from dynamixel as per MX106R e-manual section H/W Specification
-    MAX_POS = 0xFFF
-    MIN_ANG = 0 #Min, max angle are listed in centidegrees based on values from the manual
-    MAX_ANG = 36000.
-
-    # Scaling for Dynamixel continous turn torque
-    MAX_TORQUE = 0x3FF
-    DIRECTION_BIT = 1<<10
-    TORQUE_SCL = float(MAX_TORQUE/1.0)
-    # Scaling for Dynamixel speed
-    SPEED_SCL = 0.114
-    # Scaling for Dynamixel voltage
-    VOLTAGE_SCL = 0.1
-
-    SCL = float(MAX_POS - MIN_POS)/(MAX_ANG - MIN_ANG)
-    OFS = (MAX_POS - MIN_POS)/2 + MIN_POS
-
     def __init__( self, node_id, typecode, pna ):
         """
         """
@@ -1958,7 +2013,7 @@ class MissingDynamixel(MissingModule):
 
     def get_typecode( self ):
         return self.TYPECODE
-     
+
     def get_mode(self):
         return 0
 

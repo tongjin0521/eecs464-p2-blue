@@ -30,9 +30,9 @@ Main Functions
 --------------
 describeEvt -- describe an event in a string
 """
-import pygix
+from . import pygix
 
-from pygix import (
+from . pygix import (
   TIMEREVENT, CKBOTPOSITION, SCRATCHUPDATE, MIDIEVENT
   )
 
@@ -88,13 +88,13 @@ def JoyEvent( type_code=None, **kw ):
   if type_code is not None:
     et = type_code
   else:
-    if kw.has_key('type'):
+    if 'type' in kw:#kw.has_key('type'):
       et = kw['type']
     else:
       return ValueError('Unknown event type -- pass a type_code parameter')
   atr = {}
   for nm in pygix.EVENT_STRUCTURE[et]:
-    if kw.has_key(nm):
+    if nm in kw:#kw.has_key(nm):
       atr[nm] = kw[nm]
     else:
       return ValueError('Missing property "%s"' % nm)

@@ -10,6 +10,7 @@ from joy import JoyApp, StickFilter
 from pygame.event import Event as pygame_Event
 
 
+
 class StickFilterApp( JoyApp ):
   '''
   This class demonstrates how to use stickfilter to process a joystick's input
@@ -62,7 +63,7 @@ class StickFilterApp( JoyApp ):
     JoyApp.onEvent(self,evt)
 
 if __name__=="__main__":
-  print """
+  print("""
     Demonstration of the StickFilter plan
     -------------------------------------
     
@@ -73,6 +74,6 @@ if __name__=="__main__":
     
     The example shows how axis 0 can be set to low-pass filtering,
     and axis 1 to integration.
-  """
+  """)
   app = StickFilterApp()
   app.run()

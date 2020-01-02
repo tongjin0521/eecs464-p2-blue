@@ -44,7 +44,7 @@ class MultiClickApp( JoyApp ):
     progress( "MultiClick: [%s]" % (", ".join(evts.keys())) )
 
 if __name__=="__main__":
-  print """
+  print("""
     Demonstration of the MultiClick plan
     ------------------------------------
     
@@ -55,6 +55,6 @@ if __name__=="__main__":
     
     The demonstration runs with allowEmpty=True, which also creates
     MultiClick events when the clicked keys change to an empty set
-  """
+  """)
   app = MultiClickApp()
   app.run()

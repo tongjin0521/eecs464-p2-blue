@@ -15,7 +15,6 @@ import ckbot.logical as L
 import cmd
 from sys import stdout as STDOUT
 from time import sleep, time as now
-from exceptions import StandardError
 
 class RawPosable( cmd.Cmd ):
   '''
@@ -48,8 +47,8 @@ class RawPosable( cmd.Cmd ):
     '''
     try:
       n = eval(line)
-    except StandardError,err:
-      print err
+    except Exception as err:
+      print(err)
       return
     if type(n) != tuple:
       n = (n,)
@@ -64,7 +63,7 @@ class RawPosable( cmd.Cmd ):
     '''
     Print the list of modules discovered by populate command 
     '''
-    print self.c.p.scan()
+    print(self.c.p.scan())
   
      
   def do_EOF(self,line):
@@ -72,31 +71,32 @@ class RawPosable( cmd.Cmd ):
     self.do_off('')
     return True
     
+  #turn off the execution
   def do_off(self,line=''):
     '''turn off the execution'''
     for m in self.c.itermodules():
       if hasattr(m,'go_slack'):
         try:
           m.go_slack()
-        except Error,err:
-          print Error,err
-
+        except Error as err:
+          print(Error, err)
+  #delete the last pose from the recording
   def do_drop(self,line=''):
     '''Delete the last recorded pose'''
     if self.p:
       self.p.pop(-1)
-    print "%d poses remain" % len(self.p)
-
+    print("%d poses remain" % len(self.p))
+  #add a pose to the recording  
   def emptyline(self):
     '''Record a Pose ( use populate command  first)'''
     if self.ngs is None:
-      print "populate the cluster first!"
+      print("poplate the cluster first!")
       return
-    print "Adding pose",len(self.p)+1
+    print("Adding pose",len(self.p)+1)
     #Use the get_pos callback for each module
     v = [x[1]() for x in self.ngs]
-    print " ".join(["%6s " % n for n,g,s in self.ngs ])
-    print " ".join(["%6d " % vi for vi in v])
+    print(" ".join(["%6s " % n for n,g,s in self.ngs ]))
+    print(" ".join(["%6d " % vi for vi in v]))
     self.p.append( v )
   
   def do_execute(self,line=''):
@@ -111,17 +111,17 @@ class RawPosable( cmd.Cmd ):
     try:
       t0 = now()
       for pose in self.p:
-        print "%6.2f " % (now()-t0),
-        print " ".join(["%6s " % n for n,g,s in self.ngs ])
-        print "%6s" % ':',
-        print " ".join(["%6d " % vi for vi in pose])
+        print("%6.2f " % (now()-t0))
+        print(" ".join(["%6s " % n for n,g,s in self.ngs ]))
+        print("%6s " % ':')
+        print(" ".join(["%6d " % vi for vi in pose]))
         STDOUT.flush()#It will as soon as possible without clearing the buffer
         # s is module_name.setpos callback which is used to set the motor to the desired position
         #Use set_pos on all the modules
         for v,(n,_,s) in zip(pose,self.ngs):#v is pose and s is set_pos callback
           s(v)
         sleep(dt)
-    except Error,err:
+    except Error as err:
       pass
     self.do_off()
     if err:
@@ -132,12 +132,12 @@ class RawPosable( cmd.Cmd ):
     self.c.p.update()
     try:
       #It is an iterator
-      m = self.c.itermodules().next()
+      m = next(self.c.itermodules())
       v = m.get_voltage()
       if v<16:
-        print "Voltage:",v
+        print("Voltage:",v)
       if v<14:
-        print "*** LOW VOLTAGE *** force quit!"
+        print("*** LOW VOLTAGE *** force quit!")
         self.do_off()
         stop = True
     except StopIteration:
