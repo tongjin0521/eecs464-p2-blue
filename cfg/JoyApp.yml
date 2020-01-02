@@ -1,12 +1,13 @@
 clockInterval: 10
 keyboardRepeatDelay: 500
 keyboardRepeatInterval: 50
-nodeNames: { 
+nodeNames: {
   0x01: UninitializedNode,
+  0x0c: lwheel,
+  0x3C: rwheel,
 }
 minimalVoltage : 10
 positionTolerance: 200000
 robotPollRate: 10000000
 windowSize: [800, 600]
 remote : { allowMisc : 10 }
-
