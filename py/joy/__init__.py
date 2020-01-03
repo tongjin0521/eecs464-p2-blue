@@ -10,7 +10,7 @@
 #
 # (c) Shai Revzen, U Penn, 2010
 #
-#  
+#
 #
 """
 Overview
@@ -29,7 +29,7 @@ Plans
 -----
 
 In addition to new event types, JoyApp provides support for *Plans*. Plans are
-similar to threads in that they execute concurrently with each other. Unlike 
+similar to threads in that they execute concurrently with each other. Unlike
 threads, they cooperatively multitask by releasing control of the processor
 using the Python keyword `yield`. In addition, Plans maintain their own event
 queue and event handler. Their constructor offers facilities for binding the
@@ -73,7 +73,7 @@ except ImportError:
     print(">>> matplotlib not found; plotting disabled")
     def figure(*arg,**kw):
         return None
-        
+
 # YAML for configuration file parsing and formatting
 import yaml
 
@@ -97,13 +97,7 @@ from . import remote
 from . import safety
 
 ## Set up debug topics
-try:
-  # If the name "DEBUG" exists, we keep the existing DEBUG topics
-  #  this is useful when execfile-ing joy.py during a debugging session
-  debugMsg(None,"active debugs are %s" % repr(DEBUG))
-except NameError:
-  DEBUG = []
-  debugMsg(None,"no active debug topics")
+DEBUG = []
 
 # Connect debug hooks of sub-modules
 ckbot.logical.progress = progress
@@ -122,7 +116,7 @@ except ImportError:
   def midi_init():
     progress('*** MIDI support could not be started -- "import midi" failed ')
   def midi_joyEventIter():
-    return []  
+    return []
 
 # Useful constants
 from . decl import *
@@ -150,9 +144,9 @@ class JoyAppConfig( object ):
   Instances of the concrete class JoyAppConfig store configuration settings in
   their attributes. The list of attribute names that are actually settings is
   stored in the private member __keys.
-  
+
   JoyAppConfig contents can be loaded and save in YAML format.
-  
+
   Typical usage:
   >>> cfg = JoyAppConfig( spam = 'tasty', parrot = 'blue' )
   >>> cfg.update( dict( parrot='dead' ) )
@@ -165,12 +159,12 @@ class JoyAppConfig( object ):
   def __init__(self,**kw):
     self.__keys=set()
     self.update(kw)
-    
+
   def update(self,kw):
     """Update settings from a dictionary"""
     self.__dict__.update(kw)
     self.__keys.update( set(kw.keys()) )
-    
+
   def save( self, filename ):
     """
     Save configuration to a YAML file
@@ -217,50 +211,50 @@ class JoyAppConfig( object ):
         warn("Unknown configuration key '%s' ignored" % key,NoJoyWarning)
         continue
       setattr(self,key,val)
-      
-  
-  
-    
+
+
+
+
 class JoyApp( object ):
   """
   Framework for robot, Scratch and pygame combined applications, with support
   for cooperative multithreading (using Plan subclasses)
-      
+
   A JoyApp collects together several useful objects in one place. It also
   provides lifecycle event callbacks that should be overriden by subclasses.
-  
+
   Lifecycle -- JoyApp Creation
   ============================
   __init__ constructor, specifying parameters for self.robot - a
   ckbot.logical.Cluster, self.scr - a scratch.Board interface and self.cfg - a
   JoyAppConfig.
-  
+
   NOTE: Plan.start should never be called from a JoyApp.__init__ constructor.
-  
+
   Lifecycle -- JoyApp Execution
   =============================
   run, which executes the remainder of the life-cycle including the main loop.
   This consists of
-  
-   1. onStart is called after successful initialization of all sub-systems. 
+
+   1. onStart is called after successful initialization of all sub-systems.
       Plan.start can be called from here; this
       is a recommended location for starting Plan instances.
-  
+
    2. multiple calls to onEvent, including periodic calls driven by
       TIMEREVENT. These are interspersed with execution of Plan.behavior of all
       active plans. The main loop terminates due to uncaught exceptions in
       onEvent or a call to stop.
-      
+
    3. onStop, called prior to full shutdown.
-     
+
   """
   def __init__(self, confPath=None, robot=None, scr=None, cfg={}):
     """
     Initialize a JoyApp application. This superclass constructor MUST be called
     by all subclasses.
-    
+
     INPUTS: (all are optional)
-      confPath -- str -- path to a YAML configuration file, start with $/ to 
+      confPath -- str -- path to a YAML configuration file, start with $/ to
             search relative to the PYCKBOTPATH directory
       robot -- dict -- parameters for populating the robot interface;
             passed to ckbot.logical.Cluster when starting up;
@@ -271,14 +265,14 @@ class JoyApp( object ):
             scratch.Board when starting up; the resulting scratch.Board will be
             found in self.scr
       cfg -- dict -- new/overridden configuration parameters. These override the
-            configuration found in JoyApp.yml and confPath (if present). The 
+            configuration found in JoyApp.yml and confPath (if present). The
             configuration will be in a JoyAppConfig instance in self.cfg
 
     Configuration parameters are searched for in the following order
       1. JoyApp constructor cfg keyword argument
       2. YAML file specified by JoyApp constructor confPath argument
       3. YAML file named JoyApp.yml in the current directory
-            
+
     ATTRIBUTES:
       DEBUG -- list of str -- list of debug topics to monitor, by default shares
             the joy module DEBUG topics..
@@ -301,7 +295,7 @@ class JoyApp( object ):
       progress('Logging to "%s"' % self.cfg.logFile)
       if self.cfg.logProgress:
         progress('Progress messages will be logged')
-        PROGRESS_LOG.add(self.logger)       
+        PROGRESS_LOG.add(self.logger)
     #
     self.now = pygix.now()
     # initialize safety provider list
@@ -316,7 +310,7 @@ class JoyApp( object ):
     # init Scratch interface
     if scr is None:
       progress("No connection to Scratch")
-      self.scr = None 
+      self.scr = None
       # Interface to the Scratch programming environment
     else:
       self.scr = scratch.Board(**scr)
@@ -328,14 +322,14 @@ class JoyApp( object ):
       midi_init()
     # init Plan scheduling structures
     self.plans = [] #: (private) List of currently active Plan instances ("threads")
-    self.__new = []    
+    self.__new = []
 
   def __initConf(self, confPath, cfg):
     """
     (private) initialize the .cfg instance variable
     """
     # Default configuration
-    self.cfg = JoyAppConfig(      
+    self.cfg = JoyAppConfig(
       robotPollRate = 0.1,
       positionTolerance = 50,
       keyboardRepeatDelay = 500,
@@ -360,17 +354,17 @@ class JoyApp( object ):
       if confPath.startswith("$/"):
         confPath =  PYCKBOTPATH + confPath[2:]
       if glob(confPath):
-        self.cfg.load(confPath)    
+        self.cfg.load(confPath)
         progress("Loaded %s" % confPath)
       else:
         progress("Nothing to load at confPath='%s'" % confPath)
     self.cfg.update(cfg)
-  
+
   def __initRobot( self, robot ):
     """
     (private) Initialize the ckbot.Cluster robot interface
-    
-    INPUT: 
+
+    INPUT:
       robot -- dict -- Dictionary of settings for robot.populate
     """
     progress("Populating:")
@@ -398,7 +392,7 @@ class JoyApp( object ):
       self.__initPosPolling()
     if self.cfg.minimalVoltage:
       return self.__initVoltageSafety()
-  
+
   def __initPosPolling(self):
     """(private)
     Set up servos for position polling
@@ -406,7 +400,7 @@ class JoyApp( object ):
     self.__pollPos = []
     for m in self.robot.itermodules():
       # Collect modules that have a voltage sensing capability
-      if not isinstance(m,AbstractServoModule): 
+      if not isinstance(m,AbstractServoModule):
         continue
       p = m.get_pos_async()
       if p is None:
@@ -415,10 +409,10 @@ class JoyApp( object ):
       m.__promise_time = self.now
       m.__last_pos = 0
       self.__pollPos.append(m)
-    
-    
+
+
   def __initVoltageSafety( self ):
-    """(private) 
+    """(private)
     collect all robot modules that have a get_voltage() method
     and set them up for polling position
     """
@@ -427,7 +421,7 @@ class JoyApp( object ):
       # Collect modules that have a voltage sensing capability
       if hasattr(m,'get_voltage'):
         vs.append(m)
-      if not isinstance(m,AbstractServoModule): 
+      if not isinstance(m,AbstractServoModule):
         continue
     # If any voltage sensing modules found, and sensing was requested
     #   then add the safety provider
@@ -436,7 +430,7 @@ class JoyApp( object ):
     self.safety.append(safety.BatteryVoltage(
       vmin = self.cfg.minimalVoltage,
       sensors = vs,
-      pollRate = self.cfg.voltagePollRate 
+      pollRate = self.cfg.voltagePollRate
     ))
 
   def setterOf( self, func ):
@@ -447,12 +441,12 @@ class JoyApp( object ):
     variables (indicated by pre-pending a ">"), debug messages (indicated
     by pre-pending a "#"), or any valid specification with logging (indicated
     by an additional "^" prefix)
-    
+
     If specification is a tuple, its second member must be a function that
-    pre-processes the values, e.g.: 
+    pre-processes the values, e.g.:
         ('>x',lambda x : x/2.0)
     specified output to Scratch variable 'x', after scaling down by two.
-        '^Nx22/@set_pos' 
+        '^Nx22/@set_pos'
     would set the position on NID 0x22, and also log the set operation using
     the JoyApp's logger.
     If the tuple is longer than 2, entries 3 and up are used as the initial
@@ -473,7 +467,7 @@ class JoyApp( object ):
       func = preProcFun
     elif type(func)==str:
       # If is a Scratch sensor output
-      if func[:1]==">": 
+      if func[:1]==">":
         # --> obtain curried setter function
         func = curry(self.setScratch,func[1:])
       elif func[:1]=="#":
@@ -489,15 +483,15 @@ class JoyApp( object ):
         if self.logger is not None:
           func = self.logger.setterWrapperFor( sf, attr=dict(binding=func[1:]) )
         else: # no logger --> emit as progress message and set via cluster
-          fmt = func[1:] + " = %s" 
+          fmt = func[1:] + " = %s"
           def emitMsgAndSet( val ):
             progress( fmt % repr(val) )
             return sf(val)
           func = emitMsgAndSet
-      else: # else --> obtain setter from cluster 
+      else: # else --> obtain setter from cluster
         func = self.robot.setterOf(func)
     return func
-  
+
 
   def _posEventPump( self ):
     """(private)
@@ -521,10 +515,10 @@ class JoyApp( object ):
         m.__last_pos = pos
       m.__promise = m.get_pos_async()
       m.__promise_time = t
-  
+
   def _scrEventPump( self ):
     """(private)
-    
+
     Check the scratch.Board inerface for new updates and
     push the necessary custom events into pygame
     """
@@ -539,7 +533,7 @@ class JoyApp( object ):
     for nm in bcast:
       evt = pygix.Event(SCRATCHUPDATE, scr=0, var=nm, value=None )
       pygix.postEvent(evt)
-      
+
   # Table of functions for converting various event kinds into Scratch sensors
   SCRATCHY = {
     JOYAXISMOTION : lambda x : ('joy%d axis%d' % (x.joy,x.axis), x.value),
@@ -549,17 +543,17 @@ class JoyApp( object ):
     JOYBUTTONDOWN : lambda x : ('joy%d bup%d' % (x.joy,x.button), None),
     QUIT : lambda x : ('JoyAppQuit',None),
     CKBOTPOSITION : lambda x : ('bot Nx%x pos' % x.module, x.pos),
-  }    
+  }
   def scratchifyEvent( self, evt ):
     """Convert event to a corresponding scratch message and send it
     """
     if self.scr is None:
-      raise RuntimeError('Scratch interface was not started')    
+      raise RuntimeError('Scratch interface was not started')
     fun = self.SCRATCHY.get(evt.type,None)
     if fun is None:
       return False
     msg,val = fun(evt)
-    if val is None:      
+    if val is None:
       if 'S' in self.DEBUG: debugMsg('Defer scratch broadcast %s' % msg)
       # Quit events must be sent immediately
       if evt.type==QUIT:
@@ -567,36 +561,36 @@ class JoyApp( object ):
       else:
         self.__scr_cast.add(msg)
     else:
-      if 'S' in self.DEBUG: debugMsg(self,'Defer scratch update %s=%s' % (msg,str(val))) 
+      if 'S' in self.DEBUG: debugMsg(self,'Defer scratch update %s=%s' % (msg,str(val)))
       self.__scr_upd[msg]= val
     return True
-    
+
   def setScratch(self, sensor, value):
     """
     Send a sensor update to Scratch
-    
+
     This method is never used internally by JoyApp; it is primarily
     used by Plan.__init__ when binding Scratch sensors ($ prefix)
     """
     if self.scr is None:
-      raise RuntimeError('Scratch interface was not started')    
-    if 'S' in self.DEBUG: 
-      debugMsg(self,'Scratch update %s=%s' % (sensor,str(value))) 
+      raise RuntimeError('Scratch interface was not started')
+    if 'S' in self.DEBUG:
+      debugMsg(self,'Scratch update %s=%s' % (sensor,str(value)))
     self.__scr_upd[sensor]= value
-    
+
   def _scrEventEmit(self):
     """(private)
-    
-    Emit deferred Scratch updates 
+
+    Emit deferred Scratch updates
     """
     if self.__scr_cast:
       self.scr.broadcast( *tuple( self.__scr_cast) )
-      if 'S' in self.DEBUG: 
+      if 'S' in self.DEBUG:
         debugMsg(self,'Scratch broadcast %s' % " ".join(self.__scr_cast) )
       self.__scr_cast = set()
     if self.__scr_upd:
       self.scr.sensorUpdate( **self.__scr_upd )
-      if 'S' in self.DEBUG: 
+      if 'S' in self.DEBUG:
         debugMsg(self,'Scratch update %s' % repr(self.__scr_udp) )
       self.__scr_upd = {}
 
@@ -616,11 +610,11 @@ class JoyApp( object ):
       progress("(say) DANGER: safety conditions violated -- shutting down")
       progress(str(se))
       raise
-  
+
   def _timeslice( self, timerevt ):
     """(private)
-    
-    Timer events get propagated to all Plans and trigger execution 
+
+    Timer events get propagated to all Plans and trigger execution
     of a timeslice.
     """
     self.now = pygix.now()
@@ -639,23 +633,23 @@ class JoyApp( object ):
       # If it is still running --> remember to run it next time
       if p.isRunning():
         nxt.append(p)
-      elif 'P' in self.DEBUG: # else --> harvested (died) 
+      elif 'P' in self.DEBUG: # else --> harvested (died)
         debugMsg(self, "harvested %s" % dbgId(p) )
-    if 'P' in self.DEBUG: 
+    if 'P' in self.DEBUG:
       debugMsg(self, "add plans=%s" % repr(self.__new) )
     self.plans = nxt + self.__new
     self.__new = []
-  
+
   def onceEvery( self, tau ):
     """
     Return a function that returns True only once every
     tau time units. Typically, this is used for limiting
     debug output to appearing periodically, for example:
-    
+
     oncePer = self.onceEvery(1)
     while True:
       if oncePer():
-        print "Hello world"    
+        print "Hello world"
     """
     last = [self.now]
     def onceEvery():
@@ -664,24 +658,24 @@ class JoyApp( object ):
         return True
       return False
     return onceEvery
-    
+
   def _startRemote( self ):
-    """(private) start remote interface if configured"""  
+    """(private) start remote interface if configured"""
     if self.cfg.remote is None:
       self.remote = None
       return
     self.remote = remote.Sink(self, convert=lambda x: x, **self.cfg.remote )
     progress("Starting up a remote.Sink interface")
     self.remote.start()
-  
+
   def run( self ):
     """
     Run the JoyApp.
-    
+
     After initializing the application, calls onStart()
     and executes event loop (onEvent()) until .stop() is called
-    or an caught exception causes abnormal termination.    
-    
+    or an caught exception causes abnormal termination.
+
     onStop() is called before the application is shut down.
     """
     self.screen = pygix.startup(self.cfg)
@@ -693,7 +687,7 @@ class JoyApp( object ):
         self.fig = None
     self._frame = None
     self.isRunning = lambda : True
-    self._startRemote()    
+    self._startRemote()
     try:
       # Call onStart subclass hook
       self.onStart()
@@ -720,12 +714,12 @@ class JoyApp( object ):
             self.robot.update()
             # Poll for robot position changes (if enabled)
             self._posEventPump()
-        # Loop and process all events in the queue            
+        # Loop and process all events in the queue
         for evt in pygix.iterEvents():
           # TIMEREVENT-s cause the execution timeslices
           if evt.type == TIMEREVENT:
             self._timeslice(evt)
-          self.onEvent(evt)   
+          self.onEvent(evt)
       # ----------- ENDS: MAIN LOOP --------------
     except Exception as exc:
       if '!' in self.DEBUG:
@@ -740,62 +734,62 @@ class JoyApp( object ):
       if self.robot:
         self.robot.off()
       if self.logger:
-        self.logger.close()  
-        if self.cfg.logProgress: 
+        self.logger.close()
+        if self.cfg.logProgress:
           PROGRESS_LOG.remove(self.logger)
     finally:
       pygix.shutdown()
-  
+
   def animate(self):
       """
       Get image in self.fig for presenting next GUI update
-      
+
       If no self.fig (headless system), call is silently ignored
       """
       if self.fig:
           self._frame = self.fig.canvas.print_to_buffer()
-      
+
   def stop(self):
     """
     Stop the JoyApp
     """
     self.isRunning = lambda : False
-   
+
   def _startPlan( self, plan ):
     """(private)
-    
+
     Called by Plan.start() to notify JoyApp that plan should be started
     """
     if not plan in self.plans:
       self.__new.append(plan)
-      
+
   def onStart(self):
     """(default)
-    
+
     Override this to run initialization code after JoyApp object is initialized
     but before any plans run
-    
+
     By default, prints a message
     """
     progress("%s --- starting up main loop" % str(self) )
-  
+
   def onStop( self ):
     """(default)
-    
+
     Override this to run cleanup code before shut down
-    
+
     By default, prints a message
     """
     progress("%s --- shutting down" % str(self) )
-  
-  def onEvent( self, evt ):    
+
+  def onEvent( self, evt ):
     """(default)
-    
+
     Top-level event handler
-    
+
     Override this method to install your event handling code.
     The default JoyApp displays all events in human readable form on screen.
-    Hitting <escape> or closing the window will cause it to quit.    
+    Hitting <escape> or closing the window will cause it to quit.
     """
     if evt.type != TIMEREVENT:
         progress( describeEvt(evt) )
@@ -813,7 +807,7 @@ class JoyApp( object ):
 
 def test():
   import sys
-  
+
   cmds=dict(cfg={})
   args = list(sys.argv[1:]) # copy
   while args:
@@ -837,25 +831,23 @@ def test():
 Usage: %s [options]
 
   Default JoyApp -- show all events
-  
+
   Options:
-    --with-robot | -r 
+    --with-robot | -r
       Start robot interface
-      
+
     --with-scratch | -s
       Start with Scratch connection
-      
+
     --mod-count <number> | -c <number>
       Search for specified number of modules at startup
-      
+
     --logfile <filename> | -L <filename>
       Log events to a logfile
-    
+
     --logall | -A
       Log *EVERYTHING*
   """ % sys.argv[0])
     sys.exit(1)
   app = JoyApp(**cmds)
   app.run()
-
-
