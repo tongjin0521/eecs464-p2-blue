@@ -10,10 +10,10 @@
 #
 # (c) Shai Revzen, U Penn, 2010
 #
-#  
+#
 #
 """
-joy.events defines a few utility functions for handling pygame events in the JoyApp framework. 
+joy.events defines a few utility functions for handling pygame events in the JoyApp framework.
 Because joy extends pygame with several new event types, you should use joy.event
 functions to handle tasks such as printing human readable event descriptions --
 the pygame builtins won't know anything about the JoyApp specific event types.
@@ -39,17 +39,17 @@ from . pygix import (
 def describeEvt( evt, parseOnly = False ):
   """
   Describe an event stored in a pygame EventType object.
-  
-  Returns a human readable string that consists of all fields in the 
-  event object. These are printed in a format that makes it easy to 
+
+  Returns a human readable string that consists of all fields in the
+  event object. These are printed in a format that makes it easy to
   cut and paste them into code that pattern matches events, e.g.
-  
+
   >>> evt = pygame.event.Event(pygame.locals.MOUSEMOTION,pos=(176, 140),rel=(0, 1),buttons=(0, 0, 0))
   >>> print describeEvt(evt,0)
   type==MOUSEMOTION pos==(176, 140) rel==(0, 1) buttons==(0, 0, 0)
-  
+
   If parseOnly is set, returns a dictionary with the extracted fields:
-  
+
   >>> print joy.events.describeEvt(evt,1)
   {'buttons': (0, 0, 0), 'type': 'MouseMotion', 'pos': (176, 140), 'rel': (0, 1)}
   """
@@ -78,10 +78,10 @@ def JoyEvent( type_code=None, **kw ):
   """
   Wrapper for pygame.Event constructor, which understands the additional
   event types unique to JoyApp
-  
-  INPUT: 
+
+  INPUT:
     type_code -- integer -- the typecode for the event type
-    
+
   OUTPUT:
     Event object, or ValueError object with error details, if failed
   """
@@ -94,9 +94,8 @@ def JoyEvent( type_code=None, **kw ):
       return ValueError('Unknown event type -- pass a type_code parameter')
   atr = {}
   for nm in pygix.EVENT_STRUCTURE[et]:
-    if nm in kw:#kw.has_key(nm):
+    if nm in kw:
       atr[nm] = kw[nm]
     else:
       return ValueError('Missing property "%s"' % nm)
   return pygix.Event( et, atr )
-
