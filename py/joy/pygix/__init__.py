@@ -96,7 +96,6 @@ else: # pygame import failed / bypassed
   _EVENT_Q = []
   _TIMESLICE = 0.05
   _TNEXT = now()
-  USEREVENT = 100
 
   def startup( cfg ):
     """
