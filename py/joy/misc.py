@@ -75,7 +75,7 @@ def loadCSV( fn ):
       else:
         return x
   res = [
-    [ convert(x) for x in l.split(",") ] 
+    [ convert(x) for x in l.split(",") ]
     for l in f if l.strip() and l[:1]!="#"
   ]
   if type(fn)==str:
