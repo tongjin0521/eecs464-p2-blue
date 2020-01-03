@@ -1098,7 +1098,7 @@ class StickFilter( Plan ):
     """
     while True:
       yield self.forDuration(self.dt)
-      for flt in self.flt.itervalues():
+      for flt in self.flt.values():
         if self.t is None: t = self.app.now
         else: t = self.t
         self._runFilterTo( flt, t )
