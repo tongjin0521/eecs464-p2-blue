@@ -22,7 +22,7 @@ __SYNTH = None
 def _espeak_say(text):
   """
   Uses the espeak speech synthesis engine to read text aloud
-  
+
   This function uses a single instance of espeak throughout its
   life. This subprocess is created when the first call is made.
   """
@@ -37,17 +37,17 @@ def _espeak_say(text):
     return
   try:
     s.stdin.write(text+"\n")
-  except IOError,ioe:
+  except IOError as ioe:
     warn("espeak pipe failed with error %s" % ioe)
     __SYNTH = None
     # Try again
     _espeak_say(text)
   __SYNTH = s
-  
+
 def _nospeak_say(text):
   """
   *** Speech synthesis is disabled ***
-  
+
   Do you have espeak installed?
   """
   pass
@@ -66,4 +66,3 @@ if esp.wait():
   say = _nospeak_say
 else:
   say = _espeak_say
-
