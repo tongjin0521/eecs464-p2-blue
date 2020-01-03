@@ -8,7 +8,7 @@
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 #  General Public License for more details.
 #
-# (c) Shai Revzen, U Penn, 2010
+# (c) Shai Revzen, U Penn, 2010, U Michigan, 2020
 #
 #
 #
@@ -96,12 +96,23 @@ from . import plans
 from . import remote
 from . import safety
 
-## Set up debug topics
-DEBUG = []
+## Obtain settings from the os environment
+# PYCKBOTPATH
+try:
+  if PYCKBOTPATH:
+    pass
+except NameError:
+  # Library location specified by PYCKBOTPATH environment var
+  PYCKBOTPATH = getenv('PYCKBOTPATH',__path__[0]+OS_SEP+'..'+OS_SEP+'..')
+if PYCKBOTPATH[-1:] != OS_SEP:
+  PYCKBOTPATH=PYCKBOTPATH+OS_SEP
+# DEBUG flags
+DEBUG = (getenv("JOYDEBUG",'')).split(",")
+# Copy over into plans
+plans.DEBUG[:] = DEBUG
 
 # Connect debug hooks of sub-modules
 ckbot.logical.progress = progress
-plans.DEBUG = DEBUG
 
 # Interface to Scratch
 from . import scratch
@@ -120,16 +131,6 @@ except ImportError:
 
 # Useful constants
 from . decl import *
-
-try:
-  if PYCKBOTPATH:
-    pass
-except NameError:
-  # Library location specified by PYCKBOTPATH environment var
-  PYCKBOTPATH = getenv('PYCKBOTPATH',__path__[0]+OS_SEP+'..'+OS_SEP+'..')
-  if PYCKBOTPATH[-1:] != OS_SEP:
-      PYCKBOTPATH=PYCKBOTPATH+OS_SEP
-
 
 
 class NoJoyWarning( UserWarning ):
@@ -211,9 +212,6 @@ class JoyAppConfig( object ):
         warn("Unknown configuration key '%s' ignored" % key,NoJoyWarning)
         continue
       setattr(self,key,val)
-
-
-
 
 class JoyApp( object ):
   """
@@ -667,7 +665,6 @@ class JoyApp( object ):
     self.remote = remote.Sink(self, convert=lambda x: x, **self.cfg.remote )
     progress("Starting up a remote.Sink interface")
     self.remote.start()
-
   def run( self ):
     """
     Run the JoyApp.
