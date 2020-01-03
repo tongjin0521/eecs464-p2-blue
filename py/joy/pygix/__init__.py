@@ -12,7 +12,7 @@ you have SDL)
 #  c implementations of various pygame architectures transparently
 #  regardless of which is used, it becomes the 'constants' sub-module
 #  and its IMPL member indicates which implementation was used
-from constants import *
+from .constants import *
 
 # This is used by all JoyApp code for current time. If we redefine it,
 # we can run in simulated time
