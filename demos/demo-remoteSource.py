@@ -4,8 +4,10 @@ FILE demo-remoteSource.py
 This file is used in combination with the RemoteSink demo.
 It sends commands to RemoteSink using the specified port and hostname specified  by the user
 '''
+from sys import argv
 from joy import JoyApp
 from joy.decl import *
+from joy.pygix import SCHD
 from joy.remote import Source as RemoteSource
 
 class RemoteSourceApp( JoyApp ):
@@ -20,12 +22,17 @@ class RemoteSourceApp( JoyApp ):
   '''
   def __init__(self,*arg,**kw):
     #it extracts the sink destination port from the arguement and deletes it thereafter
+    if SCHD != "pygame":
+        raise RuntimeError("\n"+"*"*40+"\nRemote source should not be used without activating the pygame scheduler. Try something like: 'PYGIXSCHD=pygame python %s' on your commandline" % argv[0])
     self.dst = kw.get('sink',RemoteSource.DEFAULT_SINK)
     if 'sink' in kw:
       del kw['sink']
     self.evts = kw.get('evts',{KEYDOWN,KEYUP,JOYAXISMOTION,JOYBUTTONDOWN})
     if 'evts' in kw:
       del kw['evts']
+    if 'cfg' not in kw:
+        kw.update(cfg={})
+    kw['cfg'].update(remote=None)
     JoyApp.__init__(self,*arg,**kw)
 
   def onStart( self ):
