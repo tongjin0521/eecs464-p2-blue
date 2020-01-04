@@ -1,7 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #mode is zero and we have to free the motors
 '''
-FILE demo-playback.py
+FILE keyframes.py
 
 This program records the positions of the motors and has the ability to play the recording.
 This file will simply look for modules and call the PoseRecorder class. Then PoseRecorder class will
@@ -18,7 +18,7 @@ from ckbot import dynamixel as DX, pololu as PO, polowixel as PX
 from sys import argv
 from argparse import ArgumentParser
 parser = ArgumentParser(description="""
-    demo-playback -- a commandline interface to posable programming. Use the 'help' command at the prompt to obtain help
+    keyframes -- a commandline interface to posable programming. Use the 'help' command at the prompt to obtain help
 """)
 
 parser.add_argument('--arch','-a',action='store',type=str,default='dynamixel',help='Robot bus architecture to use: "dynamixel", "pololu", "polowixel"/"wixel", "simulation"; any prefix valid')

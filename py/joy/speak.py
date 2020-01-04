@@ -36,7 +36,7 @@ def _espeak_say(text):
   if s is None:
     return
   try:
-    s.stdin.write(text+"\n")
+    s.stdin.write((text+"\n").encode("utf-8"))
   except IOError as ioe:
     warn("espeak pipe failed with error %s" % ioe)
     __SYNTH = None
