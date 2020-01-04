@@ -32,11 +32,8 @@
  - ckbot.port2port
    - newConnection
 """
-
-from pdb import set_trace as BRK
-
 #Just a  test comment
-import sys
+from sys import getenv, version_info
 from time import time as now, sleep
 from struct import pack, unpack, calcsize
 from collections import deque
@@ -55,7 +52,7 @@ def crop( val, lower, upper ):
   return max(min(val,upper),lower)
 
 #########################
-if sys.version == 3:
+if version_info.major == 3:
   bytesHelper = bytes
 else:
   def bytesHelper(val):
@@ -68,7 +65,8 @@ def byteUnpack(orig):
   return str(orig)
 #########################
 
-DEBUG = []
+# DEBUG flags
+DEBUG = (getenv("PYCKBOTDEBUG",'')).split(",")
 
 class Dynamixel( object ):
   """
