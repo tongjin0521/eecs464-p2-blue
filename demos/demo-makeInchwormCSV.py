@@ -18,12 +18,12 @@ def inchworm(phi):
     res = (-ones(N)*pi*crv - W*a*ass)
   elif phi>=0.33 and phi<0.66:
     a = -(phi-0.5)*6
-    b = 1-(phi-0.33)*3    
+    b = 1-(phi-0.33)*3
     res = (-ones(N)*pi*((crv-crv0)*b+crv0) - W*b*ass)
   elif phi>=0.66:
     a = -(phi-(1.66/2))*6
-    b = (phi-0.66)*3    
-    res = (-ones(N)*pi*((crv-crv0)*b+crv0) + W*b*ass)    
+    b = (phi-0.66)*3
+    res = (-ones(N)*pi*((crv-crv0)*b+crv0) + W*b*ass)
   return res
 
 if __name__!="__main__":
@@ -42,12 +42,12 @@ sys.stdout.write('"t","w1","w2","w3","w4","w5"\n')
 # Sample 300 points, without the final point (since 1 is the same as 0)
 for phi in linspace(0,1,30,endpoint=False):
   s = inchworm(phi)
-  line = ("%.3g," % phi) + ",".join( 
+  line = ("%.3g," % phi) + ",".join(
     [ "%d" % (18000.0/pi*val) for val in s[1:]*sg ] )
   sys.stdout.write(line+"\n")
 
 sys.stderr.write("""
 This program is a quick hack for creating a gait table for an inchworm gait.  
 To use this program, pipe its output into a .csv file
-Do this by executing 'python demo+makeinchworm.CSV > file.CSV' in linux terminal outside pylab
+Do this by executing 'python demo-makeinchwormCSV.py > file.CSV' in linux terminal outside pylab
 """)
