@@ -1,0 +1,3 @@
+This directory tree contains the pyckbot 3.0 distribution, as used for the EECS 464 "Hands-On Robotics" class at the University of Michigan.
+
+The code here is derived from previous work done at the University of Pennsylvania (pyckbot 1.0). Starting with the 3.0 release, all code is subject to the 2007 GPL v3.0 License, and is copyright Shai Revzen, 2020.
