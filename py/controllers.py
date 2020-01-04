@@ -1,33 +1,38 @@
+#!/usr/bin/python
 '''
-FILE demo-remoteSource.py
+FILE controllers.py
 
-This file is used in combination with the RemoteSink demo.
-It sends commands to RemoteSink using the specified port and hostname specified  by the user
+Use pygame to generate controller event streams over UDP.
+
+In pyckbot 1.x this was "demo-remoteSource", but starting with pyckbot 3.0 this
+is the main way in which controller and keyboard events are produced, and
+all JoyApp-s run (by default) without pygame.
+
+To force use of pygame, use PYGIXSCHD=pygame in the unix shell environment
 '''
 from sys import argv
 from joy import JoyApp
 from joy.decl import *
-from joy.pygix import SCHD
 from joy.remote import Source as RemoteSource
+
+from joy.misc import requiresPygame
+requiresPygame()
 
 class RemoteSourceApp( JoyApp ):
   '''
-  This class is used to send events to remoteSink from the host to the port specified by the user
+  This class is used to send events to remote.Sink from the host to the port specified by the user
 
-  It creates a remoteSource object and passes the destination port specified by thes user to the
-  remoteSource. This remotesource binds the hostname to a socket to send messages to the specified
+  It creates a remote.Source object and passes the destination port specified by thes user to the
+  remote.Source. This remote.Source binds the hostname to a socket to send messages to the specified
   port
 
-  This would be useful to you if you want to remotely connect a user interface to another computer.
+  By default, will only forward KEYDOWN events
   '''
   def __init__(self,*arg,**kw):
-    #it extracts the sink destination port from the arguement and deletes it thereafter
-    if SCHD != "pygame":
-        raise RuntimeError("\n"+"*"*40+"\nRemote source should not be used without activating the pygame scheduler. Try something like: 'PYGIXSCHD=pygame python %s' on your commandline" % argv[0])
     self.dst = kw.get('sink',RemoteSource.DEFAULT_SINK)
     if 'sink' in kw:
       del kw['sink']
-    self.evts = kw.get('evts',{KEYDOWN,KEYUP,MIDIEVENT,JOYAXISMOTION,JOYBUTTONDOWN})
+    self.evts = kw.get('evts',{KEYDOWN})
     if 'evts' in kw:
       del kw['evts']
     if 'cfg' not in kw:
@@ -48,6 +53,7 @@ class RemoteSourceApp( JoyApp ):
     if evt.type in self.evts:
       # For pressing space --> send a custom message instead
       if evt.type == KEYDOWN and evt.key == K_SPACE:
+        progress("The SPACE key sends a custom message (as demo)")
         self.rs.sendMsg( note = "This is a custom message" )
       else: # else --> send the event
         self.rs.push( evt )
@@ -66,11 +72,15 @@ class RemoteSourceApp( JoyApp ):
 if __name__=="__main__":
   from argparse import ArgumentParser
   p = ArgumentParser(description="""
-    Demonstration of Controllers plan
+    Controllers interface for pyckbot
     ------------------------------------
 
-    Sends keyboard events to a remote JoyApp, specified on the commandline as two parameters: host port
-    If the port is not specified, default port is used
+    Events to a remote JoyApp, specified on the commandline as two parameters:
+    (UDP) port and destination IP. These default to loopback and the default
+    port for remoteSink plans.
+
+    Starting with pyckbot 3.0, this program is the primary way to control JoyApp
+    applications, and is the only program in the core codebase to use pygame.
 
   """)
   from joy import decl
@@ -79,16 +89,17 @@ if __name__=="__main__":
     'JOYAXISMOTION', 'JOYBALLMOTION', 'JOYBUTTONDOWN', 'JOYBUTTONUP', 'JOYHATMOTION', 'KEYDOWN', 'KEYUP', 'HAT_CENTERED', 'HAT_DOWN', 'HAT_LEFT', 'HAT_LEFTDOWN', 'HAT_LEFTUP', 'HAT_RIGHT', 'HAT_RIGHTDOWN', 'HAT_RIGHTUP', 'HAT_UP', 'CKBOTPOSITION', 'ACTIVEEVENT'
   ]}
   p.add_argument('--events','-e',action='append', help='Include event type '+repr(evnm.keys()))
+  p.add_argument('--block','-b',action='append', help='Block event type '+repr(evnm.keys()))
   p.add_argument('--dst','-d',action='store',default=RemoteSource.DEFAULT_SINK[0],help='Address of event receiver')
   p.add_argument('--dport','-p',action='store',default=str(RemoteSource.DEFAULT_SINK[1]),help='Port of event receiver')
   from sys import argv
   args = p.parse_args(argv[1:])
 
-  evts = set()
+  evts = {KEYDOWN,KEYUP,MIDIEVENT,JOYAXISMOTION,JOYBUTTONDOWN}
   if args.events is not None:
       evts = { evnm[nm.upper()] for nm in args.events }
-  else:
-      evts = {KEYDOWN,KEYUP,JOYAXISMOTION,JOYBUTTONDOWN}
+  if args.block is not None:
+      evts = evts - { evnm[nm.upper()] for nm in args.block }
   progress("*** Events "+repr(evts) )
   sink = (args.dst,int(args.dport))
   progress("*** Destination "+repr(sink) )
