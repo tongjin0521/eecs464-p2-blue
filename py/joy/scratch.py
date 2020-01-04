@@ -8,7 +8,7 @@ from warnings import warn
 
 class FramedSock( object ):
   def __init__(self, host="127.0.0.1", port=42001):
-    assert sys.version_info.major < 3, "python 3 not supported (yet!)"
+    assert sys.version_info.major < 3, "python 3 Scratch interface is not supported (yet!)"
     self.addr = (host,port)
     self.iterLimit = 32
     self.sock = None
