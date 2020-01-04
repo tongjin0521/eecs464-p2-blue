@@ -15,8 +15,8 @@ from joy import JoyApp
 from joy.decl import *
 from joy.remote import Source as RemoteSource
 
-from joy.misc import requiresPygame
-requiresPygame()
+from joy.misc import requiresPyGame
+requiresPyGame()
 
 class RemoteSourceApp( JoyApp ):
   '''
