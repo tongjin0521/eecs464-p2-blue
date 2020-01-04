@@ -17,7 +17,6 @@ from . loggit import progress, debugMsg, dbgId
 from . misc import curry,printExc
 
 from . events import describeEvt
-DEBUG = []
 
 class Plan( object ):
   """
@@ -265,6 +264,8 @@ class Plan( object ):
         exinfo = sys.exc_info()
     # (only reached if exception handled)
     printExc(exinfo)
+    if '!' in self.DEBUG:
+        raise
     # Put top back on stack, it isn't dead
     if top is not None:
       S.append(top)
@@ -718,7 +719,10 @@ class CyclePlan( Plan ):
       try:
         self.actions[self.phase](self)
       except Exception:
-        printExc()
+        if '!' in self.DEBUG:
+            raise
+        else:
+            printExc()
 
   def resetPhase(self, phi0=0):
     """

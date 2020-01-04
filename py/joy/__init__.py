@@ -108,8 +108,6 @@ if PYCKBOTPATH[-1:] != OS_SEP:
   PYCKBOTPATH=PYCKBOTPATH+OS_SEP
 # DEBUG flags
 DEBUG = (getenv("JOYDEBUG",'')).split(",")
-# Copy over into plans
-plans.DEBUG[:] = DEBUG
 
 # Connect debug hooks of sub-modules
 ckbot.logical.progress = progress

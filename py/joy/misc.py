@@ -24,6 +24,8 @@ inlineCSV -- Similar to loadCSV, but takes the CSV text from a multiline python 
 
 from traceback import format_exception
 from sys import stderr, exc_info, argv
+from pdb import set_trace as BRK
+from os import getenv
 
 from joy.pygix import SCHD
 def requiresPyGame():
@@ -62,6 +64,8 @@ def printExc( exinfo=None ):
   msg.extend(format_exception(*exinfo))
   msg.append(">> "*10+"\n")
   stderr.writelines(msg)
+  if 'B' in getenv("JOYDEBUG",""):
+      BRK()
 
 def loadCSV( fn ):
   """
