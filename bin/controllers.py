@@ -32,11 +32,12 @@ class RemoteSourceApp( JoyApp ):
   '''
   def __init__(self,*arg,**kw):
     self.dst = kw.get('sink',RemoteSource.DEFAULT_SINK)
-    if 'sink' in kw:
-      del kw['sink']
+    if 'sink' in kw: del kw['sink']
     self.evts = kw.get('evts',{KEYDOWN})
-    if 'evts' in kw:
-      del kw['evts']
+    self.supress = kw.get('supress',False)
+    self._last = None
+    if 'supress' in kw: del kw['supress']
+    if 'evts' in kw: del kw['evts']
     if 'cfg' not in kw:
         kw.update(cfg={})
     kw['cfg'].update(remote=None,midi=True)
@@ -58,7 +59,11 @@ class RemoteSourceApp( JoyApp ):
         progress("The RSHIFT key sends a custom message (as demo)")
         self.rs.sendMsg( note = "This is a custom message" )
       else: # else --> send the event
-        self.rs.push( evt )
+        if self.supress and evt == self._last:
+            return
+        else:
+            self._last = evt
+            self.rs.push( evt )
     #mousemotion events are ignored here
     if evt.type == MOUSEMOTION:
       return
@@ -91,6 +96,7 @@ if __name__=="__main__":
   p.add_argument('--dst','-d',action='store',default=RemoteSource.DEFAULT_SINK[0],help='Address of event receiver')
   p.add_argument('--dport','-p',action='store',default=str(RemoteSource.DEFAULT_SINK[1]),help='Port of event receiver')
   p.add_argument('--nodefault','-n',action='store_true',help='include no default event types')
+  p.add_argument('--unsupress','-u',action='store_true',help='do not supress duplicate events')
   from sys import argv
   args = p.parse_args(argv[1:])
 
@@ -104,5 +110,5 @@ if __name__=="__main__":
   progress("*** Events "+repr([event_name(eid) for eid in evts]) )
   sink = (args.dst,int(args.dport))
   progress("*** Destination "+repr(sink) )
-  app = RemoteSourceApp(sink=sink,evts=evts)
+  app = RemoteSourceApp(sink=sink,evts=evts,supress=not args.unsupress)
   app.run()
