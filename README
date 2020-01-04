@@ -1,3 +1,34 @@
 This directory tree contains the pyckbot 3.0 distribution, as used for the EECS 464 "Hands-On Robotics" class at the University of Michigan.
 
 The code here is derived from previous work done at the University of Pennsylvania (pyckbot 1.0). Starting with the 3.0 release, all code is subject to the 2007 GPL v3.0 License, and is copyright Shai Revzen, 2020.
+
+Environment variables:
+  PYCKBOTPATH -- should map to the directory this README is in
+  PYGIXSCHD -- controls which scheduler the JoyApp engine uses. Options are:
+      FAST (default) -- default, pure python scheduler
+      pygame -- uses pygame timer events to schedule; required for graphical display or human interface event detection
+      ASAP -- scheduler for regression testing algorithms faster than realtime; internal time progresses As Soon As Possible
+  JOYDEBUG -- comma separated list of JoyApp debug topics, such as:
+      '!' -- die on exceptions in JoyApp plans instead of stack-dumping and continuing. This is useful for post-mortem debugging in ipython
+      'S' -- debug Scratch interface processing
+      'P' -- plan scheduling information
+  PYCKBOTDEBUG -- comma separated list of ckbot debug topics, such as:
+      On Dynamixels:
+        'x' -- display all Dynamixel communications
+        't' -- timing information
+      On pololu:
+        'w' -- display all serial writes
+
+Version 3.0 release notes:
+  * All tools and demos should now work with both python and python3; however, pygame support for python3 is spotty (see controller.py below)
+  * By default, all JoyApp applications now use the FAST scheduler and do not require pygame. The default cfg/JoyApp.yml activates a remote Sink to allow HID events to be sent from an external source.
+  * Major revision in directory structure:
+      - $PYCKBOTPATH/apps is gone from the hrb branch, and $PYCKBOTPATH/apps/hrb is now just $PYCKBOTPATH/hrb
+      - $PYCKBOTPATH/bin contains all the tools, chmod-ed executable, and supporting scripts.
+          In particular, dynamixel-config.py and supporting data moved to $/bin
+  * Tools renamed and wrapped:
+      - demo-remoteSource is now $PYCKBOTPATH/bin/controller.py; since it requires pygame, it defaults to running with python rather than python3. To override the scheduler to use pygame, use PYGIXSCHD=pygame, or run using the $PYCKBOTPATH/ctrl shell script
+      - demo-playback is now $PYCKBOTPATH/bin/keyframes.py
+  * New features for keyframes.py (formerly demo-playback):
+      - "live" command allows using an external midi controller.
+        See online help for keys.
