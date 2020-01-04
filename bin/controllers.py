@@ -59,15 +59,11 @@ class RemoteSourceApp( JoyApp ):
         self.rs.sendMsg( note = "This is a custom message" )
       else: # else --> send the event
         self.rs.push( evt )
-      # For KEYDOWN --> process locally, AND send over
-      if evt.type == KEYDOWN:
-        if evt.key == K_q:
-          progress("(say) Use 'q' key to terminate remote; 'escape' key to terminate local AND remote")
-        else:
-          JoyApp.onEvent(self,evt)
-      return
     #mousemotion events are ignored here
-    elif evt.type == MOUSEMOTION:
+    if evt.type == MOUSEMOTION:
+      return
+    if evt.type == KEYDOWN and evt.key == K_q:
+      progress("(say) Use 'q' key to terminate remote; 'escape' key to terminate local AND remote")
       return
     JoyApp.onEvent(self,evt)
 
@@ -98,11 +94,11 @@ if __name__=="__main__":
   from sys import argv
   args = p.parse_args(argv[1:])
 
-  evts = {} if args.nodefault else {
+  evts = set() if args.nodefault else {
     KEYDOWN,KEYUP,MIDIEVENT,JOYAXISMOTION,JOYBUTTONDOWN
   }
   if args.events is not None:
-      evts = { evnm[nm.upper()] for nm in args.events }
+      evts = evts.union({ evnm[nm.upper()] for nm in args.events })
   if args.block is not None:
       evts = evts - { evnm[nm.upper()] for nm in args.block }
   progress("*** Events "+repr([event_name(eid) for eid in evts]) )
