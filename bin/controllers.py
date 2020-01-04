@@ -54,8 +54,8 @@ class RemoteSourceApp( JoyApp ):
     '''
     if evt.type in self.evts:
       # For pressing space --> send a custom message instead
-      if evt.type == KEYDOWN and evt.key == K_SPACE:
-        progress("The SPACE key sends a custom message (as demo)")
+      if evt.type == KEYDOWN and evt.key == K_RSHIFT:
+        progress("The RSHIFT key sends a custom message (as demo)")
         self.rs.sendMsg( note = "This is a custom message" )
       else: # else --> send the event
         self.rs.push( evt )
