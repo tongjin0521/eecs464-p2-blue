@@ -56,6 +56,9 @@ class PoseRecorder( object ):
     def setServos(self,mods):
         for m in mods:
             assert isinstance(m,Module),"%s must be a module" % str(m)
+            if m.get_mode() == 1:
+              print("Module %s is in motor mode; setting to SERVO" % m.name)
+              m.set_mode("SERVO")
         self.servos = mods
 
     def update(self,t=None):
@@ -196,17 +199,30 @@ class PoseRecorder( object ):
         if stream is not STDOUT:
           stream.close()
 
-    def playback( self, period=None, count=None, rate = 0.03, urate = 0.01, kind=None ):
-        """Play back the current recording one or more times.
+    def playback( self, **kw ):
+        """
+        Wrapper for playbackIter; plays back current recording
+        """
+        try:
+            for wait in self.playbackIter(*kw):
+                sleep(wait)
+        except KeyboardInterrupt:
+            self.off()
+            raise
 
-           INPUT:
+    def playbackIter( self, period=None, rate = 0.03, urate = 0.01, count=None, kind=None ):
+        """
+        Iterator for playing back the current recording one or more times.
+        Yields sleep times; see .playback(...) for how to use
+
+        INPUT:
              period -- float / None -- duration for entire recording
                if period is None, the recording timestamps are used
              count -- integer -- number of times to play
              rate -- float -- delay between commands sent (sec)
              urate -- float -- delay between .update calls
              kind -- str -- a scipy.interpolation.interp1d kind
-            """
+        """
         assert rate>=urate
         # playback current pose for a given amount of time and with a given period
         if not self.plan or len(self.plan)<2:
@@ -223,13 +239,12 @@ class PoseRecorder( object ):
             count = self.count
         t0 = now()
         t1 = t0
-        try:
-          while t1-t0 < period*count:
+        while t1-t0 < period*count:
             # Do inner update loop
             t1 = now()
             while now()<t1+rate-urate:
                 self.update(t1)
-                sleep(urate)
+                yield urate
             # send position command
             phi = (t1-t0)/period
             phi %= 1.0
@@ -241,10 +256,7 @@ class PoseRecorder( object ):
             # Adjust to match requested rate
             dt = rate-(now()-t1)
             if dt>0:
-                sleep(dt)
-        except KeyboardInterrupt:
-            self.off()
-            raise
+                yield dt
 
 class LiveJoyRemote( object ):
     """Concrete class LiveJoyRemote is asupport class for
@@ -297,6 +309,7 @@ class LiveJoyRemote( object ):
         cmd = "%s/ctrl -p %d -n -e KEYDOWN -e MIDIEVENT" % (pth,self.sock.getsockname()[1])
         print("\trunning: %s" % cmd)
         joy = Popen(cmd,shell=True,stdout=open('/dev/null','w'))
+        self._player = None
         # While subprocess is running
         while joy.poll() is None:
             # Allow PoseRecorder to do housekeeping
@@ -304,7 +317,16 @@ class LiveJoyRemote( object ):
             # Check for incoming message
             evt = self._recv()
             if evt is None:
-              sleep(0.05)
+              if self._player is None:
+                  wait = 0.05
+              else:
+                  try:
+                      wait = next(self._player)
+                  except StopIteration:
+                      self._player = None
+                      print(">>>> Player stopped")
+                      wait = 0.05
+              sleep(wait)
               continue
             ### We got an event
             # Find its handler
@@ -314,9 +336,9 @@ class LiveJoyRemote( object ):
             # call handler
             if meth(**evt):
                 break
-            self.pr.setPose(self.pose)
-            msg = ", ".join([('---' if p is None else "%6d" % int(p)) for p in self.pose])
-            STDOUT.write("\r"+msg+"\r")
+            if self._player is None:
+                msg = ", ".join([('---' if p is None else "%6d" % int(p)) for p in self.pose])
+                STDOUT.write("\r"+msg+"\r")
             STDOUT.flush()
 
         # terminate subprocess if it is still running
@@ -335,13 +357,14 @@ class LiveJoyRemote( object ):
         meth = getattr( self, hnd, None )
         # call handler
         if meth is None:
-            return self._onUnknownType( type="MIDIEvent", index=index, sc=sc, kind=kind, value=value, **kw)
+            return self._onUnknownType( index=index, sc=sc, kind=kind, value=value, **kw)
         else:
             return meth(index=index,value=value)
 
     def _onMIDIslider(self,index=None,value=None,**kw):
         idx = index % len(self.pose)
         self.pose[idx] = (value-63.5)*10000/63.5
+        self.pr.setPose(self.pose)
 
     def _onMIDIrecord(self,value=None,**kw):
         """Append the current pose to the recording"""
@@ -360,6 +383,7 @@ class LiveJoyRemote( object ):
 
     def _onMIDIstop(self,value=None,**kw):
         """Emergency stop the recording -- go_slack() all modules"""
+        self._player = None
         self.pr.off()
         print(">>>> STOP <<<<")
 
@@ -368,21 +392,20 @@ class LiveJoyRemote( object ):
         """
         if value!=127:
             return
-        print("**** Closing loop")
-        self.pr.snapClosed(1.0)
-        self.show()
+        try:
+          self.pr.snapClosed(1.0)
+          print("**** Closing loop")
+          self.show()
+        except IndexError:
+          print("**** Can't close loop without any snapshots")
 
     def _onMIDIplay(self,value=None,**kw):
         if value != 127:
             return
-        try:
-            self.pr.playback()
-        except KeyboardInterrupt:
-            self.pr.off()
-        print("Playback done")
+        self._player = self.pr.playbackIter()
 
     def _onKeyDown(self,key=None,unicode=None,**kw):
-        if unicode==" ":
+        if unicode=="\r":
             print("Record pose")
             self.pr.snap()
             self.show()
@@ -390,10 +413,12 @@ class LiveJoyRemote( object ):
         idx = "wertyuio".find(unicode)
         if idx>=0:
           self.pose[idx % len(self.pose)] += 1000
+          self.pr.setPose(self.pose)
           return
         idx = "sdfghjkl".find(unicode)
         if idx>=0:
           self.pose[idx % len(self.pose)] -= 1000
+          self.pr.setPose(self.pose)
           return
         print("[KEY] ",repr(unicode))
 
@@ -470,7 +495,15 @@ class PoseRecorderCLI( Cmd ):
         self._update()
 
     def do_live(self,line):
-        """Run a JoyApp interface allowing KORG midi control of recordings"""
+        """
+        Control servos "live" with keyboard or KORG board
+
+        Keyboard: The top row of the keyboard (wertyuio) and the middle row of the keyboard (sdfghjkl) allow increment and decrement. "Enter" gives "pose" command.
+
+        KORD: The sliders control motors. Buttons map to commands: "Record" -- "pose"; "Play" -- "run"; "Rewind" -- "drop"; "Loop" -- "closeLoop"; "Stop" -- abort playback and slack motors.
+
+        To end live mode use the "ESCAPE" key in the pygame window
+        """
         self._update()
         self.liv.run()
         self._update()
