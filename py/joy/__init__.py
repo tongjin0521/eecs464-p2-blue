@@ -318,9 +318,9 @@ class JoyApp( object ):
     # initialize midi module (this is safe to call again multiple times)
     if self.cfg.midi:
       midi_init()
-      progress("**** MIDI support initialized")
+      progress("MIDI support initialized")
     else:
-      progress("**** MIDI support was not requested")      
+      progress("MIDI support was not requested")
     # init Plan scheduling structures
     self.plans = [] #: (private) List of currently active Plan instances ("threads")
     self.__new = []
@@ -343,7 +343,7 @@ class JoyApp( object ):
       logFile = None,
       logProgress = False,
       remote = None,
-      midi = True
+      midi = None
     )
     pth = PYCKBOTPATH + 'cfg%sJoyApp.yml' % OS_SEP
     if glob(pth):

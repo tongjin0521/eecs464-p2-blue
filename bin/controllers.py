@@ -39,7 +39,7 @@ class RemoteSourceApp( JoyApp ):
       del kw['evts']
     if 'cfg' not in kw:
         kw.update(cfg={})
-    kw['cfg'].update(remote=None)
+    kw['cfg'].update(remote=None,midi=True)
     JoyApp.__init__(self,*arg,**kw)
 
   def onStart( self ):
