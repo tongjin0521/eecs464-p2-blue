@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from ckbot.logical import Cluster
 from sys import argv, exit, stderr
 from time import sleep
@@ -27,7 +29,7 @@ while arg:
     out = open(arg[1],"w")
     arg[:2]=[]
     continue
-  print """
+  print("""
     Options:
        -n <node-id>
          Which node to use
@@ -37,17 +39,16 @@ while arg:
          Port descriptor (see port2port.newConnection)
        -o <output-file>
          Specify output file. Otherwise goes to STDERR
-  """
+  """)
   exit(5)
 
 c = Cluster( port=port, count=count )
-for nid in (nids if nids is not None else c.iterkeys()):
+for nid in (nids if nids is not None else c.keys()):
   m = c[nid]
   out.write("# Node ID : %d\n" % nid)
   if m.mem is None:
     out.write("# No .mem member -- properties are not readable\n")
     continue
-  for adr,(nm,fmt) in m.mcu._ADDR_DCR.iteritems():
+  for adr,(nm,fmt) in m.mcu._ADDR_DCR.items():
     out.write("%s : %d\n" % (nm,m.mem[adr]))
   sleep(0.02)
-

@@ -1,7 +1,8 @@
+#!/usr/bin/env python3
+
 import sys
 import yaml
 from joy import *
-import ckbot.hitec as hitec
 import ckbot.pololu as pololu
 import ckbot.dynamixel as dynamixel
 
@@ -11,18 +12,18 @@ class ScanRobot( JoyApp ):
     cfg0.update(cfg)
     JoyApp.__init__( self, robot=robot, cfg=cfg0 )
     self.robotPop = robot
-    
+
   def onStart( self ):
     self.next = self.now + self.cfg.rate
     self.stopTime = self.now + self.cfg.duration
-    
+
   def onEvent( self, evt ):
     if evt.type==KEYDOWN and evt.key in [32,13]:
       self.robot.populate( **self.robotPop )
       return
     if evt.type==QUIT or evt.type==KEYDOWN:
       self.stop()
-    if self.now < self.next: 
+    if self.now < self.next:
       return
     lst = []
     for nid in self.robot.getLive():
@@ -43,10 +44,8 @@ if __name__=="__main__":
   cfg = {}
   # Table of available busses
   busTbl = {
-    'hitec' : hitec,
     'pololu' : pololu,
     'dynamixel' : dynamixel,
-    'h' : hitec,
     'p' : pololu,
     'd' : dynamixel
   }
@@ -74,7 +73,7 @@ if __name__=="__main__":
       bus = busTbl.get(args.pop(0),None)
       if bus is None:
         sys.stderr.write("Unknown bus '%s'\n" % bus)
-        sys.exit(2)   
+        sys.exit(2)
       robot['protocol']=bus
     elif arg=='--help' or arg=='-h':
       robot=None
@@ -87,32 +86,31 @@ if __name__=="__main__":
   if not robot:
       sys.stdout.write("""
   Usage: %s [options]
-  
+
     Scan bus for robot
-    
-    Options:      
+
+    Options:
       --mod-count <number> | -c <number>
         Search for specified number of modules at startup
-      
+
       --names <names> | -n <names>
         Where <names> is a valid YAML mapping from node numbers
         to names, e.g. '0x36: head, 223: tail'
-      
+
       --walk | -w
         Attempt to walk the Object Dictionary of the modules found
-      
+
       --bus <bus-name> | -b <bus-name>
-        Supported busses are 'hitec', 'pololu' and 'dynamixel'
+        Supported busses are 'pololu' and 'dynamixel'
         Bus names may be abbreviated to a single character
-      
+
       --port <device-port> | -p <device-string>
         Access the bus on the specified device. Device strings are
         described in port2port.py newConnection
-        
+
       --any | -a
         Scan any number of modules
     """ % sys.argv[0])
       sys.exit(1)
   app = ScanRobot(robot,cfg=cfg)
   app.run()
-
