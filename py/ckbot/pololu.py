@@ -28,13 +28,14 @@ Both examples sets the position of the 0x23 robot module, connected to Pololu Ma
 """
 
 from time import time as now
-from sys import platform as SYS_PLATFORM
-import struct
+from sys import getenv
+from struct import pack, unpack
 
 from .ckmodule import Module, AbstractNodeAdaptor, AbstractProtocol, AbstractBus, progress, AbstractServoModule
 from .port2port import newConnection
 
-DEBUG=[]
+# DEBUG flags
+DEBUG = (getenv("PYCKBOTDEBUG",'')).split(",")
 
 class Bus(AbstractBus):
   """
@@ -98,7 +99,7 @@ class Bus(AbstractBus):
       raise IOError("Serial port is not open")
 
     # Format the values into serial-writable string
-    packed_cmd = [ struct.pack("B", val_part) \
+    packed_cmd = [ pack("B", val_part) \
                      for val_part in val ]
     cmd_str = "".join(packed_cmd)
 
@@ -123,7 +124,7 @@ class Bus(AbstractBus):
     """
     l = len(comstr)
 
-    int_tuple = struct.unpack('B'*len(comstr), comstr)
+    int_tuple = unpack('B'*len(comstr), comstr)
     divd = self.__bitrev(int_tuple)
 
     if(l>4):
