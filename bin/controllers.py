@@ -93,10 +93,13 @@ if __name__=="__main__":
   p.add_argument('--block','-b',action='append', help='Block event type '+repr(evnm.keys()))
   p.add_argument('--dst','-d',action='store',default=RemoteSource.DEFAULT_SINK[0],help='Address of event receiver')
   p.add_argument('--dport','-p',action='store',default=str(RemoteSource.DEFAULT_SINK[1]),help='Port of event receiver')
+  p.add_argument('--nodefault','-n',action='store_true',help='include no default event types')
   from sys import argv
   args = p.parse_args(argv[1:])
 
-  evts = {KEYDOWN,KEYUP,MIDIEVENT,JOYAXISMOTION,JOYBUTTONDOWN}
+  evts = {} if args.nodefault else {
+    KEYDOWN,KEYUP,MIDIEVENT,JOYAXISMOTION,JOYBUTTONDOWN
+  }
   if args.events is not None:
       evts = { evnm[nm.upper()] for nm in args.events }
   if args.block is not None:

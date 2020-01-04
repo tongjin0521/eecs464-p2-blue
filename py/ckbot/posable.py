@@ -293,8 +293,8 @@ class LiveJoyRemote( object ):
         # Obtain current motor states
         self.pose = list(self.pr.getPose())
         # Create JoyApp event source
-        pth = dirname(__file__)+"/../../demos"
-        cmd = "PYGIXSCHD=pygame python %s/demo-remoteSource.py -p %d -e MIDIEVENT -e KEYDOWN" % (pth,self.sock.getsockname()[1])
+        pth = dirname(__file__)+"/../../bin"
+        cmd = "%s/ctrl -p %d -n -e KEYDOWN -e MIDIEVENT" % (pth,self.sock.getsockname()[1])
         print("\trunning: %s" % cmd)
         joy = Popen(cmd,shell=True,stdout=open('/dev/null','w'))
         # While subprocess is running
