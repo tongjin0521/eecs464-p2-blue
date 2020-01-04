@@ -1,5 +1,5 @@
 import pygame.midi as pygm
-import sys
+from sys import stdout, version_info
 from joy.decl import MIDIEVENT
 from joy.events import JoyEvent
 
@@ -231,7 +231,7 @@ if 1: # function to help create an N2C dictionary
     last = (None,None)
     for k in nm:
        print ("(%d,'%s',%d)" % k,
-       sys.stdout.flush())
+       stdout.flush())
        while True:
            time.sleep(0.1)
            l = list(DEV[3].rawEventIter())
@@ -241,13 +241,15 @@ if 1: # function to help create an N2C dictionary
              break
        last = l[-1][0]
        print (": (%d,%d)," % (last[0],last[1]))
-       sys.stdout.flush()
+       stdout.flush()
 
 def init():
    """
    Initialize the pygame midi interface and enumerate the devices in
    the .DEV module variable
    """
+   if version_info.major>2:
+       raise RuntimeError("python 3 support for MIDI is broken but version %d.%d detected; only use this with python 2.x" % (version_info.major, version_info.minor))
    global DEV
    if DEV is not None:
      return
@@ -266,7 +268,6 @@ def init():
 if __name__=="__main__":
   from time import sleep, time as now
   from joy.events import describeEvt
-  from sys import stdout
   print("Running test")
   init()
   t0 = now()
@@ -274,5 +275,5 @@ if __name__=="__main__":
     for evt in joyEventIter():
       print ("\r%6.2f "%(now()-t0)),
       print (describeEvt(evt), "   ",
-      sys.stdout.flush())
+      stdout.flush())
     sleep(0.05)

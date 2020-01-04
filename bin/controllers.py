@@ -1,5 +1,6 @@
-#!/usr/bin/env python3
-
+#!/usr/bin/env python
+# NOTE: this program should always run under python2
+#   at least until MIDI starts working in pygame on python 3.x
 '''
 FILE controllers.py
 
