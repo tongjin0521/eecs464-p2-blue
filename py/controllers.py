@@ -14,7 +14,7 @@ from sys import argv
 from joy import JoyApp
 from joy.decl import *
 from joy.remote import Source as RemoteSource
-
+from joy.events import event_name
 from joy.misc import requiresPyGame
 requiresPyGame()
 
@@ -60,7 +60,7 @@ class RemoteSourceApp( JoyApp ):
       # For KEYDOWN --> process locally, AND send over
       if evt.type == KEYDOWN:
         if evt.key == K_q:
-          progress("Use 'q' to terminate remote; ESC to terminate local AND remote")
+          progress("(say) Use 'q' key to terminate remote; 'escape' key to terminate local AND remote")
         else:
           JoyApp.onEvent(self,evt)
       return
@@ -100,7 +100,7 @@ if __name__=="__main__":
       evts = { evnm[nm.upper()] for nm in args.events }
   if args.block is not None:
       evts = evts - { evnm[nm.upper()] for nm in args.block }
-  progress("*** Events "+repr(evts) )
+  progress("*** Events "+repr([event_name(eid) for eid in evts]) )
   sink = (args.dst,int(args.dport))
   progress("*** Destination "+repr(sink) )
   app = RemoteSourceApp(sink=sink,evts=evts)

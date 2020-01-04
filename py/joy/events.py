@@ -36,6 +36,19 @@ from . pygix import (
   TIMEREVENT, CKBOTPOSITION, SCRATCHUPDATE, MIDIEVENT
   )
 
+def event_name(typ):
+  """
+  Return human readable name for an event ID.
+  Drop in replacement for pygame function of same name
+  """
+  if typ<pygix.USEREVENT:
+      nm = pygix.event_name(typ)
+  else:
+      nm = pygix.JOY_EVENT_NAMES.get(typ,None)
+  if nm is None:
+      nm = "EVENT_%02d" % typ
+  return nm
+  
 def describeEvt( evt, parseOnly = False ):
   """
   Describe an event stored in a pygame EventType object.
@@ -55,12 +68,7 @@ def describeEvt( evt, parseOnly = False ):
   """
   assert type(evt) is pygix.EventType
   plan = pygix.EVENT_STRUCTURE[evt.type]
-  if evt.type<pygix.USEREVENT:
-    nm = pygix.event_name(evt.type)
-  else:
-    nm = pygix.JOY_EVENT_NAMES.get(evt.type,None)
-    if nm is None:
-      nm = "EVENT_%02d" % evt.type
+  nm = event_name(evt.type)
   if parseOnly:
     res = dict(type=nm, type_code=evt.type)
     for item in plan:
