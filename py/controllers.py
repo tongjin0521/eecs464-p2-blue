@@ -27,7 +27,7 @@ class RemoteSourceApp( JoyApp ):
     self.dst = kw.get('sink',RemoteSource.DEFAULT_SINK)
     if 'sink' in kw:
       del kw['sink']
-    self.evts = kw.get('evts',{KEYDOWN,KEYUP,JOYAXISMOTION,JOYBUTTONDOWN})
+    self.evts = kw.get('evts',{KEYDOWN,KEYUP,MIDIEVENT,JOYAXISMOTION,JOYBUTTONDOWN})
     if 'evts' in kw:
       del kw['evts']
     if 'cfg' not in kw:
@@ -46,14 +46,17 @@ class RemoteSourceApp( JoyApp ):
     which will print the events
     '''
     if evt.type in self.evts:
-      # For KEYDOWN --> process locally, AND send over
-      if evt.type == KEYDOWN:
-        JoyApp.onEvent(self,evt)
       # For pressing space --> send a custom message instead
       if evt.type == KEYDOWN and evt.key == K_SPACE:
         self.rs.sendMsg( note = "This is a custom message" )
       else: # else --> send the event
         self.rs.push( evt )
+      # For KEYDOWN --> process locally, AND send over
+      if evt.type == KEYDOWN:
+        if evt.key == K_q:
+          progress("Use 'q' to terminate remote; ESC to terminate local AND remote")
+        else:
+          JoyApp.onEvent(self,evt)
       return
     #mousemotion events are ignored here
     elif evt.type == MOUSEMOTION:
@@ -63,7 +66,7 @@ class RemoteSourceApp( JoyApp ):
 if __name__=="__main__":
   from argparse import ArgumentParser
   p = ArgumentParser(description="""
-    Demonstration of RemoteSource plan
+    Demonstration of Controllers plan
     ------------------------------------
 
     Sends keyboard events to a remote JoyApp, specified on the commandline as two parameters: host port

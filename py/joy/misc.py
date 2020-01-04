@@ -5,7 +5,7 @@
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 #
-# (c) Shai Revzen, U Penn, 2010, U Michigan 2019
+# (c) Shai Revzen, U Penn, 2010, U Michigan 2019, 2020
 #
 """
 misc.py defines several useful functions that don't rightly belong in any obvious location
@@ -22,8 +22,20 @@ loadCSV -- Load a CSV file into a list of lists
 inlineCSV -- Similar to loadCSV, but takes the CSV text from a multiline python string
 """
 
-import traceback
-import sys
+from traceback import format_exception
+from sys import stderr, exc_info, argv
+
+from joy.pygix import SCHD
+def requiresPyGame():
+    """
+    Check whether running in pygame mode, and if not, raise an appropriate
+    RuntimeError giving the user instructions how to restart the process with
+    pygame enabled.
+    """
+    #it extracts the sink destination port from the arguement and deletes it thereafter
+    if SCHD == "pygame":
+        return
+    raise RuntimeError("\n"+"*"*40+"\nRemote source should not be used without activating the pygame scheduler. Try something like: 'PYGIXSCHD=pygame python %s' on your commandline" % argv[0])
 
 def curry(fn, *cargs, **ckwargs):
   """
@@ -45,11 +57,11 @@ def printExc( exinfo=None ):
   """
   # Print the stack trace so far to stderr
   if exinfo is None:
-    exinfo = sys.exc_info()
+    exinfo = exc_info()
   msg = ["<< "*10+"\n"]
-  msg.extend(traceback.format_exception(*exinfo))
+  msg.extend(format_exception(*exinfo))
   msg.append(">> "*10+"\n")
-  sys.stderr.writelines(msg)
+  stderr.writelines(msg)
 
 def loadCSV( fn ):
   """
