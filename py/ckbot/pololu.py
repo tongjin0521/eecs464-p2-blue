@@ -28,7 +28,7 @@ Both examples sets the position of the 0x23 robot module, connected to Pololu Ma
 """
 
 from time import time as now
-from sys import getenv
+from os import getenv
 from struct import pack, unpack
 
 from .ckmodule import Module, AbstractNodeAdaptor, AbstractProtocol, AbstractBus, progress, AbstractServoModule

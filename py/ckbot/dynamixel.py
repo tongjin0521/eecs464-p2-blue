@@ -32,8 +32,8 @@
  - ckbot.port2port
    - newConnection
 """
-#Just a  test comment
-from sys import getenv, version_info
+from os import getenv
+from sys import version_info
 from time import time as now, sleep
 from struct import pack, unpack, calcsize
 from collections import deque
