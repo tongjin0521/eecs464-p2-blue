@@ -8,8 +8,8 @@ from SimpleCV import *
 
 class DotTrackerPlan( Plan ):
   def __init__(self, app,*argv, **kw):
-    Plan.__init__(self,app,*argv,**kw)  
-    
+    Plan.__init__(self,app,*argv,**kw)
+
   def onStart(self):
     self.blobs = []
     self.depth = 5 # seconds
@@ -26,8 +26,8 @@ class DotTrackerPlan( Plan ):
     self.qi = -1
     self.trr = 0
     self.rrRate = 2
-    self.guard = 10 
-  
+    self.guard = 10
+
   def _putRoundRobin( self, ts, img ):
     qi = (self.qi+1) % self.bgN
     if self.bgQ is None:
@@ -35,7 +35,7 @@ class DotTrackerPlan( Plan ):
       self.tsQ = zeros( (self.bgN,), int )
     # arrays are ready
     self.bgQ[qi,...] = img
-    self.tsQ[qi] = ts 
+    self.tsQ[qi] = ts
     self.qi = qi
     self.trr = ts
 
@@ -44,10 +44,10 @@ class DotTrackerPlan( Plan ):
       self.blobs.append(dict(time=self.app.now,tsense=t,b=[]))
     else:
       self.blobs.append(dict(time=self.app.now,tsense=t,b=asarray(b.coordinates())))
-    # Make sure that entries older than depth are removed 
+    # Make sure that entries older than depth are removed
     while self.blobs and self.blobs[0]['time']<self.app.now-self.depth:
       self.blobs.pop(0)
-      
+
   def _showBlobs( self, b ):
     raw = self.raw
     if b is not None:
@@ -56,7 +56,7 @@ class DotTrackerPlan( Plan ):
         dl.circle(xy,10,Color.RED,filled=1)
         dl.circle(xy,5,Color.BLACK,filled=1)
     raw.save(self.win)
-    
+
   def work( self ):
     raw = self.cam.getImage()
     self.raw = raw
@@ -86,7 +86,7 @@ class DotTrackerPlan( Plan ):
         yield self.forDuration(0.05)
     except KeyboardInterrupt:
       self.win.quit()
-      print "\n"+"*"*40+"\nSafely terminated\n"+"*"*40
+      print("\n"+"*"*40+"\nSafely terminated\n"+"*"*40)
       raise
 
 
@@ -101,10 +101,10 @@ class DotTrackerSource(Source,DotTrackerPlan):
   def onStop(self):
     DotTrackerPlan.onStop()
     return Source.onStop()
-    
+
   def onEvent(self,evt):
     return True
-  
+
   def _outBlobs( self, t, b ):
     if b is None:
       return
@@ -122,12 +122,12 @@ if __name__=="__main__":
        self.dt = DotTrackerSource(self)
        self.dt.start()
        self.oe = self.onceEvery(1)
-    
+
      def onEvent(self,evt):
        if self.oe():
          progress("OE:" + str(self.dt.blobs[-1:]))
        # Punt keydown events to superclass
        if evt.type == KEYDOWN:
          return JoyApp.onEvent(evt)
-         
+
    App().run()

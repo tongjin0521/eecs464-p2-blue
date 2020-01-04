@@ -66,7 +66,7 @@ class Plan( object ):
   ...     while self.x < self.app.cfg.windowSize[0]*0.75:
   ...       yield
   ...     print "Great job!! here are 3 tail wags for you"
-  ...     for wag in xrange(3):
+  ...     for wag in range(3):
   ...       self.tailWagTo(100)
   ...       yield self.forDuration( 500 )
   ...       self.tailWagTo(-100)

@@ -41,7 +41,7 @@ class dynamixelConfigurator:
         self.baud = None
 
     def usage( self ):
-        print """
+        print("""
               Usage:
                 -h, --help : Returns usage
                 -s, --scan : Scan to find all servos and baudrates on the bus
@@ -53,7 +53,7 @@ class dynamixelConfigurator:
                 -d, --debug : Set debug flag
                 -p, --port : set an alternative port for the bus
                               (see port2port.newConnection)
-              """
+              """)
         return
 
     def parseArgs( self, argv ):
@@ -174,9 +174,9 @@ class dynamixelConfigurator:
         for name, val in self.cfg.iteritems():
             # Check for node id setting
             if not opaque:
-              print name, val
+              print(name, val)
             if name == 'ID':
-                print " Setting ID through .yml file not allowed, see --help"
+                print(" Setting ID through .yml file not allowed, see --help")
                 sys_exit(-7)
             # Check for baudrate change, if so, write baud last
             if name == 'baud':
@@ -185,15 +185,15 @@ class dynamixelConfigurator:
             # This is pulled out of DynamixelModule
             if hasattr( node.mm, name ):
                 if opaque:
-                  print "Writing %s" % repr(name)
+                  print("Writing %s" % repr(name))
                 else:
-                  print "Writing %s to %s" % (repr(name), repr(val))
+                  print("Writing %s to %s" % (repr(name), repr(val)))
                 node.mem_write_sync( getattr( node.mm, name ), val )
             else:
                 raise KeyError("Unknown address '%s'" % name)
         # Write baudrate last
         if baud is not None:
-          print "Writing baud rate ",baud
+          print("Writing baud rate ",baud)
           node.mem_write_sync( getattr( node.mm, 'baud' ), baud )
 
     def read_type(self, nid):
@@ -242,7 +242,7 @@ class dynamixelConfigurator:
                 self.p.reset(nodes=[nid], ping_rate=0.1)
                 break
               except dynamixel.ProtocolError,pe:
-                print str(pe), "retrying..."
+                print(str(pe), "retrying...")
             if self.p.pnas.has_key(nid):
                 tpe = self.read_type(nid)
                 progress(' ID 0x%02x: %s Module found at baudrate %d ' % (nid, tpe, baud))

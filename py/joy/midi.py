@@ -8,14 +8,14 @@ DEV = None
 class Channels(object):
   def __init__(self):
     self._keys = set()
-    
+
   def update( self, dic ):
     self._keys.update(dic)
-    self.__dict__.update(dic)    
-        
+    self.__dict__.update(dic)
+
 class MidiInput( object ):
   BUF_SIZE = 1024
-  
+
   def __init__(self,name,ID):
     self.mi = pygm.Input(ID,MidiInput.BUF_SIZE)
     self.name = name
@@ -186,7 +186,7 @@ class KorgNanoKontrol( MidiInput ):
 
   def __init__(self,*argv,**kw):
     MidiInput.__init__(self,*argv,**kw)
-    
+
   def eventIter( self ):
     for (a,b,c,d),t in self.rawEventIter():
       dcr = self.C2N.get((a,b),None)
@@ -208,20 +208,20 @@ def joyEventIter():
       yield JoyEvent( MIDIEVENT,
         dev=k,sc=sc,kind=kind,index=index,value=value
       )
-      
-if 1: # function to help create an N2C dictionary 
+
+if 1: # function to help create an N2C dictionary
   import time, sys
   def foo(f='rewind'):
     nm = [ (0,k,0) for k in [
       'rewind',
       'play',
-      'forward', 
+      'forward',
       'repeat',
       'stop',
       'record'
     ]]
-    for sc in xrange(1,5):
-      for k in xrange(1,10):
+    for sc in range(1,5):
+      for k in range(1,10):
         nm.append((sc,'btnU',k))
         nm.append((sc,'btnL',k))
         nm.append((sc,'slider',k))
@@ -239,10 +239,10 @@ if 1: # function to help create an N2C dictionary
              continue
            if l[-1][0][:2] != last[:2]:
              break
-       last = l[-1][0]  
+       last = l[-1][0]
        print (": (%d,%d)," % (last[0],last[1]))
        sys.stdout.flush()
-     
+
 def init():
    """
    Initialize the pygame midi interface and enumerate the devices in
@@ -262,7 +262,7 @@ def init():
      }.get( nm, None )
      if cls:
        DEV[k] = cls( nm, k )
-       
+
 if __name__=="__main__":
   from time import sleep, time as now
   from joy.events import describeEvt
@@ -276,5 +276,3 @@ if __name__=="__main__":
       print (describeEvt(evt), "   ",
       sys.stdout.flush())
     sleep(0.05)
-    
-  

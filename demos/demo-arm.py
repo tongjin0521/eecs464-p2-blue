@@ -47,7 +47,7 @@ class MoveArm( Plan ):
       grip = abs(sf.getValue('joy0axis3')) # must be positive!
       #
       # Set arm angles
-      ang = [(bend+skew*k)*self.app.cfg.armGain for k in xrange(-len(self.seg)/2,len(self.seg)/2+1)]
+      ang = [(bend+skew*k)*self.app.cfg.armGain for k in range(-len(self.seg)/2,len(self.seg)/2+1)]
       # Set angles of all except wrist
       for mod,pos in zip(self.seg[:-1],ang[:-1]):
         mod.set_pos(pos)

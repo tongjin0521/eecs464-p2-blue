@@ -144,7 +144,7 @@ if len(argv)<2:
 else:
   SERVER_PORT = int(argv[1])
 
-print "Using server port ", SERVER_PORT
+print("Using server port ", SERVER_PORT)
 
 def _animation(f1):
   global s, app
@@ -161,7 +161,7 @@ def _animation(f1):
         break
       except SocketError,se:
         if se.errno == EADDRINUSE:
-          print "... address in use. Waiting a bit ..."
+          print("... address in use. Waiting a bit ...")
           sleep(2)
     srv.listen(2)
   except:

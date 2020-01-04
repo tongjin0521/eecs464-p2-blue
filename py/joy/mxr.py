@@ -12,7 +12,7 @@ from plans import Plan
 from loggit import progress
 
 
-class ServoWrapperMX(object):    
+class ServoWrapperMX(object):
     def __init__(self, servo, logger=None, **kw):
         assert isinstance(servo, MX64Module), "only works with MX"
         self.servo = servo
@@ -37,19 +37,19 @@ class ServoWrapperMX(object):
     def _ang2srv(self,ang):
         """
         Convert cycle angle (range 0..1) to servo position
-        
+
         Angle 0 is mapped to .posOfs, growing in direction .ori
         """
         return int((((float(ang)-self.posOfs)*self.ori) % 1.0) * self.aScl)
-    
+
     def _srv2ang(self,srv):
         """
         Convert cycle angle (range 0..1) to servo position
-        
+
         Angle 0 is mapped to .posOfs, growing in direction .ori
         """
         return float(srv)/self.aScl/self.ori + self.posOfs
-        
+
     def doCtrl(self):
         """execute an interaction of the controller update loop"""
         a = exp(1j * self.get_ang()*2*pi)
@@ -71,7 +71,7 @@ class ServoWrapperMX(object):
             if "F" in DEBUG:
                 progress("FB desRPM %g p %g c %g" % (self.desRPM, pFB, pCH))
         if self.logger:
-            self.logger.write( "ctrl", nid=self.servo.node_id,  
+            self.logger.write( "ctrl", nid=self.servo.node_id,
                               desRPM=str(self.desRPM), pFB=str(pFB), pCH=str(pCH) )
         # Push into the motor
         self._set_rpm(rpm)
@@ -123,7 +123,7 @@ class ServoWrapperMX(object):
         Get a velocity estimate
         """
         return self._v
-        
+
     def _clearV(self):
         """Clear state of velocity estimator"""
         self._lastA = None
@@ -160,9 +160,7 @@ if __name__=="__main__":
     from time import sleep
     T0 = now()
     def progress(msg,sameLine=False):
-        print "%5.3g " % (now()-T0),msg,
-        if not sameLine:
-            print
+        print("%5.3g " % (now()-T0),msg,end = "" if sameLine else "\n")
     c = L.Cluster(count=1)
     m = c.values()[0]
     w = ServoWrapperMX(m,ori=-1,posOfs=0.5)
@@ -172,8 +170,8 @@ if __name__=="__main__":
       b = [ w._srv2ang(w._ang2srv(ai)) for ai in a ]
       assert abs((a-b+.2)%1.0-.2).max() < 0.01
     except ImportError:
-      print "WARNING: No pylab for error estimate test"
-    DEBUG[:] = ['h','F','r','s']    
+      print("WARNING: No pylab for error estimate test")
+    DEBUG[:] = ['h','F','r','s']
     last = now()
     while 1:
         w.doCtrl()
@@ -183,4 +181,3 @@ if __name__=="__main__":
             last = now()
             progress("goal %g" % goal)
         sleep(0.3)
-        

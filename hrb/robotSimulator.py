@@ -32,7 +32,7 @@ class MoveForward(Plan):
     # Compute step along the forward direction
     step = self.dist / float(self.N)
     dt = self.dur / float(self.N)
-    for k in xrange(self.N):
+    for k in range(self.N):
       s.move(step)
       yield self.forDuration(dt)
 
@@ -57,7 +57,7 @@ class Turn(Plan):
     # Compute rotation step
     dt = self.dur / float(self.N)
     step = self.ang / float(self.N)
-    for k in xrange(self.N):
+    for k in range(self.N):
       s.turn(step)
       yield self.forDuration(dt)
 

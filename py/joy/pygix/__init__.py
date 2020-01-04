@@ -44,7 +44,7 @@ if IMPL == 'pygame':
     pygame.key.set_repeat (cfg.keyboardRepeatDelay, cfg.keyboardRepeatInterval)
     pygame.time.set_timer(TIMEREVENT, cfg.clockInterval)
     J = [ pygame.joystick.Joystick(k)
-            for k in xrange(pygame.joystick.get_count()) ]
+            for k in range(pygame.joystick.get_count()) ]
     for joy in J:
       joy.init()
     screen = pygame.display.set_mode(cfg.windowSize)

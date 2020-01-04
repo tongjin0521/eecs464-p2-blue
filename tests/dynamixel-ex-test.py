@@ -3,21 +3,21 @@ from struct import pack, unpack
 from time import time as now, sleep
 
 def chksum( dat ):
-  """Checksum as per EX-106 section 3-2 pp. 17  
+  """Checksum as per EX-106 section 3-2 pp. 17
   """
   return 0xFF ^ (0xFF & sum([ ord(c) for c in dat ]))
-  
+
 def mkPkt( nid, cmd, pars ):
-  """Build a Dynamixel EX packet, as per EX-106 section 3-2 pp. 16  
+  """Build a Dynamixel EX packet, as per EX-106 section 3-2 pp. 16
   """
-  body = pack('BB',nid,len(pars)+2)+cmd+pars  
+  body = pack('BB',nid,len(pars)+2)+cmd+pars
   return '\xff\xff'+body+pack("B",chksum(body))
 
 class PacketReader( object ):
   def __init__( self, ser ):
     self.ser = ser
     self.reset()
-    
+
   def reset( self ):
     self.buf = ''
     self.expect = 6
@@ -32,18 +32,18 @@ class PacketReader( object ):
     self.pkt = ''
     self.prev = ''
     return
-  
+
   def statsMsg( self ):
     return [
       'bytes in %d' % self.count,
       'packets in %d' % self.pktCount,
       'sync errors %d' % self.eSync,
-      'length errors %d' % self.eLen, 
+      'length errors %d' % self.eLen,
       'id errors %d' % self.eID,
       'crc errors %d' % self.eChksum,
       'buffer %d expecting %d' % (len(self.buf),self.expect)
     ]
-    
+
   def getPacket( self, maxlen=500 ):
     assert self.expect >= 6
     while len(self.buf)+self.ser.inWaiting()>=self.expect:
@@ -64,7 +64,7 @@ class PacketReader( object ):
       assert self.buf.startswith('\xFF\xFF')
       # Make sure that our nid makes sense
       ID = ord(self.buf[2])
-      if ID > 0xFD: # Where 0xFD is the maximum ID 
+      if ID > 0xFD: # Where 0xFD is the maximum ID
         self.eID+=1
         #print "Invalid ID is %02x" % ID
         self.buf = self.buf[1:]
@@ -75,7 +75,7 @@ class PacketReader( object ):
         self.eLen+=1
         self.expect = 6
         self.buf = self.buf[1:]
-	continue
+    continue
       if len(self.buf)<L:
         self.expect = L
         continue
@@ -87,8 +87,8 @@ class PacketReader( object ):
         self.expect = 6
         self.buf = self.buf[L:]
         continue
-      # At this point we have a packet that passed the checksum in 
-      #   positions buf[:L+1]. We peel the wrapper and return the 
+      # At this point we have a packet that passed the checksum in
+      #   positions buf[:L+1]. We peel the wrapper and return the
       #   payload portion
       pkt = self.buf[2:L-1]
 
@@ -100,7 +100,7 @@ class PacketReader( object ):
       return pkt
     # ends parsing loop
     # Function terminates returning a valid packet payload or None
-    return None 
+    return None
 
   def __iter__(self):
     while True:
@@ -113,10 +113,10 @@ class PacketReader( object ):
 class DynamixelTest( object ):
   WRITE_DATA = '\x03'# EX-106 sec. 3-2 pp. 16  (Instruction)
   ADDR_LED = '\x19' # EX-106 sec. 3-4 pp. 20
-    
+
   def __init__(self, nids ):
     # Create on and off packets for each ID
-    self.pkts = [ [ 
+    self.pkts = [ [
       mkPkt( nid, self.WRITE_DATA, self.ADDR_LED + '\x00' ),
       mkPkt( nid, self.WRITE_DATA, self.ADDR_LED + '\x01' )
     ] for nid in nids ]
@@ -129,7 +129,7 @@ class DynamixelTest( object ):
     self.pr = PacketReader( self.ser )
     self.nids = nids
     print "# ready to test:",nids
-    
+
   def run( self, rounds, n, dt, pause = 0.1 ):
     assert len(self.nids) == len(n) and len(n) == len(dt)
     # Reset everything
@@ -145,13 +145,13 @@ class DynamixelTest( object ):
     led = [0]*len(self.nids)
     rx = [0]*len(self.nids)
     ####start = now()
-    for r in xrange(rounds):
+    for r in range(rounds):
       if r:
         sleep(pause)
-      for nid in xrange(len(self.nids)):
+      for nid in range(len(self.nids)):
         t0 = now()
         ###last = t0
-        for k in xrange(1,1+n[nid]):
+        for k in range(1,1+n[nid]):
           t = now()
           # If we are too early --> sleep
           if t-t0<k*dt[nid]:

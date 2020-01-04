@@ -48,7 +48,7 @@ def event_name(typ):
   if nm is None:
       nm = "EVENT_%02d" % typ
   return nm
-  
+
 def describeEvt( evt, parseOnly = False ):
   """
   Describe an event stored in a pygame EventType object.
@@ -58,12 +58,12 @@ def describeEvt( evt, parseOnly = False ):
   cut and paste them into code that pattern matches events, e.g.
 
   >>> evt = pygame.event.Event(pygame.locals.MOUSEMOTION,pos=(176, 140),rel=(0, 1),buttons=(0, 0, 0))
-  >>> print describeEvt(evt,0)
+  >>> print(describeEvt(evt,0))
   type==MOUSEMOTION pos==(176, 140) rel==(0, 1) buttons==(0, 0, 0)
 
   If parseOnly is set, returns a dictionary with the extracted fields:
 
-  >>> print joy.events.describeEvt(evt,1)
+  >>> print(joy.events.describeEvt(evt,1))
   {'buttons': (0, 0, 0), 'type': 'MouseMotion', 'pos': (176, 140), 'rel': (0, 1)}
   """
   assert type(evt) is pygix.EventType

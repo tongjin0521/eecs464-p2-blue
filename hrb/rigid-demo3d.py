@@ -279,7 +279,7 @@ def example():
     a.plotAll(ang)
     f.set(visible=1)
     draw()
-    print "Angles: ",ang
+    print("Angles: ",ang)
     d = input("direction as list / angles as tuple?>")
     if type(d) == list:
       Jt = a.getToolJac(ang)
