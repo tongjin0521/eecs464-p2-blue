@@ -7,13 +7,14 @@ arguments and yielding one after the other.
 '''
 from joy.decl import *
 from joy import JoyApp, Plan
+from joy.misc import loadCSV
 
 class ShaveNHaircutPlan( Plan ):
   """
   ShaveNHaircutPlan shows a simple example of sequential composition:
   its behavior is to run the shave plan followed by the haircut plan.
   *use two modules
-  
+
   It starts shave and haircut sequentially by yielding the plans one after the other
 
   It is a useful demonstration of operation of multiple plans. It expects the motors
@@ -23,16 +24,16 @@ class ShaveNHaircutPlan( Plan ):
     Plan.__init__(self,app,*arg,**kw)
     self.shave = shave
     self.haircut = haircut
-  
+
   def behavior( self ):
     progress("Both: starting 'Shave' sequence")
     yield self.shave
     #this will start shave and wait for its completion
     progress("Both: starting 'Haircut' sequence")
-    yield self.haircut    
+    yield self.haircut
     #this starts haircut plan and waits for its completions
     progress("Both: done")
-    
+
 class ShaveNHaircutApp( JoyApp ):
   '''
   This decides the sequence based on users input
@@ -54,27 +55,27 @@ class ShaveNHaircutApp( JoyApp ):
     #
     # Use a sheetplan to realize SHAVE, outputting to self.shaveSpec
     #
-    self.shaveplan = SheetPlan(self, self.SHAVE, x=self.shaveSpec ) 
-    # give us start and stop messages; in your own code you can omit these 
-    self.shaveplan.onStart = lambda : progress("Shave: starting") 
-    self.shaveplan.onStop = lambda : progress("Shave: done") 
+    self.shaveplan = SheetPlan(self, self.SHAVE, x=self.shaveSpec )
+    # give us start and stop messages; in your own code you can omit these
+    self.shaveplan.onStart = lambda : progress("Shave: starting")
+    self.shaveplan.onStop = lambda : progress("Shave: done")
     #
     # Use a sheetplan to realize H, outputting to s
     #
     self.hairplan = SheetPlan(self, self.HAIRCUT, x=self.hairSpec )
-    # give us start and stop messages; in your own code you can omit these 
-    self.hairplan.onStart = lambda : progress("Haircut: starting") 
-    self.hairplan.onStop = lambda : progress("Haircut: done") 
+    # give us start and stop messages; in your own code you can omit these
+    self.hairplan.onStart = lambda : progress("Haircut: starting")
+    self.hairplan.onStop = lambda : progress("Haircut: done")
     #
     # Set up a ShaveNHaircutPlan using both of the previous plans
     #
     self.both = ShaveNHaircutPlan(self, self.shaveplan, self.hairplan)
-  
+
   #acts if a key is pressed
   def onEvent(self,evt):
     if evt.type != KEYDOWN:
       return
-    # assertion: must be a KEYDOWN event 
+    # assertion: must be a KEYDOWN event
     if evt.key == K_s:
       if ( not self.shaveplan.isRunning()
            and not self.both.isRunning() ):
@@ -84,7 +85,7 @@ class ShaveNHaircutApp( JoyApp ):
            and not self.both.isRunning() ):
         self.hairplan.start()
     elif evt.key == K_b:
-      if ( not self.shaveplan.isRunning() 
+      if ( not self.shaveplan.isRunning()
            and not self.hairplan.isRunning()
            and not self.both.isRunning() ):
         self.both.start()
@@ -117,33 +118,33 @@ if __name__=="__main__":
     #help
       sys.stdout.write("""
   Usage: %s [options]
-  
+
     'Shave and a Haircut' example of running Plan-s in parallel and in
     sequence. The example shows that plans can run in parallel, and that
     Plan behaviors (e.g. the ShaveNHaircutPlan defined here) can use other
     plans as sub-behaviors, thereby "calling them" sequentially.
-    
+
     When running, the demo uses the keyboard. The keys are:
       's' -- start "Shave"
       'h' -- start "Haircut"
       'b' -- start "Both", calling "Shave" and "Haircut" in sequence
       'escape' -- exit program
-      
-    Options:      
+
+    Options:
       --mod-count <number> | -c <number>
         Search for specified number of modules at startup
-      
+
       --shave <spec> | -s <spec>
       --haircut <spec> | -h <spec>
         Specify the output setter to use for 'shave' (resp. 'haircut')
-        
+
         Typical <spec> values would be:
          '#shave ' -- to print messages to the terminal with '#shave ' as prefix
          '>x' -- send to Scratch sensor 'x'
          'Nx3C/@set_pos' -- send to position of CKBot servo module with ID 0x3C
-        
+
         NOTE: to use robot modules you MUST also specify a -c option
-        
+
     """ % sys.argv[0])
       sys.exit(1)
     # ENDS cmdline parsing loop
