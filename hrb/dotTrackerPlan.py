@@ -4,6 +4,9 @@ from time import time as now
 from joy.decl import *
 from joy.plans import Plan
 from joy.remote import Source
+
+assert False, "Needs upgrade to use CV2; base on laserPointerTracker.py"
+
 from SimpleCV import *
 
 class DotTrackerPlan( Plan ):
