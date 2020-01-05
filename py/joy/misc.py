@@ -20,6 +20,8 @@ printExc -- Print a formatted stack-trace to standard error
 loadCSV -- Load a CSV file into a list of lists
 
 inlineCSV -- Similar to loadCSV, but takes the CSV text from a multiline python string
+
+requiresPyGame -- throws exception if not using pygame scheduler
 """
 
 from traceback import format_exception
