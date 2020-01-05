@@ -139,13 +139,6 @@ class Sensor( object ):
         "%d" % res, ha='center',va='center' )
     return int(res)
 
-if len(argv)<2:
-  SERVER_PORT = 8080
-else:
-  SERVER_PORT = int(argv[1])
-
-print(("Using server port ", SERVER_PORT))
-
 def _animation(f1):
   global s, app
   # Open socket
@@ -157,7 +150,7 @@ def _animation(f1):
     srv = socket(AF_INET, SOCK_STREAM )
     while True:
       try:
-        srv.bind(("0.0.0.0",SERVER_PORT))
+        srv.bind(("0.0.0.0",8080))
         break
       except SocketError as se:
         if se.errno == EADDRINUSE:
@@ -260,7 +253,7 @@ def _animation(f1):
       pts[lidx,...] *= (1-alpha)
       pts[lidx,...] += alpha * h[lidx,...]
     # Print indicator telling operator what we did
-    progress( "%7.2f %5d  "% (now()-T0,nmsg) + lbl[didx+2*lidx+4*fidx].tostring()
+    progress( "%7.2f %5d  "% (now()-T0,nmsg) + ''.join(lbl[didx+2*lidx+4*fidx])
              , sameLine = True )
     #
     # Collect the corner tags and estimate homography
@@ -334,7 +327,7 @@ def _animation(f1):
       lo = [ now(), zc[ROBOT_TAGID].real, zc[ROBOT_TAGID].imag, angle(ang),
              int(zc[waypoints[M]].real), int(zc[waypoints[M]].imag),
              int(zc[waypoints[min(M+1,lwp)]].real), int(zc[waypoints[min(M+1,lwp)]].imag) ]
-      logfile.write(", ".join(["%.3f" % x for x in lo])+"\n")
+      logfile.write((", ".join(["%.3f" % x for x in lo])+"\n").encode('ascii'))
     # indicate robot
     a1.plot( zc[ROBOT_TAGID].real, zc[ROBOT_TAGID].imag, '*r' ,ms=15)
     #
@@ -411,7 +404,7 @@ def _animation(f1):
     # Send sensor reading out
     #s.sendto( json_dumps(pkt), ROBOT_INET_ADDR )
     try:
-      client.send( json_dumps(pkt) )
+      client.send( json_dumps(pkt).encode('ascii') )
       progress( "%s %s       " % (pkt['b'],pkt['f']),sameLine=True)
     except SocketError as er:
       progress( str(er) )
@@ -427,6 +420,13 @@ def _animation(f1):
 
 
 class App(JoyApp):
+  def __init__(self,*arg,**kw):
+      if 'cfg' not in kw:
+          kw['cfg'] = dict(remote=False)
+      else:
+          kw['cfg'].update(remote=False)
+      return JoyApp.__init__(self,*arg,**kw)
+      
   def onStart(self):
     AnimatorPlan(self,_animation).start()
 

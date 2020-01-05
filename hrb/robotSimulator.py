@@ -125,7 +125,7 @@ class RobotSimulatorApp( JoyApp ):
     # Get the simulated tag message
     msg = self.robSim.getTagMsg()
     # Send message to waypointServer "as if" we were tagStreamer
-    self.sock.sendto(msg, self.srvAddr)
+    self.sock.sendto(msg.encode("ascii"), self.srvAddr)
 
   def onEvent( self, evt ):
     #### DO NOT MODIFY --------------------------------------------

@@ -40,7 +40,7 @@ class SensorPlanTCP( Plan ):
     self.sock = None
     self.lastSensor = (0,None,None)
     self.lastWaypoints = (0,[])
-    self.buf = ''
+    self.buf = b''
 
   def _connect( self ):
     """Set up the socket"""
@@ -48,7 +48,7 @@ class SensorPlanTCP( Plan ):
     s.connect(self.svrAddr)
     s.setblocking(0)
     self.sock = s
-    self.buf = ''
+    self.buf = b''
     progress("Sensor connected to %s:%d" % self.svrAddr)
 
   def stop( self ):
@@ -87,7 +87,7 @@ class SensorPlanTCP( Plan ):
         returns '' if nothing was received
         """
         # if buffer contains no complete messages --> read socket
-        if self.buf.find('}')<0:
+        if self.buf.find(b'}')<0:
             # receive an update / skip
             try:
               msg = self.sock.recv(1024)
@@ -98,14 +98,14 @@ class SensorPlanTCP( Plan ):
                 progress("Connection failed: "+str(se))
                 self.sock.close()
                 self.sock = None
-              return ''
+              return b''
             self.buf = self.buf + msg
         # Use previously buffered data
         buf = self.buf
         # End of dictionary should be end of message
-        f = buf.find("}")
+        f = buf.find(b"}")
         if f<0:
-          return ''
+          return b''
         # Pull out the first dictionary
         self.buf = buf[f+1:]
         return buf[:f+1]
