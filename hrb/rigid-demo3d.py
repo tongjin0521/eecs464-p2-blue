@@ -280,9 +280,12 @@ def example():
     f.set(visible=1)
     draw()
     print("Angles: ",ang)
-    d = input("direction as list / angles as tuple?>")
+    d = eval(input("direction as list / angles as tuple?>"))
     if type(d) == list:
       Jt = a.getToolJac(ang)
       ang = ang + dot(pinv(Jt)[:,:len(d)],d)
     else:
       ang = d
+
+if __name__=="__main__":
+    print("Run example()")
