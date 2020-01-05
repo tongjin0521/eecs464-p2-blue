@@ -1,37 +1,45 @@
 """
-FILE: multiprotocol.py defines the MultiProtocol class, a class that maps 
+FILE: multiprotocol.py defines the MultiProtocol class, a class that maps
 multiple Protocol instances under a single umbrella, allowing multiple robot
 communication busses and protocols to be used from a single user application
 """
 
 from .ckmodule import AbstractProtocol, AbstractBus
+from warnings import warn
+warn("""
+
+     This module is experimental; use at your own risk!
+     If you really think you need this, please contact Revzen to assist in usage
+
+     
+""")
 
 class NidMapper( object ):
     """class NidMapper implements a mapping between "external" and "internal"
     node ID values. The internal node ID values are associated with owners,
     which are typically Protocol instances.
-    
+
     IMPLEMENTATION:
-      
+
       The current implementation is silly -- it gives each owner an address
       space of a given number of bits (default 8). External node ID values
       consist of owner ID bits followed by node ID bits
     """
-    
+
     def __init__( self, bits=8 ):
         self.tbl = {}
         self.itbl = {}
         self.bitShift = bits
         self.mask = (1<<bits)-1
-    
+
     def iterowners( self ):
         """Iterate over all the node owners"""
         return iter(self.tbl.values())
-        
+
     def addOwner( self, owner, oid=None ):
         """
         Add a new node owner
-        
+
         INPUT:
             owner -- hashable -- "owner" of a node range; must be hashable
             oid -- int -- owner ID to use, or None to have one generated
@@ -45,7 +53,7 @@ class NidMapper( object ):
             raise KeyError("Owner ID %d re-uses existing ID" % oid )
         self.tbl[oid] = owner
         self.itbl[hash(owner)] = oid
-    
+
     def mapX2I( self, nid ):
         """Map external node ID into an owner and internal node ID"""
         nid = int(nid)
@@ -54,19 +62,21 @@ class NidMapper( object ):
         owner = self.tbl[oid]
         inid = (nid & self.mask)
         return owner, inid
-    
+
     def mapI2X( self, owner, nid ):
         """Map owner and node ID into external node ID"""
         nid = int(nid)
         oh = hash(owner)
         assert nid == (nid & self.mask), "Node ID is within address range"
         return (self.itbl[oh]<<self.bitShift) | nid
-        
+
 class MultiProtocol( AbstractProtocol ):
+    DEFAULT_PORT = None # required by arch API
+
     def __init__(self,*subs):
         """
         Create a protocol which multiplexes multiple sub-protocols
-        
+
         For convenience, these sub-protocols can be listed sequentially
         in the constructor
         """
@@ -76,7 +86,7 @@ class MultiProtocol( AbstractProtocol ):
             if isinstance(subs[0], AbstractBus):
                 raise ValueError("MultiProtocol() cannot accept a Bus parameter")
             self.addSubProtocols(*subs)
-    
+
     def addSubProtocols(self, *subs):
         """
         Add one or more sub-protocols
@@ -89,13 +99,13 @@ class MultiProtocol( AbstractProtocol ):
         for o in self.nim.iterowners():
             if hasattr(o,'off') and callable(o.off):
                 o.off()
-                
+
     def reset( self, *argv, **kwarg ):
         """Broadcast the p.reset() call to any supporting subs"""
         for o in self.nim.iterowners():
             if hasattr(o,'reset') and callable(o.reset):
                 o.reset(*argv, **kwarg)
-    
+
     def scan( self, *argv, **kwarg ):
         """
         Broadcast the p.scan() call to any supporting subs, then
@@ -107,8 +117,8 @@ class MultiProtocol( AbstractProtocol ):
                 continue
             s = p.scan(*argv, **kwarg)
             res.extend([ self.nim.mapI2X(p,inid) for inid in s])
-        return res    
-       
+        return res
+
     def update( self, t=None ):
         """Update all sub-protocols and collect heartbeats"""
         hb = {}
@@ -120,7 +130,7 @@ class MultiProtocol( AbstractProtocol ):
                 xnid = self.nim.mapI2X(p,inid)
                 hb[xnid] = val
         self.heartbeats = hb
-    
+
     def hintNodes( self, nodes ):
         """Hint the existence of specified NIDs"""
         tbl = {}
@@ -134,7 +144,7 @@ class MultiProtocol( AbstractProtocol ):
         # Hint the relevant nodes to each sub-protocol
         for p,nids in tbl.items():
             p.hintNodes(nids)
-            
+
     def generatePNA( self, nid ):
         """
         Generate a ProtocolNodeAdaptor for the specified nid, using the
@@ -142,7 +152,7 @@ class MultiProtocol( AbstractProtocol ):
         """
         p,inid = self.nim.mapX2I(nid)
         return p.generatePNA(inid)
-  
+
 if __name__=="__main__":
     # Unit test
     import ckbot.nobus as NB
@@ -151,7 +161,6 @@ if __name__=="__main__":
     p2 = NB.Protocol()
     NIDS = [0x101, 0x102, 0x107, 0x202, 0x203]
     mp = MultiProtocol(p1,p2)
-    c = Cluster( 
+    c = Cluster(
               arch=mp,count=len(NIDS),fillMissing=True, required=NIDS
     )
-    

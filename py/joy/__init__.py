@@ -298,7 +298,7 @@ class JoyApp( object ):
     self.safety = []
     # init CKBot cluster interface
     if robot is not None:
-      self.__initRobot(robot)
+      self._initRobot(robot)
     else:
       progress("No robot")
       self.robot = None #: Interface to CKBot robot modules
@@ -359,9 +359,9 @@ class JoyApp( object ):
         progress("Nothing to load at confPath='%s'" % confPath)
     self.cfg.update(cfg)
 
-  def __initRobot( self, robot ):
+  def _initRobot( self, robot ):
     """
-    (private) Initialize the ckbot.Cluster robot interface
+    (protected) Initialize the ckbot.Cluster robot interface
 
     INPUT:
       robot -- dict -- Dictionary of settings for robot.populate
@@ -388,12 +388,12 @@ class JoyApp( object ):
       del robot['arch']
     self.robot = Cluster(arch=a, **robot)
     if self.cfg.robotPollRate:
-      self.__initPosPolling()
+      self._initPosPolling()
     if self.cfg.minimalVoltage:
-      return self.__initVoltageSafety()
+      return self._initVoltageSafety()
 
-  def __initPosPolling(self):
-    """(private)
+  def _initPosPolling(self):
+    """(protected)
     Set up servos for position polling
     """
     self.__pollPos = []
@@ -410,8 +410,8 @@ class JoyApp( object ):
       self.__pollPos.append(m)
 
 
-  def __initVoltageSafety( self ):
-    """(private)
+  def _initVoltageSafety( self ):
+    """(protected)
     collect all robot modules that have a get_voltage() method
     and set them up for polling position
     """

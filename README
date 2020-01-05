@@ -25,10 +25,17 @@ Version 3.0 release notes:
   * Major revision in directory structure:
       - $PYCKBOTPATH/apps is gone from the hrb branch, and $PYCKBOTPATH/apps/hrb is now just $PYCKBOTPATH/hrb
       - $PYCKBOTPATH/bin contains all the tools, chmod-ed executable, and supporting scripts.
-          In particular, dynamixel-config.py and supporting data moved to $/bin
+          In particular, dynamixel-config.py and supporting data moved to $PYCKBOTPATH/bin
+      - all scratch related demos are in a demos/scratch subdirectory
   * Tools renamed and wrapped:
       - demo-remoteSource is now $PYCKBOTPATH/bin/controller.py; since it requires pygame, it defaults to running with python rather than python3. To override the scheduler to use pygame, use PYGIXSCHD=pygame, or run using the $PYCKBOTPATH/ctrl shell script
       - demo-playback is now $PYCKBOTPATH/bin/keyframes.py
   * New features for keyframes.py (formerly demo-playback):
       - "live" command allows using an external midi controller.
         See online help for keys.
+  * Added capabilities:
+      - multicsv support and demo-multicsv to JoyApp
+      - joy/scope.py tested and working
+      - multijoy support allowing clusters to be combined under a JoyApp (partially working)
+  * Removed all CAN specific code; all od (Object Directory) support
+  *

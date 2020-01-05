@@ -37,7 +37,7 @@ class MultiJoyApp(JoyApp):
     robot['names']=nn
     # Show the names in the progress log
     progress("\t# Robot bus #%d" % n)
-    for k,v in robot.iteritems():
+    for k,v in robot.items():
       progress("\t\t%s=%s" % (k,repr(v)))
     # Check for both protocol= and arch= parameters
     p = robot.get('protocol',None)
