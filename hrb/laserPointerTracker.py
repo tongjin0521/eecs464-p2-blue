@@ -5,7 +5,7 @@ from pdb import set_trace as BRK
 
 # Standard imports
 from cv2 import (
-    SimpleBlobDetector, VideoCapture, drawKeypoints,
+    SimpleBlobDetector_create as SimpleBlobDetector, VideoCapture, drawKeypoints,
     imshow as cv2_imshow, imwrite as cv2_imwrite,
     COLOR_RGB2GRAY, cvtColor, circle as cv2_circle,
     destroyAllWindows, waitKey, SimpleBlobDetector_Params
@@ -112,7 +112,7 @@ class LaserTracker( object ):
 
 if __name__=="__main__":
   import sys
-  if len(sys.argv) < 1:
+  if len(sys.argv) < 2:
     sys.stderr.write("Usage: %s <filename>\n" % sys.argv[0])
     fn = 'foo.csv.gz'
   else:
