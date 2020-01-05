@@ -42,10 +42,10 @@ def tags2list( dic ):
     """
     return [
         {
-          u'i' : k,
-          u'p': [ list(row) for row in v ]
+          'i' : k,
+          'p': [ list(row) for row in v ]
         }
-        for k,v in dic.iteritems()
+        for k,v in dic.items()
     ]
 
 def findXing(a,b):
@@ -110,7 +110,7 @@ class RobotSimInterface( object ):
 
   def refreshState( self ):
     """<<pure>> refresh the value of self.tagPos and self.laserAxis"""
-    print "<<< MUST IMPLEMENT THIS METHOD >>>"
+    print("<<< MUST IMPLEMENT THIS METHOD >>>")
 
   def getTagMsg( self ):
     """

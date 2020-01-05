@@ -15,7 +15,7 @@ from time import time as now, sleep
 from joy import JoyApp, speak, progress
 from joy.plans import AnimatorPlan
 from joy.decl import KEYDOWN
-execfile('waypointShared.py')
+exec(compile(open('waypointShared.py').read(), 'waypointShared.py', 'exec'))
 
 #### CONFIGURATION ##################################################
 
@@ -144,7 +144,7 @@ if len(argv)<2:
 else:
   SERVER_PORT = int(argv[1])
 
-print("Using server port ", SERVER_PORT)
+print(("Using server port ", SERVER_PORT))
 
 def _animation(f1):
   global s, app
@@ -159,7 +159,7 @@ def _animation(f1):
       try:
         srv.bind(("0.0.0.0",SERVER_PORT))
         break
-      except SocketError,se:
+      except SocketError as se:
         if se.errno == EADDRINUSE:
           print("... address in use. Waiting a bit ...")
           sleep(2)
@@ -396,10 +396,10 @@ def _animation(f1):
         return
     # Add waypoint update to packet, as needed
     if now()-lastWay>WAY_RATE:
-      pkt['w'] = zip(
+      pkt['w'] = list(zip(
         [ int(x) for x in zc[waypoints[M:]].real],
         [ int(x) for x in zc[waypoints[M:]].imag]
-      )
+      ))
       lastWay = now()
     # If we don't have a client -- listen
     if client is None:
@@ -413,7 +413,7 @@ def _animation(f1):
     try:
       client.send( json_dumps(pkt) )
       progress( "%s %s       " % (pkt['b'],pkt['f']),sameLine=True)
-    except SocketError, er:
+    except SocketError as er:
       progress( str(er) )
       progress( "Connection dropped" )
       if logfile:

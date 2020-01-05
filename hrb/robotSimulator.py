@@ -163,13 +163,13 @@ class RobotSimulatorApp( JoyApp ):
     return # ignoring non-KEYDOWN events
 
 if __name__=="__main__":
-  print """
+  print("""
   Running the robot simulator
 
   Listens on local port 0xBAA (2986) for incoming waypointServer
   information, and also transmits simulated tagStreamer messages to
   the waypointServer.
-  """
+  """)
   import sys
   if len(sys.argv)>1:
       app=RobotSimulatorApp(wphAddr=sys.argv[1], cfg={'windowSize' : [160,120]})

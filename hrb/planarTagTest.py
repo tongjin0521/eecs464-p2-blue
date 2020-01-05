@@ -88,7 +88,7 @@ def _animation(fig):
       while True:
         # read data as fast as possible
         msg = s.recv(1<<16)
-    except SocketError, se:
+    except SocketError as se:
       # until we've run out; last message remains in m
       pass
     # make sure we got something
@@ -116,7 +116,7 @@ def _animation(fig):
     # Collect the corner tags
     try:
       roi = array( [ [c[nm][0], c[nm][1], 1] for nm in corners ] )
-    except KeyError, ck:
+    except KeyError as ck:
       progress( "-- missing corner %d" % ck)
       yield
       continue
@@ -125,7 +125,7 @@ def _animation(fig):
     prj = fitHomography( roi, ref )
     mrk = dot(roi,prj)
     mrk = mrk[:,:2] / mrk[:,[-1]]
-    print
+    print()
     # display it
     fig.clf()
     fa = fig.gca()
@@ -133,7 +133,7 @@ def _animation(fig):
     fa.plot( mrk[:,0],mrk[:,1],'sc',ms=15)
     ang0 = [-1+1j,1+1j,1-1j,-1-1j]
     # Loop on all tags
-    for nm,p in h.iteritems():
+    for nm,p in h.items():
       # Project back
       a = dot(c_[p,[1]*len(p)],prj)
       a = a[:,:2]/a[:,[-1]]

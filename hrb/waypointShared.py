@@ -33,7 +33,7 @@ ref = dot([[0,-1,0],[-1,0,0],[0,0,1]],ref0)
 ref = ref.T
 
 # Tag IDs for waypoints
-waypoints = range(4)
+waypoints = list(range(4))
 
 def lineSensorResponse( d, noise ):
   """

@@ -31,7 +31,7 @@ class SensorPlanTCP( Plan ):
   and decode WayPoint messages
   """
   def __init__( self, app, *arg, **kw ):
-    if kw.has_key("server"):
+    if "server" in kw:
       self.svrAddr = (kw['server'],WAYPOINT_MSG_PORT)
       del kw['server']
     else:
@@ -91,7 +91,7 @@ class SensorPlanTCP( Plan ):
             # receive an update / skip
             try:
               msg = self.sock.recv(1024)
-            except SocketError, se:
+            except SocketError as se:
               # If there was no data on the socket
               #   --> not a real error, else kill socket and start a new one
               if se.errno != 11:
@@ -127,7 +127,7 @@ class SensorPlanTCP( Plan ):
       dic = json_loads(msg)
       ts = self.app.now
       self.lastSensor = (ts, dic['f'], dic['b'])
-      if dic.has_key("w"):
+      if "w" in dic:
         self.lastWaypoints = (ts,dic['w'])
       # NOTE: does not yield if flooded with traffic
 
@@ -137,13 +137,13 @@ if __name__=="__main__":
   from joy import JoyApp
   from joy.decl import *
 
-  print """
+  print("""
   Running the sensor reader
 
   Connects a SensorPlanTCP to a waypointTask do display the sensor readings
 
   Useage: %s <server-IP>
-  """ % sys.argv[0]
+  """ % sys.argv[0])
 
   class SensorApp( JoyApp ):
     """Concrete class SensorApp <<singleton>>

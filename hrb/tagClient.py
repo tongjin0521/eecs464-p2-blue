@@ -32,7 +32,7 @@ def _animation(fig):
       if m and len(m)>2:
         msg = m
       continue
-    except SocketError, se:
+    except SocketError as se:
       # until we've run out; last message remains in m
       pass
     # make sure we got something
