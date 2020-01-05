@@ -660,12 +660,17 @@ class JoyApp( object ):
 
   def _startRemote( self ):
     """(private) start remote interface if configured"""
-    if self.cfg.remote is None:
+    if not self.cfg.remote:
       self.remote = None
       return
-    self.remote = remote.Sink(self, convert=lambda x: x, **self.cfg.remote )
+    try:
+        cfg = dict(self.cfg.remote)
+    except:
+        cfg = {}
+    self.remote = remote.Sink(self, convert=lambda x: x, **cfg )
     progress("Starting up a remote.Sink interface")
     self.remote.start()
+
   def run( self ):
     """
     Run the JoyApp.
