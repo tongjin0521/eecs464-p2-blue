@@ -6,7 +6,7 @@ on the argument given. It operates plans sequentially by passing multiple plans 
 arguments and yielding one after the other.
 '''
 from joy.decl import *
-from joy import JoyApp, Plan
+from joy import JoyApp, Plan, SheetPlan
 from joy.misc import loadCSV
 
 class ShaveNHaircutPlan( Plan ):
@@ -89,17 +89,18 @@ class ShaveNHaircutApp( JoyApp ):
            and not self.hairplan.isRunning()
            and not self.both.isRunning() ):
         self.both.start()
-    elif evt.key == K_ESCAPE:
-        self.stop()
+    else: # punt to superclass
+        return JoyApp.onEvent(self,evt)
 
 if __name__=="__main__":
+  from sys import argv
   #give default values to the command line arguements
   robot = None
   scr = None
   shaveSpec = "#shave "
   hairSpec = "#haircut "
   #process the command line arguements
-  args = list(sys.argv[1:])
+  args = list(argv[1:])
   while args:
     arg = args.pop(0)
     if arg=='--mod-count' or arg=='-c':
