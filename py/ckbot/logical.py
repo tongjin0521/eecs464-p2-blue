@@ -251,7 +251,7 @@ class Cluster(dict):
       if time_end < now():
         if raiseClass is None:
           break
-        raise raiseClass("CAN discovery timeout",
+        raise raiseClass("Module discovery timeout",
           timeout=timeout, found=nids, required=required, count=count )
     return nids
 
