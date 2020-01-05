@@ -26,7 +26,11 @@ class ServoWrapper(Plan):
       This is done by setting .pos to the segment end position, and setting
       .time to the duration (in mSec) for getting there.
       Angles can be set to arbitrary units with a .amp amplification factor
-      and a .ofs offset value.
+      and a .ofs offset value. The update rate for motors can be adjusted using
+      the .rate member.
+
+      Once the motion is complete, it is replaced with repeating a set_pos for
+      the final position indefinitely.
 
       By default, angles are given in degrees.
 
@@ -42,7 +46,8 @@ class ServoWrapper(Plan):
             t0 -- float -- start time of current motion plan
             v0 -- float -- velocity of currect motion plan
             pos -- float -- desired position at knot point (Scratch units)
-            time -- float -- desired duration time of knot point (msec)
+            time -- int -- desired duration time of knot point (msec)
+            rate -- int -- update rate for motor commands (msec)
         """
         Plan.__init__(self, app)
         self.module=module
@@ -53,6 +58,7 @@ class ServoWrapper(Plan):
         self.p0=None
         self.pos=None
         self.now=self.app.now
+        self.rate=100
 
     def itch(self):
         """
@@ -74,7 +80,7 @@ class ServoWrapper(Plan):
 
     def behavior(self):
         while True:
-            yield
+            yield self.forDuration(self.rate * 1e-3)
             # Plan should stop if time is set to None
             if self.time is None:
                 return
@@ -82,7 +88,7 @@ class ServoWrapper(Plan):
             self.p=self.p0+self.v0*(now-self.t0)
             self.set_spos(self.p)
             # If we reached the goal point --> stop forever
-            if now>(self.t0+self.time):
+            if (now-self.t0)*1000>self.time:
                 self.endMotion()
 
     def endMotion(self):
@@ -99,11 +105,16 @@ class ServoWrapper(Plan):
         """
         Construct motion plan from current Scratch variables
         """
-        self.p0=self.get_spos()
-        self.v0=(self.pos-self.p0)/self.time
+        try:
+            self.p0=self.get_spos()
+            self.v0=1000*(self.pos-self.p0)/float(self.time)
+        except ZeroDivisionError:
+            return
+        except TypeError:
+            return
         self.t0=self.app.now
         if 'S' in DEBUG:
-            progress("%s scr: p0=%6.2g v0=%6.2g" % (self.module.name,self.p0,self.v0))
+            progress("%s plan: p0=%6.2g p1=%6.2g v0=%6.2g T=%6.2g" % (self.module.name,self.p0,self.pos,self.v0,self.time * 1e-3))
         if not self.isRunning():
             if 'S' in DEBUG:
                 progress("%s starting scratch wrapper" %self.module.name)
@@ -113,20 +124,30 @@ class ServoWrapper(Plan):
         """
         Process a command from scratch
         """
-        if not var in {'amp', 'ofs', 'pos', 'time'}:
-            raise NameError("'%s', Scratch vars should be 'amp', 'ofs', 'pos' or 'time'" % var)
-        value = float(value)
-        if var != 'time':
-            setattr(self, var, value)
-        else: # setting 'time'
-            if value<=0:
-                return
-            self.time = float(value)
-            self.planMotion()
+        if not var in {'amp', 'ofs', 'pos', 'time','mode'}:
+            raise NameError("'%s', Scratch vars should be 'amp', 'ofs', 'pos','mode' or 'time'" % var)
+        if 'S' in DEBUG:
+            progress("%s set: %s = %6g" % (self.module.name,var,float(value)))
+        if var == 'mode':
+            if int(value) in [0,1,2]:
+                self.module.set_mode(int(value))
+            return
+        setattr(self, var, float(value))
 
 class ScratchApp( JoyApp ):
+    """
+    concrete class ScratchApp extends JoyApp
+
+    A ScratchApp automatically wraps all servos with ServoWrapper instances,
+    and processes scratch events to give them commands. The scratch
+    events take on the form of <<module>>.<<property>> sensors set to values.
+    The .time property must be set last, to trigger creation of the second order
+    hold for that motor.
+    In addition, all commands from scratch are queued until the special sensor "GO"
+    is given a value; at that time all queued commands are processed.
+    """
     def __init__(self,*arg,**kw):
-        if "scr" not in kw:#not kw.has_key("scr"):
+        if not kw.has_key("scr"):
             kw.update(scr={})
         JoyApp.__init__(self,*arg,**kw)
         self.sm = ModulesByName()
@@ -142,13 +163,32 @@ class ScratchApp( JoyApp ):
                 progress("Warning: no Scratch wrapper available for "+str(m))
                 continue
             self.sm._add(m.name, ServoWrapper(self, module=m))
+        self.q = []
 
     def onScratchEvent(self, evt):
-        """
-        Process a SCRATCHUPDATE event.
+        assert evt.type==SCRATCHUPDATE
+        if evt.var != "GO":
+            self._enQueueEvt(evt)
+            return
+        ### --> 'GO' event received
+        act = set()
+        # Process all the settings
+        for sw,var,val in self.q:
+            sw.scrSet(var,val)
+            # If '.time' was set --> we will need to activate this wrapper
+            if var == 'time':
+                act.add(sw)
+        # Activate all wrappers that needed activation
+        for sw in act:
+            sw.planMotion()
+        self.q = []
 
-        Normally, this is called from .onEvent() when a SCRATCHUPDATE event is
-        is identified.
+    def _enQueueEvt(self, evt):
+        """ *PRIVATE*
+        Parse a SCRATCHUPDATE event and put on queue if valid.
+
+        Normally, this is called to error check Scratch events before they are
+        put in the queue.
         """
         assert evt.type==SCRATCHUPDATE
         nm,var = (evt.var.split(".")+[None,None])[:2]
@@ -159,7 +199,7 @@ class ScratchApp( JoyApp ):
             progress("Scratch addressed unknown servo '%s'" % nm)
             return
         sw = getattr(self.sm,nm)
-        sw.scrSet(var,evt.value)
+        self.q.append( (sw,var,evt.value) )
 
     def onEvent(self,evt):
         """
