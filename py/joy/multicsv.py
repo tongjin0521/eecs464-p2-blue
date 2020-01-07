@@ -1,7 +1,7 @@
 from os.path import getmtime
-from misc import loadCSV
-from decl import KEYDOWN, progress
-from plans import Plan,SheetPlan
+from . misc import loadCSV
+from . decl import KEYDOWN, progress
+from . plans import Plan,SheetPlan
 from joy import JoyApp, DEBUG
 
 class MultiSheetPlan( Plan ):
@@ -14,7 +14,7 @@ class MultiSheetPlan( Plan ):
         self.run = None
 
     def addCSV(self,nm,fn):
-        if self.subs.has_key(nm):
+        if nm in self.subs:
             raise KeyError("Sheet '%s' already exists" % nm)
         self.subs[nm] = EasyCSV(self.app,fn)
 
@@ -72,7 +72,7 @@ class MultiCSVApp( JoyApp ):
     def onStart(self):
         self.msp = MultiSheetPlan(self)
         progress("Configuring CSV handlers:")
-        for k,v in self.__class__.__dict__.iteritems():
+        for k,v in self.__class__.__dict__.items():
             if k.startswith("onKey_") and type(v) is str:
                 self.msp.addCSV(k,v)
                 progress("\t\t%s --> '%s'" % (k,v))
