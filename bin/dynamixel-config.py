@@ -117,7 +117,7 @@ class dynamixelConfigurator:
             progress("Testing baudrate %d" % baud)
             self.p.bus.reconnect(baudrate = baud)
             self.p.reset()
-            for nid in self.p.pnas.keys():
+            for nid in list(self.p.pnas.keys()):
                 tpe = self.read_type(nid)
                 nid_str.append(' ID 0x%02x: %s Module found at baudrate %d ' % (nid, tpe, baud))
         if not nid_str:
@@ -131,7 +131,7 @@ class dynamixelConfigurator:
         """
         Check to ensure that we don't try to overwrite another nid
         """
-        if self.p.pnas.has_key(nid):
+        if nid in self.p.pnas:
             progress("ID 0x%02x already exists cannot set new node id" % nid)
             return False
         return True
@@ -167,14 +167,14 @@ class dynamixelConfigurator:
         # For memory address names set those attributes
         node = self.p.pnas[nid]
         if self.opaque:
-          progress('Configuring ID 0x%02x with parameters %s' % (nid, self.cfg.keys()))
+          progress('Configuring ID 0x%02x with parameters %s' % (nid, list(self.cfg.keys())))
         else:
           progress('Configuring ID 0x%02x with parameters %s' % (nid, self.cfg))
         node = self.p.pnas[nid]
-        for name, val in self.cfg.iteritems():
+        for name, val in self.cfg.items():
             # Check for node id setting
             if not opaque:
-              print(name, val)
+              print((name, val))
             if name == 'ID':
                 print(" Setting ID through .yml file not allowed, see --help")
                 sys_exit(-7)
@@ -185,15 +185,15 @@ class dynamixelConfigurator:
             # This is pulled out of DynamixelModule
             if hasattr( node.mm, name ):
                 if opaque:
-                  print("Writing %s" % repr(name))
+                  print(("Writing %s" % repr(name)))
                 else:
-                  print("Writing %s to %s" % (repr(name), repr(val)))
+                  print(("Writing %s to %s" % (repr(name), repr(val))))
                 node.mem_write_sync( getattr( node.mm, name ), val )
             else:
                 raise KeyError("Unknown address '%s'" % name)
         # Write baudrate last
         if baud is not None:
-          print("Writing baud rate ",baud)
+          print(("Writing baud rate ",baud))
           node.mem_write_sync( getattr( node.mm, 'baud' ), baud )
 
     def read_type(self, nid):
@@ -241,9 +241,9 @@ class dynamixelConfigurator:
               try:
                 self.p.reset(nodes=[nid], ping_rate=0.1)
                 break
-              except dynamixel.ProtocolError,pe:
-                print(str(pe), "retrying...")
-            if self.p.pnas.has_key(nid):
+              except dynamixel.ProtocolError as pe:
+                print((str(pe), "retrying..."))
+            if nid in self.p.pnas:
                 tpe = self.read_type(nid)
                 progress(' ID 0x%02x: %s Module found at baudrate %d ' % (nid, tpe, baud))
                 return
@@ -280,7 +280,7 @@ class dynamixelConfigurator:
         if self.cfg:
           self.write_config( self.cur_nid, self.opaque )
           # After changing configuration we may be at a new baudrate so rescan
-          if self.cfg.has_key('baud') and (self.new_nid != self.cur_nid):
+          if 'baud' in self.cfg and (self.new_nid != self.cur_nid):
             self.scan( self.cur_nid )
         # If nid change requested --> do it
         if self.new_nid:
