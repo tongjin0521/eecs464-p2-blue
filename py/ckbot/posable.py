@@ -306,7 +306,7 @@ class LiveJoyRemote( object ):
         self.pose = list(self.pr.getPose())
         # Create JoyApp event source
         pth = dirname(__file__)+"/../../bin"
-        cmd = "%s/ctrl -p %d -n -e KEYDOWN -e MIDIEVENT" % (pth,self.sock.getsockname()[1])
+        cmd = "%s/ctrl -p %d -n -e KEYUP -e KEYDOWN -e MIDIEVENT" % (pth,self.sock.getsockname()[1])
         print("\trunning: %s" % cmd)
         joy = Popen(cmd,shell=True,stdout=open('/dev/null','w'))
         self._player = None
@@ -500,7 +500,7 @@ class PoseRecorderCLI( Cmd ):
 
         Keyboard: The top row of the keyboard (wertyuio) and the middle row of the keyboard (sdfghjkl) allow increment and decrement. "Enter" gives "pose" command.
 
-        KORD: The sliders control motors. Buttons map to commands: "Record" -- "pose"; "Play" -- "run"; "Rewind" -- "drop"; "Loop" -- "closeLoop"; "Stop" -- abort playback and slack motors.
+        KORG: The sliders control motors. Buttons map to commands: "Record" -- "pose"; "Play" -- "run"; "Rewind" -- "drop"; "Loop" -- "closeLoop"; "Stop" -- abort playback and slack motors.
 
         To end live mode use the "ESCAPE" key in the pygame window
         """
