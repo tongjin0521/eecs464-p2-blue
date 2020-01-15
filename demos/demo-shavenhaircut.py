@@ -93,7 +93,7 @@ class ShaveNHaircutApp( JoyApp ):
         return JoyApp.onEvent(self,evt)
 
 if __name__=="__main__":
-  from sys import argv
+  from sys import argv, stdout, exit
   #give default values to the command line arguements
   robot = None
   scr = None
@@ -117,7 +117,7 @@ if __name__=="__main__":
       if hairSpec[:1]==">": scr = {}
     elif arg=='--help':
     #help
-      sys.stdout.write("""
+      stdout.write("""
   Usage: %s [options]
 
     'Shave and a Haircut' example of running Plan-s in parallel and in
@@ -146,8 +146,8 @@ if __name__=="__main__":
 
         NOTE: to use robot modules you MUST also specify a -c option
 
-    """ % sys.argv[0])
-      sys.exit(1)
+    """ % argv[0])
+      exit(1)
     # ENDS cmdline parsing loop
   #start an interface
   app = ShaveNHaircutApp(shaveSpec,hairSpec,robot=robot,scr=scr)
