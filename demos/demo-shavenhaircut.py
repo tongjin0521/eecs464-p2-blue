@@ -115,7 +115,7 @@ if __name__=="__main__":
     #detects the shavespec specified after -s  which basically controls the type of output we will see for shave
       hairSpec = args.pop(0)
       if hairSpec[:1]==">": scr = {}
-    elif arg=='--help' or arg=='-h':
+    elif arg=='--help':
     #help
       sys.stdout.write("""
   Usage: %s [options]
