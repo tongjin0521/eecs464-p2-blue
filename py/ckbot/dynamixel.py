@@ -1952,10 +1952,12 @@ class RX64Module( DynamixelModule ):
 
     #  Scale and offset for converting CKBot angles to and from dynamixel as per RX64 manual section 3-4-2 pp. 28
     MAX_POS = 0x3FF #: RX64 max position is different from default
-    MAX_ANG = 30000 #: RX64 max angle is different from default
+    MIN_POS = DynamixelModule.MIN_POS
+    MIN_ANG = -15000
+    MAX_ANG = 15000
     SPEED_SCL = 0.111 #: RX64 speed scale is different from default
-    SCL = float(MAX_POS - DynamixelModule.MIN_POS)/(MAX_ANG - DynamixelModule.MIN_ANG) #: recalculate for RX64
-    OFS = (MAX_POS - DynamixelModule.MIN_POS)/2 + DynamixelModule.MIN_POS #: recalculate for RX64
+    SCL = float(MAX_POS - MIN_POS)/(MAX_ANG - MIN_ANG) #: recalculate for RX64
+    OFS = (MAX_POS - MIN_POS)/2 + MIN_POS #: recalculate for RX64
 
     def __init__( self, node_id, typecode, pna ):
         """
