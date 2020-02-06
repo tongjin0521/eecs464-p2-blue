@@ -279,7 +279,7 @@ class LiveJoyRemote( object ):
         try:
             # Create event from the next packet
             pkt = self.sock.recv(1024)
-            dic = json_loads(pkt.decode('utf-8')
+            dic = json_loads(pkt.decode('utf-8'))
             #
         except SocketError as err:
             # If socket is out of data --> we're done
