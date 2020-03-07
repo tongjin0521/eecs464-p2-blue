@@ -10,7 +10,8 @@ from pylab import plot, text
 APRIL_DATA_PORT = 0xB00
 
 # Host for waypointServer
-WAYPOINT_HOST = "141.213.30.33"
+#WAYPOINT_HOST = "141.213.30.33"
+WAYPOINT_HOST = "10.0.0.1" # we are using the VPN
 
 # Port for Waypoint messages
 WAYPOINT_MSG_PORT = 8080
