@@ -112,33 +112,6 @@ def fitHomography( x, y ):
 
 ###!!! from pdb import set_trace as BRK
 
-class Sensor( object ):
-  def __init__(self, *lineargs, **linekw):
-    self.lineargs = lineargs
-    self.linekw = linekw
-    self.noise = 0.01
-
-  def sense( self, ax, a, b, c, scale=0.2 ):
-    """Compute sensor measurement for line from a to b, given
-       sensor location c and a scale factor
-    """
-    # Rigid transform and rescaling that
-    # takes (a,b) to (0,1), applied to c
-    z = (c-a)/(b-a)
-    ###!!! qq = asarray([z[0],a,b,c[0]])
-    ###!!! print "[[[]]]",qq.round(2),scale
-    if (z.real<0) or (z.real>1):
-      return lineSensorResponse( inf, self.noise )
-    x = z.real * (b-a) + a
-    d = z.imag * abs(b-a)
-    res = lineSensorResponse( d/scale, self.noise )
-    if 1:#not any(isnan(c.real)) and not any(isnan(x.real)):
-      ax.plot( [c.real, x.real], [c.imag, x.imag],
-        *self.lineargs, **self.linekw )
-      ax.text( (c.real+x.real)/2, (c.imag+x.imag)/2,
-        "%d" % res, ha='center',va='center' )
-    return int(res)
-
 def _animation(f1):
   global s, app
   # Open socket
@@ -151,6 +124,7 @@ def _animation(f1):
     while True:
       try:
         srv.bind(("0.0.0.0",8080))
+        print("... listening at %s:%d" % srv.getsockname())
         break
       except SocketError as se:
         if se.errno == EADDRINUSE:
@@ -373,8 +347,8 @@ def _animation(f1):
     a,b = cr[[M,M+1]]
     # Build into packet
     pkt = {
-      'f' : sensorF.sense( a2, a, b, zrr[ROBOT_TAGID,0]+zrr[ROBOT_TAGID,1], r ),
-      'b' : sensorB.sense( a2, a, b, zrr[ROBOT_TAGID,2]+zrr[ROBOT_TAGID,3], r ),
+      'f' : float(sensorF.sense( a2, a, b, zrr[ROBOT_TAGID,0]+zrr[ROBOT_TAGID,1], r )),
+      'b' : float(sensorB.sense( a2, a, b, zrr[ROBOT_TAGID,2]+zrr[ROBOT_TAGID,3], r )),
     }
     # Check for waypoint capture
     if abs(b)<zoom:
@@ -402,7 +376,6 @@ def _animation(f1):
       if logfmt:
         logfile = gzip_open(logfmt % (now(),addr[0]),'w')
     # Send sensor reading out
-    #s.sendto( json_dumps(pkt), ROBOT_INET_ADDR )
     try:
       client.send( json_dumps(pkt).encode('ascii') )
       progress( "%s %s       " % (pkt['b'],pkt['f']),sameLine=True)
@@ -426,7 +399,7 @@ class App(JoyApp):
       else:
           kw['cfg'].update(remote=False)
       return JoyApp.__init__(self,*arg,**kw)
-      
+
   def onStart(self):
     AnimatorPlan(self,_animation).start()
 

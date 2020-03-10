@@ -3,7 +3,7 @@
 
 ## April tags associations ##########################################
 
-from numpy import array, inf, asarray, uint8, empty, mean, newaxis, dot
+from numpy import array, inf, asarray, uint8, empty, mean, newaxis, dot, c_
 from numpy.random import randn
 from pylab import plot, text
 # Port for TagStreamer data
@@ -39,11 +39,11 @@ waypoints = list(range(4))
 def lineSensorResponse( d, noise ):
   """
   Convert distances from line to line sensor measurements
-  
+
   INPUT:
     d -- float(s) -- distance(s) from line (inf is allowed)
     noise -- float(s) -- scale of noise for measurements
-    
+
     The shapes of d and noise must be the same, or noise should be
     scalar.
 
@@ -60,47 +60,59 @@ def lineSensorResponse( d, noise ):
   if res1.shape:
     return res1
   return int(res1)
-  
-def lineDist( c, a, b, scale=1.0 ):
+
+def lineDist( c, a, b, scale=1.0, withZ = False ):
   """
   Compute distance of point(s) c, to line segment from a to b
-  
+
   INPUT:
     c -- complex array of any shape -- sensor locations
     a,b -- complex -- endpoints of line segment
+
+  OUTPUT: res (withZ=False) or res,z (withZ=True)
+    res -- same shape as c -- distances
+    z -- normalized complex positions (*private*)
   """
   # Rigid transform and rescaling that
   # takes (a,b) to (0,1), applied to c
+  c = asarray(c)
   z = (c-a)/(b-a)
   far = (z.real<0) | (z.real>1)
   res = empty(z.shape,float)
   res[far] = inf
   d = z[~far].imag * abs(b-a)
   res[~far] = d/scale
+  if withZ:
+      return res,z
   return res
-  
 
 class Sensor( object ):
   def __init__(self, *lineargs, **linekw):
     self.lineargs = lineargs
     self.linekw = linekw
-    self.radius = None
     self.noise = 0.01
 
   def sense( self, ax, a, b, c, scale=0.2 ):
-    """Compute sensor measurement for line from a to b, given
-       sensor location c and a scale factor
     """
-    # Rigid transform and rescaling that
-    # takes (a,b) to (0,1), applied to c
-    z = (c-a)/(b-a)
-    if (z.real<0) or (z.real>1):
-      return lineSensorResponse( inf, self.noise )
+    Compute sensor measurement for line from a to b, given
+    sensor location(s) c and a scale factor
+
+    INPUT:
+       a,b -- complex
+       c -- array of complex
+
+    OUTPUT: shape of c
+    """
+    c = asarray(c)
+    d,z = lineDist(c,a,b,scale=scale,withZ=True)
+    res = lineSensorResponse(d,self.noise)
     x = z.real * (b-a) + a
-    d = z.imag * abs(b-a)
-    res = lineSensorResponse( d/scale, self.noise )
-    ax.plot( [c.real, x.real], [c.imag, x.imag], 
+    ax.plot( c_[c.real, x.real].T, c_[c.imag, x.imag].T,
       *self.lineargs, **self.linekw )
-    ax.text( (c.real+x.real)/2, (c.imag+x.imag)/2, 
-      "%d" % res, ha='center',va='center' )
-    return int(res)
+    if c.ndim is 0:
+        z = (c+x)/2
+        ax.text(z.real,z.imag,"%d" % res, ha='center',va='center' )
+    else:
+        for z,v in zip((c+x)/2,res):
+            ax.text(z.real,z.imag,"%d" % v, ha='center',va='center' )
+    return asarray(res,int)
