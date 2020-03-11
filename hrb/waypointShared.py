@@ -107,12 +107,13 @@ class Sensor( object ):
     d,z = lineDist(c,a,b,scale=scale,withZ=True)
     res = lineSensorResponse(d,self.noise)
     x = z.real * (b-a) + a
-    ax.plot( c_[c.real, x.real].T, c_[c.imag, x.imag].T,
-      *self.lineargs, **self.linekw )
-    if c.ndim is 0:
-        z = (c+x)/2
-        ax.text(z.real,z.imag,"%d" % res, ha='center',va='center' )
-    else:
-        for z,v in zip((c+x)/2,res):
-            ax.text(z.real,z.imag,"%d" % v, ha='center',va='center' )
+    if ax:
+        ax.plot( c_[c.real, x.real].T, c_[c.imag, x.imag].T,
+          *self.lineargs, **self.linekw )
+        if c.ndim is 0:
+            z = (c+x)/2
+            ax.text(z.real,z.imag,"%d" % res, ha='center',va='center' )
+        else:
+            for z,v in zip((c+x)/2,res):
+                ax.text(z.real,z.imag,"%d" % v, ha='center',va='center' )
     return asarray(res,int)
