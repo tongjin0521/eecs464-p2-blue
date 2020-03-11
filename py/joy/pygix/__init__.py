@@ -79,11 +79,6 @@ if IMPL == 'pygame':
     scr.fill(bg)
     scr.blit(img,(0,0))
 
-  def showMplFig(buf,sz,scr,bg=(255,255,255)):
-    img = pygame.image.frombuffer(buf,sz,'RGBA')
-    scr.fill(bg)
-    scr.blit(img,(0,0))
-
   def get_impl():
     return True
 
