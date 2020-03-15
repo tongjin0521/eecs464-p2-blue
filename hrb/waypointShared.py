@@ -98,6 +98,7 @@ class Sensor( object ):
     sensor location(s) c and a scale factor
 
     INPUT:
+       ax -- matplotlib axis to draw on (or None)
        a,b -- complex
        c -- array of complex
 
@@ -105,15 +106,16 @@ class Sensor( object ):
     """
     c = asarray(c)
     d,z = lineDist(c,a,b,scale=scale,withZ=True)
-    res = lineSensorResponse(d,self.noise)
+    res = asarray(lineSensorResponse(d,self.noise),int)
+    if ax is None:
+        return res
     x = z.real * (b-a) + a
-    if ax:
-        ax.plot( c_[c.real, x.real].T, c_[c.imag, x.imag].T,
-          *self.lineargs, **self.linekw )
-        if c.ndim is 0:
-            z = (c+x)/2
-            ax.text(z.real,z.imag,"%d" % res, ha='center',va='center' )
-        else:
-            for z,v in zip((c+x)/2,res):
-                ax.text(z.real,z.imag,"%d" % v, ha='center',va='center' )
-    return asarray(res,int)
+    ax.plot( c_[c.real, x.real].T, c_[c.imag, x.imag].T,
+      *self.lineargs, **self.linekw )
+    if c.ndim is 0:
+        z = (c+x)/2
+        ax.text(z.real,z.imag,"%d" % res, ha='center',va='center' )
+    else:
+        for z,v in zip((c+x)/2,res):
+            ax.text(z.real,z.imag,"%d" % v, ha='center',va='center' )
+    return res
