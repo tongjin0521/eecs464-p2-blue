@@ -100,6 +100,9 @@ class RobotSimInterface( object ):
     ### Initialize internal variables
     # Two points on the laser screen
     self.laserScreen = asfarray([[-1,-1],[1,-1]])
+    # Buffer for visualization requests
+    self.visArenaClear()
+    self.visRobotClear()
     # Cache for simulated TagStreamer messages
     self._msg = None
     # Output for simulated laser data
@@ -107,6 +110,52 @@ class RobotSimInterface( object ):
       self.out = None
     else:
       self.out = opengz(fn,"w")
+
+  def visArenaClear(self):
+      """
+      Reset / clear the arena visualization requests
+      """
+      self._lw = []
+
+  def visRobotClear(self):
+      """
+      Reset / clear the robot visualization requests
+      """
+      self._lr = []
+
+  def visArena(self,meth,**kw):
+      """
+      Add a visualization request to be plotted in the arena subplot
+      INPUT:
+        meth - str - axis method name
+        **kw - additional arguments as appropriate for the visualilzation method
+
+      NOTE: coordinates should be given in arena coordinates,
+        i.e. with respect to the true world frame used to give
+        the reference locations of the markers
+
+      Example:
+      >>> ix.visArenaClear()
+      >>> ix.visArena('plot',x=[10,20,20,10,10],y=[10,10,20,20,10],c='r') # plot a red square
+      """
+      msg = { '@w' : meth }
+      msg.update(kw)
+      self._lw.append(msg)
+
+  def visRobot(self,meth,**kw):
+      """
+      Add a visualization request to be plotted in the robot subplot
+      INPUT:
+        meth - str - axis method name
+        **kw - additional arguments as appropriate for the visualilzation method
+
+      NOTE: coordinates should be given in arena coordinates,
+        i.e. with respect to the true world frame used to give
+        the reference locations of the markers
+      """
+      msg = { '@r' : meth }
+      msg.update(kw)
+      self._lr.append(msg)
 
   def refreshState( self ):
     """<<pure>> refresh the value of self.tagPos and self.laserAxis"""
@@ -124,7 +173,7 @@ class RobotSimInterface( object ):
     state = { ROBOT_TAGID[0] : self.tagPos }
     state.update( self.waypoints )
     # Combine all into a list
-    msg = tags2list(state) + self._msg
+    msg = tags2list(state) + self._msg + self._lw + self._lr
     # Serialize
     return json_dumps(msg)
 
@@ -175,3 +224,7 @@ class SimpleRobotSim( RobotSimInterface ):
         # Add some axis error in direction perpendicular to axis
         ax = dot(dot([1,-1],self.laserAxis),[1,1j]) * self.lNoise * 1j * randn()
         self.laserAxis[1] = self.laserAxis[1] + [ax.real,ax.imag]
+        # Visualize laser
+        self.visArenaClear()
+        #self.visRobot('plot',x=list(self.laserAxis[:,0]), y=list(self.laserAxis[:,1]),c='r',lw=3)
+        self.visArena('plot',x=list(tag.real),y=list(tag.imag),c='k',m='x',ms=30)

@@ -4,7 +4,7 @@ if __name__ != "__main__":
 from socket import socket, AF_INET, SOCK_DGRAM, SOCK_STREAM, error as SocketError
 from errno import EADDRINUSE
 from numpy import (
-  array,asarray,zeros, exp,linspace, diff,
+  array,asarray,zeros, exp,linspace, diff, ones_like,
   zeros_like,kron, pi, empty_like, nan, isnan,
   concatenate, mean, dot, inf, angle, asfarray
   )
@@ -196,18 +196,29 @@ def _animation(f1):
     # Parse tag information from UDP packet
     dat = [d for d in json_loads(msg) if type(d) is dict ]
     msg = ''
-    # Collect allowed tags
+    # Parse tags and lines; collect tags
+    lwor = []
+    lrob = []
     h = empty_like(pts)
     h[:] = nan
     for d in dat:
-      nm = d['i']
-      if not nm in allow:
-        continue
-      #if ~isnan(h[nm,0,0]):
-      #  print '(dup)',
-      p = asfarray(d['p'])/100
-      h[nm,:,:2] = p
-      h[nm,:,2] = 1
+        if '@r' in d: # Robot visualization lines
+            lrob.append(d)
+            continue
+        if '@w' in d: # World visualization lines
+            lwor.append(d)
+            continue
+        if 'i' in d:
+            nm = d['i']
+            if not nm in allow:
+                continue
+            #if ~isnan(h[nm,0,0]):
+            #  print '(dup)',
+            p = asfarray(d['p'])/100
+            h[nm,:,:2] = p
+            h[nm,:,2] = 1
+            continue
+        progress('Unknown dict in msg: %r' % d)
     #
     # at this point, all observed tag locations are in the dictionary h
     #
@@ -280,6 +291,15 @@ def _animation(f1):
     a1.plot( c[vc].real, c[vc].imag,'-k',lw=3,alpha=0.3)
     if not any(isnan(c[[M,M+1]].real)):
       a1.plot( c[[M,M+1]].real, c[[M,M+1]].imag, '--r', lw=4)
+    # Client visualization
+    for ln in lwor:
+        try:
+            progress("><>< W:" + repr(ln))
+            meth = getattr(a1,ln['@w'])
+            ln.pop('@w')
+            meth(**ln)
+        except Exception as ex:
+            progress("World vis error: %s \n\t\tFrom: %r" % (ex,ln))
     a1.axis('equal')
     a1.axis(ax)
     #
@@ -343,6 +363,26 @@ def _animation(f1):
       zoom = zoom * 0.9 + r * 0.1
     else:
       zoom = r
+    #
+    # Show client visualization, if any
+    progress("<><>R: " + repr(lrob))
+    for ln in lrob:
+        try:
+            meth = getattr(a2,ln['@r'])
+            ln.pop('@r')
+            if 'x' in ln:
+                xy0 = c_[ln['x'],ln['y'],ones_like(ln['x'])]
+                xy1 = dot(xy0,prj)
+                xy1[:,:2] /= xy1[:,[2]]
+                zv0 = dot(xy1,[1,1j,0])
+                zv1 = (zv0 - zc[ROBOT_TAGID])/ang
+                ln['x'] = zv1.real #xy1[:,0]
+                ln['y'] = zv1.imag #xy1[:,1]
+                #progress("<<z>> "+repr(zc[ROBOT_TAGID]))
+                progress("<<>> "+repr(ln))
+            meth(**ln)
+        except Exception as ex:
+            progress("Robot vis error: %s \n\t\tFrom: %r" % (ex,ln))
     # Check distance of both sensors to the line
     a,b = cr[[M,M+1]]
     # Build into packet
