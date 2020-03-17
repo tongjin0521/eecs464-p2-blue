@@ -31,11 +31,15 @@ class SensorPlanTCP( Plan ):
   and decode WayPoint messages
   """
   def __init__( self, app, *arg, **kw ):
+    if "port" in kw:
+        sPort = int(kw.pop('port'))
+    else:
+        sPort = WAYPOINT_MSG_PORT
     if "server" in kw:
-      self.svrAddr = (kw['server'],WAYPOINT_MSG_PORT)
+      self.svrAddr = (kw['server'],sPort)
       del kw['server']
     else:
-      self.svrAddr = (WAYPOINT_HOST,WAYPOINT_MSG_PORT)
+      self.svrAddr = (WAYPOINT_HOST,sPort)
     Plan.__init__(self, app, *arg, **kw )
     self.sock = None
     self.lastSensor = (0,None,None)
