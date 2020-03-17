@@ -235,14 +235,21 @@ class SimpleRobotSim( RobotSimInterface ):
         ## Example of visualization API
         # Visualize laser
         vl = c + asarray([0,ax*100*r])
+        # Start a new visual in robot subplot
         self.visRobotClear()
+        # plot command in robot subplot,
+        #   '~' prefix changes coordinates using homography
         self.visRobot('~plot',
             [int(v) for v in vl.real],
             [int(v) for v in vl.imag],
             c='g')
+        # Start a new visual in arena subplot
         self.visArenaClear()
+        # plot command in arena subplot,
+        #   '~' prefix changes coordinates using homography
         self.visArena('~plot',
             [int(v) for v in vl.real],
             [int(v) for v in vl.imag],
             c='g',alpha=0.5)
+        # We can call any plot axis class methods, e.g. grid
         self.visArena('grid',1)
