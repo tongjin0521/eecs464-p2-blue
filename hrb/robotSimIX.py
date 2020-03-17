@@ -123,12 +123,12 @@ class RobotSimInterface( object ):
       """
       self._lr = []
 
-  def visArena(self,meth,**kw):
+  def visArena(self,meth,*arg,**kw):
       """
       Add a visualization request to be plotted in the arena subplot
       INPUT:
         meth - str - axis method name
-        **kw - additional arguments as appropriate for the visualilzation method
+        *arg,**kw - additional arguments as appropriate for the visualilzation method
 
       NOTE: coordinates should be given in arena coordinates,
         i.e. with respect to the true world frame used to give
@@ -139,21 +139,25 @@ class RobotSimInterface( object ):
       >>> ix.visArena('plot',x=[10,20,20,10,10],y=[10,10,20,20,10],c='r') # plot a red square
       """
       msg = { '@w' : meth }
+      for n,v in enumerate(arg):
+          msg['@%d' % n] = v
       msg.update(kw)
       self._lw.append(msg)
 
-  def visRobot(self,meth,**kw):
+  def visRobot(self,meth,*arg,**kw):
       """
       Add a visualization request to be plotted in the robot subplot
       INPUT:
         meth - str - axis method name
-        **kw - additional arguments as appropriate for the visualilzation method
+        *arg,**kw - additional arguments as appropriate for the visualilzation method
 
       NOTE: coordinates should be given in arena coordinates,
         i.e. with respect to the true world frame used to give
         the reference locations of the markers
       """
       msg = { '@r' : meth }
+      for n,v in enumerate(arg):
+          msg['@%d' % n] = v
       msg.update(kw)
       self._lr.append(msg)
 
@@ -203,6 +207,7 @@ class SimpleRobotSim( RobotSimInterface ):
         self.zTag = tag-mean(tag)
         self.pos = mean(tag)
         self.ang = 1+0j
+        self.tang = 1+0j
 
     def move(self,dist):
         # Move in direction of self.ang
@@ -213,18 +218,31 @@ class SimpleRobotSim( RobotSimInterface ):
     def turn(self,ang):
         # Turn by ang (plus noise)
         self.ang *= exp(1j*(ang + randn()*self.aNoise))
+        self.tang *= exp(1j*(ang + randn()*self.aNoise))
 
     def refreshState(self):
         # Compute tag points relative to tag center, with 1st point on real axis
         tag = self.zTag * self.ang + self.pos
         # New tag position is set by position and angle
         self.tagPos = c_[tag.real,tag.imag]
-        # Laser points along tag axis
-        self.laserAxis = dot([[1,1,0,0],[0,0,1,1]],self.tagPos)/2
-        # Add some axis error in direction perpendicular to axis
-        ax = dot(dot([1,-1],self.laserAxis),[1,1j]) * self.lNoise * 1j * randn()
-        self.laserAxis[1] = self.laserAxis[1] + [ax.real,ax.imag]
+        # Laser axis is based on tag and turret
+        c = mean(tag) # center
+        r = mean(abs(tag-c))
+        ax = self.ang/self.tang*-1j
+        self.laserAxis = [
+            [c.real,c.imag],[(c+ax).real, (c+ax).imag]
+        ]
+        ## Example of visualization API
         # Visualize laser
+        vl = c + asarray([0,ax*100*r])
+        self.visRobotClear()
+        self.visRobot('~plot',
+            [int(v) for v in vl.real],
+            [int(v) for v in vl.imag],
+            c='g')
         self.visArenaClear()
-        #self.visRobot('plot',x=list(self.laserAxis[:,0]), y=list(self.laserAxis[:,1]),c='r',lw=3)
-        self.visArena('plot',x=list(tag.real),y=list(tag.imag),c='k',m='x',ms=30)
+        self.visArena('~plot',
+            [int(v) for v in vl.real],
+            [int(v) for v in vl.imag],
+            c='g',alpha=0.5)
+        self.visArena('grid',1)
