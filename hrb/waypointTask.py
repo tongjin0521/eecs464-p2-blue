@@ -3,6 +3,7 @@ if __name__ != "__main__":
 
 from socket import socket, AF_INET, SOCK_DGRAM, SOCK_STREAM, error as SocketError
 from errno import EADDRINUSE
+from sys import argv
 from numpy import (
   array,asarray,zeros, exp,linspace, diff, ones_like,
   zeros_like,kron, pi, empty_like, nan, isnan,
@@ -110,8 +111,46 @@ def fitHomography( x, y ):
   res = V[-1,:].reshape(3,3)
   return res.T
 
-###!!! from pdb import set_trace as BRK
 
+def doVis(ax,mk,msg,prj = None):
+    """
+    Execute visualization message
+
+    INPUTS:
+      ax -- matplotlib axes -- axes to use for plotting
+      mk -- str -- method name key to look for
+      msg -- dict -- message as dictionary
+      prj -- 3x3 -- homography; acting on the right; optional
+    """
+    # method name
+    mn = msg.pop(mk)
+    # '~' prefix indicates projective xform needed for arg[0], arg[1]
+    doPrj = mn.startswith('~')
+    if doPrj:
+        mn = mn[1:]
+    meth = getattr(ax,mn)
+    # Collect positional arguments
+    arg = []
+    anm = ''
+    while True:
+        anm = '@%d' % len(arg)
+        if not anm in msg:
+            break
+        arg.append(asarray(msg.pop(anm))/100.)
+    # If projective correction requested
+    if doPrj:
+        assert len(arg)>1
+        xy0 = c_[arg[0],arg[1],ones_like(arg[0])]
+        xy1 = dot(xy0,prj)
+        arg[:2] = (xy1[:,:2]/xy1[:,[2]]).T
+    ##progress("VIS%s %s(*%s,**%s)" % (mk,mn,arg,msg))
+    return meth(*arg,**msg)
+
+###!!! from pdb import set_trace as BRK
+SRV_PORT = 8080
+for arg in argv:
+    if arg.startswith("-p"):
+        SRV_PORT = int(arg[2:])
 def _animation(f1):
   global s, app
   # Open socket
@@ -123,14 +162,14 @@ def _animation(f1):
     srv = socket(AF_INET, SOCK_STREAM )
     while True:
       try:
-        srv.bind(("0.0.0.0",8080))
+        srv.bind(("0.0.0.0",SRV_PORT))
         print("... listening at %s:%d" % srv.getsockname())
         break
       except SocketError as se:
         if se.errno == EADDRINUSE:
           print("... address in use. Waiting a bit ...")
           sleep(2)
-    srv.listen(2)
+    srv.listen(1)
   except:
     app.stop()
     raise
@@ -260,6 +299,7 @@ def _animation(f1):
     prj = nprj
     #
     # Apply homography to all the points
+    #progress(">>>!!! raw:" + repr(pts[ROBOT_TAGID]))
     uvs = dot(pts,prj)
     z = uvs[...,0] + 1j*uvs[...,1]
     nz = ~isnan(z[:,0])
@@ -267,6 +307,7 @@ def _animation(f1):
     z[nz,...] /= uvs[nz,...,[-1]]
     # Centroids of tags
     zc = mean(z,1)
+    #progress(">>>!!! zc:" + repr(zc[ROBOT_TAGID]))
     #
     ### At this point, z has all tag corner points; zc centroids
     ###   the nz index indicated tags for which we have locations
@@ -294,10 +335,7 @@ def _animation(f1):
     # Client visualization
     for ln in lwor:
         try:
-            progress("><>< W:" + repr(ln))
-            meth = getattr(a1,ln['@w'])
-            ln.pop('@w')
-            meth(**ln)
+            doVis(a1,'@w',ln,prj)
         except Exception as ex:
             progress("World vis error: %s \n\t\tFrom: %r" % (ex,ln))
     a1.axis('equal')
@@ -365,24 +403,19 @@ def _animation(f1):
       zoom = r
     #
     # Show client visualization, if any
-    progress("<><>R: " + repr(lrob))
-    for ln in lrob:
-        try:
-            meth = getattr(a2,ln['@r'])
-            ln.pop('@r')
-            if 'x' in ln:
-                xy0 = c_[ln['x'],ln['y'],ones_like(ln['x'])]
-                xy1 = dot(xy0,prj)
-                xy1[:,:2] /= xy1[:,[2]]
-                zv0 = dot(xy1,[1,1j,0])
-                zv1 = (zv0 - zc[ROBOT_TAGID])/ang
-                ln['x'] = zv1.real #xy1[:,0]
-                ln['y'] = zv1.imag #xy1[:,1]
-                #progress("<<z>> "+repr(zc[ROBOT_TAGID]))
-                progress("<<>> "+repr(ln))
-            meth(**ln)
-        except Exception as ex:
-            progress("Robot vis error: %s \n\t\tFrom: %r" % (ex,ln))
+    if lrob:
+        rprj = dot(prj,dot(
+            [   [1,0,0],
+                [0,1,0],
+                [-zc[ROBOT_TAGID].real,-zc[ROBOT_TAGID].imag,1]],
+            [   [ ang.real,-ang.imag,0],
+                [ ang.imag, ang.real,0],
+                [0,0,1]]))
+        for ln in lrob:
+            try:
+                doVis(a2,'@r',ln,rprj)
+            except Exception as ex:
+                progress("Robot vis error: %s \n\t\tFrom: %r" % (ex,ln))
     # Check distance of both sensors to the line
     a,b = cr[[M,M+1]]
     # Build into packet
