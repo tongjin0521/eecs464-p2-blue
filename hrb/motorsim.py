@@ -9,12 +9,10 @@ def clip(a,mn,mx):
 def satFb( x, mx, dx ):
     return dx if abs(x)<mx or x*dx<0 else 0
 
-TH, OM, BL, EI, TMP,TQ0,TQ1,TQ2,TQ3,TQD,POS,GV,GP = list(range(13))
+TH, OM, BL, EI, TMP,TQ0,TQ1,TQ2,TQ3,TQD,POS,GV,GP,NDim = list(range(14))
 
 class MotorModel( object ):
     def __init__(self):
-        #!!!self.ode = odeDP5(self._flow)
-        #!!!self.ode.aux = self._storeAux
         self.goalPos = 0 # [rad] Goal position to move to
         self.goalVel = 0 # [rad/sec] Goal velocity to use
         self.maxSpeed = 1 # [rad/sec] Limit on commanded speeds used by controller
@@ -39,13 +37,7 @@ class MotorModel( object ):
 
     def _ext(self, t, th):
         return 0
-    '''#!!!
-    def _storeAux( self, t, *arg ):
-        # Take the aux values associated with the actual time-point emitted
-        res = self._aux[t]
-        self._aux = {}
-        return res
-'''
+
     def _flow(self,t,y,p=None):
         th, om, bl, ei, tmp = y
         de = om - self.goalVel
@@ -61,7 +53,10 @@ class MotorModel( object ):
         tqc2 = tqc1 - om/self.nolo
         tqc3 = clip( tqc2, -self.cmax, self.cmax )
         # Disturbance torque
-        tqd = self._ext(t,th-bl)
+        if callable(self._ext):
+          tqd = self._ext(t,th-bl)
+        else:
+          tqd = self._ext
         # Change in rotation speed includes torque and dynamic friction
         dom = (tqc3 - self.mu * om + tqd) / self.inertia
         ## Integrate blacklash
@@ -74,9 +69,10 @@ class MotorModel( object ):
         self._aux = asfarray( (tqc0,tqc1,tqc2,tqc3,tqd,th-bl,self.goalVel,gp) )
         return asfarray( (om,dom,dbl,dei,dtmp) )
 
-    def step(self,h):
+    def stepIter(self,h):
         """
-        Do one time-step with Runge-Kutta 4 integration (the classical method)
+        Iterator that breaks down the function evaluations of a
+        one time-step with Runge-Kutta 4 integration (the classical method)
         INPUT:
           h -- float>0 -- duration of time-step
         """
@@ -86,17 +82,26 @@ class MotorModel( object ):
         y0 = y0[:TMP+1]
         tm = t0+h/2.
         t1 = t0+h
-        k1 = h*self._flow(t0,y0)
+        st = t0,y0; yield True,st
+        k1 = h*self._flow(*st)
         if l==TMP+1:
           self.y[-1] = concatenate([y0,self._aux])
         else:
-          assert l == GP+1
-        k2 = h*self._flow(tm,y0+k1/2.)
-        k3 = h*self._flow(tm,y0+k2/2.)
-        k4 = h*self._flow(t1,y0+k3)
+          assert l == NDim
+        st = tm,y0+k1/2.; yield True,st
+        k2 = h*self._flow(*st)
+        st = tm,y0+k2/2.; yield True,st
+        k3 = h*self._flow(*st)
+        st = t1,y0+k3; yield True,st
+        k4 = h*self._flow(*st)
         self.y.append(y0+(k1+2*k2+2*k3+k4)/6.)
         self.t.append(t1)
-        return self.t[-1], self.y[-1]
+        yield False, (self.t[-1], self.y[-1])
+        
+    def step(self,h):
+        for _,(t,y) in self.stepIter(h):
+          pass
+        return t,y
 
     def get_ty(self):
         """ (INTERNAL)
@@ -124,3 +129,11 @@ class MotorModel( object ):
         """
         """
         self.goalVel = rpm * 3.14159 /30.0
+    
+          
+          
+          
+          
+          
+          
+          

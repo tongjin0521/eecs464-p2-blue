@@ -36,20 +36,22 @@ class DbgMotorModel(MotorModel):
         legend()
 
 def test_pos(m):
-    figure()
     m.clear()
     for k in range(10):
         m.set_pos(rand()*36000)
         for kk in range(200):
           m.step(0.1)
-    subplot(311)
+    figure(1); clf()
+    subplot(411)
     m.show([TH,POS,GP,BL])
     title("Position control")
-    subplot(312)
-    m.show([TMP,TQ0,TQ1,TQ2,TQ3,TQD])
-    subplot(313)
+    subplot(412)
+    m.show([TMP,TQ0])
+    subplot(413)
+    m.show([TQ1,TQ2,TQ3,TQD])
+    subplot(414)
     m.show([EI,OM,GV])
-    figure()
+    figure(2); clf()
     subplot(211)
     m.show([POS,GP])
     subplot(212)
@@ -57,20 +59,22 @@ def test_pos(m):
 
 def test_vel(m):
     m.clear()
-    figure()
     m.set_pos(None)
     for k in range(10):
         m.set_rpm(rand()*25)
         for kk in range(200):
           m.step(0.1)
-    subplot(311)
+    figure(3); clf()
+    subplot(411)
     m.show([TH,POS,GP,BL])
     title("Velocity control")
-    subplot(312)
-    m.show([TMP,TQ0,TQ1,TQ2,TQ3,TQD])
-    subplot(313)
+    subplot(412)
+    m.show([TMP,TQ0])
+    subplot(413)
+    m.show([TQ1,TQ2,TQ3,TQD])
+    subplot(414)
     m.show([EI,OM,GV])
-    figure()
+    figure(4); clf()
     subplot(211)
     m.show([OM,GV])
     subplot(212)
@@ -79,7 +83,7 @@ def test_vel(m):
 if __name__=="__main__":
     m = DbgMotorModel()
     m._ext = lambda t,th: cos(th)/3+sin(t/4)*.2
-    close('all')
     test_vel(m)
+    m.set_rpm(0)
     test_pos(m)
     show()
