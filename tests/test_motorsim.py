@@ -1,4 +1,5 @@
-from numpy import ( asarray, zeros )
+from numpy import ( asarray, zeros, sin, cos, int16, pi)
+from pylab import (plot, grid, legend, figure, subplot, title, show, rand)
 from motorsim import *
 
 class DbgMotorModel(MotorModel):
@@ -23,17 +24,14 @@ class DbgMotorModel(MotorModel):
         # th, om, bl, ei, tmp
         idx = asarray(idx,int16)
         isAng = { TH, POS, GP }
-        wl = True
-        for t,y in zip(self.t, self.y):
-            #vlines(t[0],y[:,idx].flatten().min(), y[:,idx].flatten().max(),'k')
-            for n,yi in enumerate(y.T):
-                if not n in idx:
-                  continue
-                if n in isAng:
-                    plot(t,yi % (2*pi),**self.lt4(n,wl))
-                else:
-                    plot(t,yi,**self.lt4(n,wl))
-            wl = False
+        t,y = self.get_ty()
+        for n,yi in enumerate(y.T):
+          if not n in idx:
+            continue
+          if n in isAng:
+            plot(t,yi % (2*pi),**self.lt4(n,True))
+          else:
+            plot(t,yi,**self.lt4(n,True))
         grid(1)
         legend()
 
@@ -42,7 +40,8 @@ def test_pos(m):
     m.clear()
     for k in range(10):
         m.set_pos(rand()*36000)
-        m.runFor(20)
+        for kk in range(200):
+          m.step(0.1)
     subplot(311)
     m.show([TH,POS,GP,BL])
     title("Position control")
@@ -62,7 +61,8 @@ def test_vel(m):
     m.set_pos(None)
     for k in range(10):
         m.set_rpm(rand()*25)
-        m.runFor(20)
+        for kk in range(200):
+          m.step(0.1)
     subplot(311)
     m.show([TH,POS,GP,BL])
     title("Velocity control")
@@ -79,9 +79,7 @@ def test_vel(m):
 if __name__=="__main__":
     m = DbgMotorModel()
     m._ext = lambda t,th: cos(th)/3+sin(t/4)*.2
+    close('all')
     test_vel(m)
     test_pos(m)
-    figure()
-    plot(m.get_t(),m.get_pos())
-    title("User output")
     show()

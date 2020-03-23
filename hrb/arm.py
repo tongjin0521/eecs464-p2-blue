@@ -6,7 +6,7 @@ from numpy import (
   ones, newaxis, identity, zeros_like, array, diag, sum
 )
 from pylab import (
-  gcf, plot, axis, clf, subplot, grid, xlabel, ylabel
+  gcf, gca, plot, axis, clf, subplot, grid, xlabel, ylabel
 )
 def seToSE( x ):
   """
@@ -130,17 +130,21 @@ def jacobian_cdas( func, scl, lint=0.8, tol=1e-12, eps = 1e-30, withScl = False 
     return res
   return centDiffJacAutoScl
 
-
 class Arm( object ):
   """
   class Arm
 
   Represents a series manipulator made of several segments.
   Each segment is graphically represented by a wireframe model
+
+  ATTRIBUTES:
+    tw --
   """
   def __init__(self):
-    # link lengths
-    self.ll = asarray([3,3,3,3,3,3])
+      self.setup(asarray([[0,1,0,3],[0,0,1,3]]*3).T)
+
+  def setup(self, wl):
+    self.ll = wl[3]
     # arm geometry to draw
     d=0.2
     hexa = asarray([
@@ -168,12 +172,10 @@ class Arm( object ):
     for n,ll in enumerate(self.ll):
       # Scale the geometry to the specifies link length (ll)
       # Shift it to the correct location (LL, sum of the ll values)
-      self.geom.append(
-        ( asarray([ll,1,1,1])*geom+[LL,0,0,0] ).T
-      )
-      # Compute the twist for this segment;
-      # twists alternate between the z and y axes
-      w = asarray([0,(n+1) % 2, n % 2])
+      gn = ( asarray([ll,1,1,1])*geom+[LL,0,0,0] ).T
+      self.geom.append(gn)
+      # Compute the twist for this segment; first get rotation axis
+      w = wl[:3,n]
       # Velocity induced at the origin
       v = -cross(w,[LL,0,0])
       # Collect the twists
@@ -182,6 +184,7 @@ class Arm( object ):
       LL += ll
     # Build an array of collected twists
     self.tw = asarray(tw)
+    # Position of tool
     self.tool = asarray([LL,0,0,1]).T
     # overwrite method with jacobian function
     self.getToolJac = jacobian_cdas(
@@ -218,11 +221,10 @@ class Arm( object ):
     """
     raise RuntimeError("uninitialized method called")
 
-  def plotIJ( self, ang, axI=0, axJ=1 ):
+  def plotIJ( self, A, axI=0, axJ=1 ):
     """
     Display the specified axes of the arm at the specified set of angles
     """
-    A = self.at(ang)
     for a,g in zip(A, self.geom):
       ng = dot(a,g)
       plot( ng[axI,:], ng[axJ,:], '.-' )
@@ -230,42 +232,139 @@ class Arm( object ):
     plot( tp[axI], tp[axJ], 'hk' )
     plot( tp[axI], tp[axJ], '.y' )
 
-  def plot3D(self, ang, ax ):
+  def plot3D(self, A, ax=None ):
     """
     Display the specified axes of the arm at the specified set of angles
     """
-    A = self.at(ang)
+    if ax is None:
+        ax = gcf().add_subplot(111,projection='3d')
+    ax.plot3D( [-10]*4+[10]*4,[-10,-10,10,10]*2,[-10,10]*4,'w.')
     for a,g in zip(A, self.geom):
       ng = dot(a,g)
       ax.plot3D( ng[0,:], ng[1,:], ng[2,:], '.-' )
     tp = dot(a, self.tool)
     ax.plot3D( [tp[0]], [tp[1]], [tp[2]], 'hk' )
     ax.plot3D( [tp[0]], [tp[1]], [tp[2]], '.y' )
-    ax.plot3D( [-10]*4+[10]*4,[-10,-10,10,10]*2,[-10,10]*4,'w.')
 
   def plotAll( self, ang ):
     """
     Plot arm in 3 views
     """
+    A = self.at(ang)
     clf()
     ax = [-20,20,-20,20]
     subplot(2,2,1)
-    self.plotIJ(ang,0,1)
+    self.plotIJ(A,0,1)
     axis('equal')
     axis(ax)
     grid(1)
     xlabel('X'); ylabel('Y')
     subplot(2,2,2)
-    self.plotIJ(ang,2,1)
+    self.plotIJ(A,2,1)
     axis('equal')
     axis(ax)
     grid(1)
     xlabel('Z'); ylabel('Y')
     subplot(2,2,3)
-    self.plotIJ(ang,0,2)
+    self.plotIJ(A,0,2)
     axis('equal')
     axis(ax)
     grid(1)
     xlabel('X'); ylabel('Z')
     ax = gcf().add_subplot(224,projection='3d')
-    self.plot3D(ang,ax)
+    self.plot3D(A,ax)
+
+class MassArm(Arm):
+    def __init__(self):
+      Arm.__init__(self)
+  
+    def setup(self,wl):
+      Arm.setup(self,wl)
+      m = ones(self.geom[1].shape[1])
+      CoM = [ asarray([0,0,0,1]) ] # Center of mass
+      M = [ 0 ] # Mass
+      I = [ identity(3) ] # Geometric inertia (I/m)
+      for gn in self.geom[1:]:
+        # CoM position
+        M.append(sum(m))
+        com = dot(gn,m)/M[-1]
+        CoM.append(com)
+        # Mass position offsets relative to CoM
+        ofs = gn - com[:,newaxis]
+        # Inertia matrix
+        I.append(dot(m[newaxis,:]*ofs,ofs.T)/M[-1])
+      # Link masses and inertias
+      self.CoM = asarray(CoM)
+      self.M = asarray(M)
+      self.I = asarray(I)
+      # Gravity torque is the gradient of gravitational potential energy
+      doc = self.getGravityTorque.__doc__
+      self.getGravityTorque = jacobian_cdas(
+        lambda ang : asarray([self.getEgp(self.at(ang))]),
+        ones(self.tw.shape[0])*0.05
+      )
+      self.getGravityTorque.__doc__=doc
+
+    def getCoMs( self, A ):
+      """
+      Find the CoM-s of all segments
+
+      INPUT:
+        A -- list of transformations -- output of .at()
+
+      OUTPUT: n x 3
+        Array of CoM-s of all segments
+      """
+      return asarray([dot(a,com) for a,com in zip(A,self.CoM)])
+
+    def getEgp( self, A ):
+      """
+      Get gravitational potential energy associated with a configuration
+      """
+      return dot(self.M,self.getCoMs(A)[:,2])
+
+    def getGravityTorque(self,ang):
+      """
+      Compute the torque exerted by gravity on each of the joints (up to scale)
+      
+      INPUT:
+        ang -- N -- joint angles
+      
+      OUTPUT: 1 x N
+        torque on each of the joints
+      """
+      raise RuntimeError("should be overriden by constructor")
+  
+    def getFrzI( self, A ):
+      """
+      Compute the frozen chain inertia for all segments.
+      The "frozen chain inertia" is the inertia of the remainder
+      of the kinematic chain if all joints were locked.
+
+      INPUT:
+        A -- list of SE(3) -- output of .at()
+
+      OUTPUT:
+        list of I matrices -- the inertia matrix of the frozen chain relative to the center of mass
+      """
+      # Compute inverse transforms
+      iA = [inv(a) for a in A]
+      # Transform all inertias to world frame
+      #  Each geometric inertia needs to be multiplied by the
+      #  mass of the segment, and have its points transformed
+      Ik = asarray([ dot(dot(a,ii*m),a.T)
+             for a,ii,m in zip(A,self.I,self.M) ])
+      # Cumulative inertia of the trailing segments from k out
+      Ic = cumsum(Ik[::-1,...],0)[::-1]
+      # Computer frozen inertia from each segment out
+      fI = [ dot(dot(ia,ic),ia.T) for ia,ic in zip(iA,Ic) ]
+      return fI
+    
+    def plot3D(self,A,ax=None):
+      Arm.plot3D(self,A,ax)
+      ax = gca()
+      cx,cy,cz,_ = self.getCoMs(A).T
+      ax.plot3D(cx,cy,cz,'ow')
+      ax.plot3D(cx,cy,cz,'+k')
+               
+
