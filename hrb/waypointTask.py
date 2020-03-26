@@ -6,10 +6,8 @@ from errno import EADDRINUSE
 from sys import argv
 from numpy import (
   array,asarray,zeros, exp,linspace, diff, ones_like,
-  zeros_like,kron, pi, empty_like, nan, isnan,
-  concatenate, mean, dot, inf, angle, asfarray
-  )
-from numpy.linalg import svd
+  pi, empty_like, nan, isnan, mean, dot, angle, asfarray
+)
 from gzip import open as gzip_open
 from json import loads as json_loads, dumps as json_dumps
 from time import time as now, sleep
@@ -68,49 +66,6 @@ except Exception:
   pass
 # Call this before socket is created so that child won't inherit socket
 speak.say("")
-
-def skew( v ):
-  """
-  Convert a 3-vector to a skew matrix such that
-    dot(skew(x),y) = cross(x,y)
-
-  The function is vectorized, such that:
-  INPUT:
-    v -- N... x 3 -- input vectors
-  OUTPUT:
-    N... x 3 x 3
-
-  For example:
-  >>> skew([[1,2,3],[0,0,1]])
-  array([[[ 0,  3, -2],
-        [-3,  0,  1],
-        [ 2, -1,  0]],
-  <BLANKLINE>
-       [[ 0,  1,  0],
-        [-1,  0,  0],
-        [ 0,  0,  0]]])
-  """
-  v = asarray(v).T
-  z = zeros_like(v[0,...])
-  return array([
-      [ z, -v[2,...], v[1,...]],
-      [v[2,...], z, -v[0,...] ],
-      [-v[1,...], v[0,...], z ] ]).T
-
-def fitHomography( x, y ):
-  """Fit a homography mapping points x to points y"""
-  x = asarray(x)
-  assert x.shape == (len(x),3)
-  y = asarray(y)
-  assert y.shape == (len(y),3)
-  S = skew(y)
-  plan = [ kron(s,xi) for s,xi in zip(S,x) ]
-  #plan.append([[0]*8+[1]])
-  A = concatenate( plan, axis=0 )
-  U,s,V = svd(A)
-  res = V[-1,:].reshape(3,3)
-  return res.T
-
 
 def doVis(ax,mk,msg,prj = None):
     """
