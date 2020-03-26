@@ -3,9 +3,13 @@
 
 ## April tags associations ##########################################
 
-from numpy import array, inf, asarray, uint8, empty, mean, newaxis, dot, c_
+from numpy import (
+    array, inf, asarray, uint8, empty, mean, newaxis, dot, c_,
+    kron, concatenate, zeros_like
+)
 from numpy.random import randn
-from pylab import plot, text
+from numpy.linalg import svd
+
 # Port for TagStreamer data
 APRIL_DATA_PORT = 0xB00
 
@@ -16,8 +20,10 @@ WAYPOINT_HOST = "10.0.0.1" # we are using the VPN
 # Port for Waypoint messages
 WAYPOINT_MSG_PORT = 8080
 
-# Corners of the arena, in order
+# Boundary of the arena, in order
 corners = [26,23,27,22,29,24,28,25]
+# Extremal corners of the arena
+excorners = [26,27,28,29]
 
 # Tag ID for robot
 ROBOT_TAGID = [ 4 ]
@@ -35,6 +41,48 @@ ref = ref.T
 
 # Tag IDs for waypoints
 waypoints = list(range(4))
+
+def skew( v ):
+    """
+    Convert a 3-vector to a skew matrix such that
+      dot(skew(x),y) = cross(x,y)
+  
+    The function is vectorized, such that:
+    INPUT:
+      v -- N... x 3 -- input vectors
+    OUTPUT:
+      N... x 3 x 3
+  
+    For example:
+    >>> skew([[1,2,3],[0,0,1]])
+    array([[[ 0,  3, -2],
+          [-3,  0,  1],
+          [ 2, -1,  0]],
+    <BLANKLINE>
+         [[ 0,  1,  0],
+          [-1,  0,  0],
+          [ 0,  0,  0]]])
+    """
+    v = asarray(v).T
+    z = zeros_like(v[0,...])
+    return array([
+        [ z, -v[2,...], v[1,...]],
+        [v[2,...], z, -v[0,...] ],
+        [-v[1,...], v[0,...], z ] ]).T
+
+def fitHomography( x, y ):
+    """Fit a homography mapping points x to points y"""
+    x = asarray(x)
+    assert x.shape == (len(x),3)
+    y = asarray(y)
+    assert y.shape == (len(y),3)
+    S = skew(y)
+    plan = [ kron(s,xi) for s,xi in zip(S,x) ]
+    #plan.append([[0]*8+[1]])
+    A = concatenate( plan, axis=0 )
+    U,s,V = svd(A)
+    res = V[-1,:].reshape(3,3)
+    return res.T
 
 def lineSensorResponse( d, noise ):
   """
