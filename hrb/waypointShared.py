@@ -20,14 +20,18 @@ WAYPOINT_HOST = "10.0.0.1" # we are using the VPN
 # Port for Waypoint messages
 WAYPOINT_MSG_PORT = 8080
 
-# Boundary of the arena, in order
-corners = [26,23,27,22,29,24,28,25]
+
 # Extremal corners of the arena
 excorners = [26,27,28,29]
 
 # Tag ID for robot
 ROBOT_TAGID = [ 4 ]
 
+# Tag IDs for waypoints
+waypoints = [0,1,2,3]
+
+# Boundary of the arena, in order
+DEFAULT_corners = [26,23,27,22,29,24,28,25]
 # Reference locations of corners, with 1 in the last coordinate
 ref0 = array([
     [66, 66, 66.1, 31.9, 0, 0, 0, 32.5 ],
@@ -36,24 +40,16 @@ ref0 = array([
 ref0 *= 2.56
 ref0 = ref0 - mean(ref0,1)[:,newaxis]
 ref0[2,:] = 1
-ref = dot([[0,-1,0],[-1,0,0],[0,0,1]],ref0)
-ref = ref.T
+DEFAULT_ref = dot([[0,-1,0],[-1,0,0],[0,0,1]],ref0).T
 
-### Using seed 16
-# Update this in waypointShared.py
-corners = [23, 24, 22, 29, 27, 25, 28, 26]
-ref = array([[  -3,   83,    1],
-       [ -22,  -84,    1],
-       [-105,    5,    1],
-       [-120,  -75,    1],
-       [ -97,   92,    1],
-       [ 114,  -12,    1],
-       [ 106,  -95,    1],
-       [ 121,   72,    1]])
-
-# Tag IDs for waypoints
-waypoints = [0,1,2,3]
-
+try:
+  from randArenaOutput import corners, ref, randSeed
+  print("### Using randomized ref with seed %d" % randSeed)
+except ImportError:
+  corners = DEFAULT_corners
+  ref = DEFAULT_ref
+  print("### Using DEFAULT ref")
+  
 def skew( v ):
     """
     Convert a 3-vector to a skew matrix such that

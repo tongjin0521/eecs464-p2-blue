@@ -14,16 +14,14 @@ from time import time as now, sleep
 from joy import JoyApp, speak, progress
 from joy.plans import AnimatorPlan
 from joy.decl import KEYDOWN
-from waypointShared import ref, fitHomography, Sensor, corners, waypoints
+from waypointShared import (
+    ref, fitHomography, Sensor, corners, waypoints, ROBOT_TAGID
+)
 
 #### CONFIGURATION ##################################################
 
 # Host & Port for sending sensor readings
-#ROBOT_INET_ADDR = ("172.16.16.16",0xBAA)
 ROBOT_INET_ADDR = ("127.0.0.1",0xBAA)
-
-# Tag ID for robot
-ROBOT_TAGID = [ 4 ]
 
 # Rate (seconds) at which to send waypoint updates
 # NOTE: waypoints are sent as integer coordinates. Set ref accordingly

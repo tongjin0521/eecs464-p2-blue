@@ -128,18 +128,44 @@ def randArena( excorners, fixed, msg, **kw ):
     return nmsg
     
 if __name__=="__main__":
-    from robotSimIX import MSG_TEMPLATE as msg
-    from waypointShared import excorners,corners,ref,waypoints
+    from robotSimIX import DEFAULT_MSG_TEMPLATE as msg
+    from waypointShared import (
+        excorners,waypoints,
+        DEFAULT_corners as corners,
+        DEFAULT_ref as ref
+        )
     from pylab import figure, show
     from sys import argv
     
+    try:
+      from randAreaOutput import __file__ as fp0
+      fp = fp0.replace(".pyc",".py")
+    except:
+      fp0 = "-r *.pyc"
+      fp = "~/pyckbot/hrb/randArenaOutput.py"
+      
+    print("""
+# This output is to be used as an automatically generated source file
+# Usage:
+#   %s > %s
+#   rm %s    
+from numpy import array
+    """ % (" ".join(argv),fp,fp0) )
     if len(argv)>1:
       from numpy.random import seed
       seed(int(argv[1]))
-      print("### Using seed %s" % argv[1])
-
-    if 1:
-      nc,nref = remapRef(corners, ref)
+      print("randSeed = %s\n" % argv[1])
+    # Use '-y' as second parameter to skip the plotting
+    showIt = not (len(argv)>2 and argv[2].startswith("-y"))
+      
+    nc,nref = remapRef(corners, ref)
+    print("corners = %r\n" % nc)
+    print("ref = %r\n" % nref)
+    nmsg = randArena(excorners, corners, msg)
+    print("MSG_TEMPLATE = %r\n" % nmsg) 
+    print("__all__=[randSeed,corners,ref,MSG_TEMPLATE]\n")
+    
+    if showIt:
       fig = figure(1)
       fig.clf()
       ax = fig.add_subplot(121)
@@ -156,12 +182,7 @@ if __name__=="__main__":
       ax.set_title('Remapped')
       ax.axis('equal')
       ax.grid(True)
-      print("# Update this in waypointShared.py")
-      print("corners = %r" % nc)
-      print("ref = %r" % nref)
       
-    if 1:
-      nmsg = randArena(excorners, corners, msg)
       fig = figure(2)
       fig.clf()
       ax = fig.add_subplot(121)
@@ -193,10 +214,8 @@ if __name__=="__main__":
       ax.set_title('Remapped')
       ax.axis('equal')
       ax.grid(True)
-      print("# Update this in robotSimIX.py")
-      print("MSG_TEMPLATE = %r" % nmsg)
       
-    show()
+      show()
       
       
       
