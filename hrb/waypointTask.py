@@ -5,7 +5,7 @@ from socket import socket, AF_INET, SOCK_DGRAM, SOCK_STREAM, error as SocketErro
 from errno import EADDRINUSE
 from sys import argv
 from numpy import (
-  array,asarray,zeros, exp,linspace, diff, ones_like,
+  array,asarray,zeros, exp,linspace, diff, ones_like, c_,
   pi, empty_like, nan, isnan, mean, dot, angle, asfarray
 )
 from gzip import open as gzip_open
@@ -14,7 +14,7 @@ from time import time as now, sleep
 from joy import JoyApp, speak, progress
 from joy.plans import AnimatorPlan
 from joy.decl import KEYDOWN
-exec(compile(open('waypointShared.py').read(), 'waypointShared.py', 'exec'))
+from waypointShared import ref, fitHomography, Sensor, corners, waypoints
 
 #### CONFIGURATION ##################################################
 
@@ -35,22 +35,6 @@ ZOOM_SCALE = 10
 
 # Port for receiving data from TagStreamer
 APRIL_DATA_PORT = 0xB00
-
-# Corners of the arena, in order
-corners = [26,23,27,22,29,24,28,25]
-
-try:
-  assert ref.ndim == 2
-except NameError:
-  # If a ref location was not defined in waypointShared
-  # Reference locations of corners, with 1 in the last coordinate
-  ref = array([
-    [-1,0,1,1,1,0,-1,-1],
-    [1,1,1,0,-1,-1,-1,0],
-    [1.0/100]*8]).T * 100
-
-# Tag IDs for waypoints
-waypoints = [1,2,3,5]
 
 # EMA coefficient for static tag locations
 alpha = 0.05

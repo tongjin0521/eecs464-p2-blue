@@ -39,8 +39,20 @@ ref0[2,:] = 1
 ref = dot([[0,-1,0],[-1,0,0],[0,0,1]],ref0)
 ref = ref.T
 
+### Using seed 16
+# Update this in waypointShared.py
+corners = [23, 24, 22, 29, 27, 25, 28, 26]
+ref = array([[  -3,   83,    1],
+       [ -22,  -84,    1],
+       [-105,    5,    1],
+       [-120,  -75,    1],
+       [ -97,   92,    1],
+       [ 114,  -12,    1],
+       [ 106,  -95,    1],
+       [ 121,   72,    1]])
+
 # Tag IDs for waypoints
-waypoints = list(range(4))
+waypoints = [0,1,2,3]
 
 def skew( v ):
     """

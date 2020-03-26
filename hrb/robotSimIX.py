@@ -6,10 +6,10 @@ Created on Thu Sep  4 20:31:13 2014
 """
 from gzip import open as opengz
 from json import dumps as json_dumps
-from numpy import asfarray, dot, c_, newaxis, mean, exp, sum, sqrt, any, isnan
+from numpy import asfarray, dot, c_, mean, exp, sqrt, any, isnan, asarray
 from numpy.linalg import svd
 from numpy.random import randn
-from waypointShared import *
+from waypointShared import waypoints, corners, ROBOT_TAGID
 
 from pdb import set_trace as DEBUG
 
@@ -29,6 +29,9 @@ MSG_TEMPLATE = {
     28 : [[911, 1525], [952, 1523], [953, 1483], [913, 1486]],
     29 : [[1222, 542], [1193, 537], [1186, 558], [1216, 566]],
   }
+
+# Update this in robotSimIX.py
+MSG_TEMPLATE = {0: [[1063, 2164], [1081, 2130], [1103, 2160], [1085, 2192]], 1: [[936, 1709], [907, 1719], [899, 1677], [927, 1667]], 2: [[1202, 1145], [1186, 1114], [1205, 1088], [1222, 1121]], 3: [[938, 1837], [955, 1808], [975, 1834], [957, 1863]], 4: [[1241, 1592], [1236, 1632], [1209, 1625], [1213, 1586]], 22: [[585, 1908], [609, 1901], [613, 1939], [590, 1945]], 23: [[1118, 2432], [1125, 2478], [1098, 2480], [1091, 2437]], 24: [[893, 1103], [868, 1117], [861, 1083], [884, 1068]], 25: [[1445, 1617], [1415, 1622], [1409, 1580], [1438, 1575]], 26: [[1527, 2328], [1559, 2323], [1566, 2371], [1533, 2374]], 27: [[667, 2527], [692, 2518], [698, 2560], [675, 2565]], 28: [[1313, 866], [1315, 906], [1285, 910], [1285, 871]], 29: [[504, 1291], [499, 1259], [519, 1248], [527, 1281]]}
 
 def tags2list( dic ):
     """
@@ -193,7 +196,7 @@ class RobotSimInterface( object ):
     if any(isnan(x)):
         return "Laser: <<DISQUALIFIED>>"
     if self.out:
-      self.out.write("%.2f, 1, %d, %d\n" % (now,n+1,x[0],x[1]))
+      self.out.write("%.2f, 1, %d, %d\n" % (now,x[0],x[1]))
     return "Laser: %d,%d " % tuple(x)
 
 class SimpleRobotSim( RobotSimInterface ):

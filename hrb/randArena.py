@@ -84,7 +84,7 @@ def remapRef( corners, ref, scl=1. ):
     P = permutation(list(range(len(corners))))
     ncorners = list(asarray(corners)[P])
     nref = dot(ref,T.T)[P]
-    return ncorners, nref
+    return ncorners, asarray(nref,int)
       
 def randArena( excorners, fixed, msg, **kw ):
     """
@@ -120,7 +120,7 @@ def randArena( excorners, fixed, msg, **kw ):
     ctr = u.mean(1)[:,newaxis,:]
     nctr = randConv( 
               ctr[[pk[ci] for ci in corners],...], 
-              asarray(~f,int).sum(), 0.2 
+              asarray(~f,int).sum(), 0.3 
     )
     u[~f,...] = u[~f,...] - ctr[~f,...]+ nctr
     # Rebuild message
@@ -129,14 +129,14 @@ def randArena( excorners, fixed, msg, **kw ):
     
 if __name__=="__main__":
     from robotSimIX import MSG_TEMPLATE as msg
-    from waypointShared import excorners,corners, ref
+    from waypointShared import excorners,corners,ref,waypoints
     from pylab import figure, show
     from sys import argv
     
     if len(argv)>1:
       from numpy.random import seed
       seed(int(argv[1]))
-      print("# Using seed %s" % argv[1])
+      print("### Using seed %s" % argv[1])
 
     if 1:
       nc,nref = remapRef(corners, ref)
@@ -156,31 +156,44 @@ if __name__=="__main__":
       ax.set_title('Remapped')
       ax.axis('equal')
       ax.grid(True)
-      print("corners = %r" % corners)
-      print("ref = %r" % asarray(nref,int))
+      print("# Update this in waypointShared.py")
+      print("corners = %r" % nc)
+      print("ref = %r" % nref)
       
     if 1:
       nmsg = randArena(excorners, corners, msg)
       fig = figure(2)
       fig.clf()
       ax = fig.add_subplot(121)
+      waypoints=set(waypoints)
+      w = []
       for nm,xy0 in msg.items():
         xy = asarray(xy0)
         cxy = xy.mean(0)
         ax.text(cxy[0],cxy[1],str(nm),ha='center',va='center')
-        ax.plot(xy[[0,1,2,3,0],0],xy[[0,1,2,3,0],1],'.-')        
+        ax.plot(xy[[0,1,2,3,0],0],xy[[0,1,2,3,0],1],'.-')
+        if nm in waypoints:
+          w.append(cxy)
+      w = asarray(w).T
+      ax.plot(w[0],w[1],'--k',lw=2,alpha=0.3)
       ax.set_title('Reference')
       ax.axis('equal')
       ax.grid(True)
       ax = fig.add_subplot(122)
+      w = []
       for nm,xy0 in nmsg.items():
         xy = asarray(xy0)
         cxy = xy.mean(0)
         ax.text(cxy[0],cxy[1],str(nm),ha='center',va='center')
         ax.plot(xy[[0,1,2,3,0],0],xy[[0,1,2,3,0],1],'.-')        
+        if nm in waypoints:
+          w.append(cxy)
+      w = asarray(w).T
+      ax.plot(w[0],w[1],'--k',lw=2,alpha=0.3)
       ax.set_title('Remapped')
       ax.axis('equal')
       ax.grid(True)
+      print("# Update this in robotSimIX.py")
       print("MSG_TEMPLATE = %r" % nmsg)
       
     show()
