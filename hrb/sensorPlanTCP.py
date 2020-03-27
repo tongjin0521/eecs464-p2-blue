@@ -10,6 +10,7 @@ Created on Sat Sep  6 12:02:16 2014
 @author: shrevzen-home
 """
 
+from errno import EAGAIN
 # Uses UDP sockets to communicate
 from socket import (
   socket, AF_INET,SOCK_STREAM, IPPROTO_TCP, error as SocketError,
@@ -98,7 +99,7 @@ class SensorPlanTCP( Plan ):
             except SocketError as se:
               # If there was no data on the socket
               #   --> not a real error, else kill socket and start a new one
-              if se.errno != 11:
+              if se.errno != EAGAIN:
                 progress("Connection failed: "+str(se))
                 self.sock.close()
                 self.sock = None
