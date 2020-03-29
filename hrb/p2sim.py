@@ -109,8 +109,10 @@ class MassArm(Arm):
                
 class ArmSim(MassArm):
     def __init__(self,wlc):
-        wlc = asarray(wlc)
         MassArm.__init__(self)
+        wlc = asarray(wlc)
+        if wlc.shape[0] < 5:
+          wlc = c_[wlc.T,ones((wlc.shape[1],1))].T
         self.setup(wlc[:-1])
         self.c = wlc[-1]
         self.m = []
@@ -240,10 +242,19 @@ class ArmAnimatorApp( JoyApp ):
       
       
 if __name__=="__main__":
+    """
+    Define your arm here: (x,y,z) of motor axis, length of segment
+    
+    The keyboard row: asdfghjkl moves your motors one way
+    The keyboard row: zxcvbnm,. moves your motors the other way
+    
+    'q' will quit and store the results in a results.png image and results.csv
+    file.
+    """
     app = ArmAnimatorApp(asarray([
-        [0,0.02,1,4,1],
-        [0,1,0,4,1],
-        [0,1,0,4,1.],
+        [0,0.02,1,4],
+        [0,1,0,4],
+        [0,1,0,4],
     ]).T)
     app.run()
     
