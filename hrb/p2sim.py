@@ -6,12 +6,13 @@ Created on Mon Mar 23 01:14:25 2020
 @author: shrevzen
 """
 from numpy import ( 
-    asarray, stack, zeros, ones, identity, dot, newaxis, cumsum
+    asarray, stack, ones, identity, dot, newaxis, cumsum, c_
 )
 from numpy.linalg import inv
 from arm import Arm, jacobian_cdas
-from motorsim import MotorModel,TH,BL,NDim
+from motorsim import MotorModel,TH,BL
 from pylab import gca
+from joy.plans import AnimatorPlan
 
 class MassArm(Arm):
     def __init__(self):
@@ -106,55 +107,143 @@ class MassArm(Arm):
       ax.plot3D(cx,cy,cz,'ow')
       ax.plot3D(cx,cy,cz,'+k')
                
-
-
-class P2Sim:
+class ArmSim(MassArm):
     def __init__(self,wlc):
         wlc = asarray(wlc)
-        self.a = MassArm()
-        self.a.setup(wlc[:-1])
+        MassArm.__init__(self)
+        self.setup(wlc[:-1])
         self.c = wlc[-1]
         self.m = []
         for k in range(wlc.shape[1]):
           self.m.append(MotorModel())
 
     def __getitem__(self,idx):
-        return self.m[idx]
+        return self.m[idx % len(self.m)]
     
     def __len__(self):
         return len(self.m)
       
     def step(self,h):
+        """
+        Do an integration step for the whole arm. 
+        
+        THEORY OF OPERATION:
+          This is a rather tricky thing to do, because the RK integrator 
+        requires multiple function evaluations per time point. To support this,
+        each motor model has an internal iterator that generates these quadrature
+        points. Thus, we call next() on all the motor models to obtain their
+        quadrature points, then compute the coupling term (gravity torque), 
+        set it up for them, and let them compute the next quadrature point,
+        until we are done. Then we return the results.
+        """
         its = [ m.stepIter(h) for m in self.m ]
         while True:
           # Collect the next RK quadrature point
+          #   we assume the cont value and timestamp will agree between motors
+          #   so we only collect that from the first motor
           cont,(t,y0) = next(its[0])
           y = [y0]+[ next(mi)[1][1] for mi in its[1:] ]
           ang0 = asarray([ yi[TH]+yi[BL] for yi in y]) # motor angles
           if not cont:
             break
-          tq = 1e-3*self.a.getGravityTorque(ang0).squeeze() # gravity torque on motors
+          tq = 3e-3*self.getGravityTorque(ang0).squeeze() # gravity torque on motors
           for mi,tqi in zip(self.m,tq): # push into motor objects
-            mi._ext = tqi
-        ang1 = ang0 + self.c*tq # sagged angles
+            mi._ext = -tqi
+        ang1 = ang0 - self.c*tq # sagged angles
         return t,ang1,stack(y,1)
     
+from joy import JoyApp
+from joy.decl import KEYDOWN,K_q,K_ESCAPE,progress
+from joy.misc import requiresPyGame
+requiresPyGame()
+
+class ArmAnimatorApp( JoyApp ):
+    def __init__(self,wlc,*arg,**kw):
+      JoyApp.__init__(self,*arg,**kw)
+      self.arm = ArmSim(wlc)
+      
+    def onStart(self):
+      self.ani = AnimatorPlan(self,self._animation)
+      self.t,self.q,self.y,self.p = [],[],[],[]
+      self.T0 = self.now
+      self.ani.start()
+    
+    def _animation(self, fig):
+      last = self.T0
+      ax = fig.add_subplot(111,projection='3d')
+      while True:
+        # If enough time elapsed to animate
+        now = self.now
+        h = now - last
+        if h<0.1:
+          yield
+          continue
+        ti,qi,yi =self.arm.step(h) # Speedup ratio into simulation time
+        # Store simulation time-step
+        self.t.append(ti)
+        self.q.append(qi)
+        self.y.append(yi)
+        self.p.append(self.arm.getTool(qi))
+        # Display it
+        ax.cla()
+        self.arm.plot3D(self.arm.at(qi),ax)
+        p = asarray(self.p[-20:]).T
+        ax.plot3D(p[0],p[1],p[2],'.-k',alpha=0.3)
+        ax.set_title("t = %.2f" % ti)
+        last = now
+        progress("TEMP: "+" ".join(["%d:%-6.2f" % (n,self.arm[n].get_temp()) for n,qqi in enumerate(qi)]))
+        yield
+
+    def onEvent(self,evt):
+      # Punt everything except keydown events
+      if evt.type != KEYDOWN or evt.key in {K_q, K_ESCAPE}:
+        return JoyApp.onEvent(self,evt)
+      # row of 'a' on QWERTY keyboard increments motors
+      p = "asdfghjkl".find(evt.unicode)
+      if p>=0:
+        self.arm[p].set_pos(self.arm[p].get_pos() + 500)
+        return
+      # row of 'z' in QWERTY keyboard decrements motors
+      p = "zxcvbnm,.".find(evt.unicode)
+      if p>=0:
+        self.arm[p].set_pos(self.arm[p].get_pos() - 500)
+        return
+      
+      
+    def onStop(self):
+      from pylab import figure,savefig
+      p = asarray(self.p).T
+      fig = figure(1)
+      ax3d = fig.add_subplot(221,projection='3d')
+      ax3d.plot3D(p[0],p[1],p[2],'.-k')
+      ax = fig.add_subplot(222)
+      ax.plot(p[0],p[1],'.-k')
+      ax.set(xlabel="x",ylabel="y")
+      ax.axis('equal')
+      ax.grid(1)
+      ax = fig.add_subplot(224)
+      ax.plot(p[0],p[2],'.-k')
+      ax.set(xlabel="x",ylabel="z")
+      ax.axis('equal')
+      ax.grid(1)
+      ax = fig.add_subplot(223)
+      ax.plot(p[1],p[2],'.-k')
+      ax.set(xlabel="y",ylabel="z")
+      ax.axis('equal')
+      ax.grid(1)
+      savefig("result.png")
+      t = asarray(asarray(self.t)*100,int)
+      pout = c_[t,asarray(p[:3]*100,int).T]
+      with open("result.csv","w") as rf:
+        for pp in pout:
+          rf.write(repr(list(pp))[1:-1]+"\n")
+      
+      
 if __name__=="__main__":
-    a = P2Sim(asarray([
-        [0,1,0,3,1],
-        [0,1,0,3,1],
-        [0,1,0,3,1.],
+    app = ArmAnimatorApp(asarray([
+        [0,0.02,1,4,1],
+        [0,1,0,4,1],
+        [0,1,0,4,1.],
     ]).T)
-    a[0].set_pos(1000)
-    a[1].set_pos(1000)
-    a[2].set_pos(1000)
-    t,q,y = [0],[zeros(len(a))],[zeros((NDim,len(a)))]
-    while t[-1]<50:
-      ti,qi,yi = a.step(0.1)
-      t.append(ti)
-      q.append(qi)
-      y.append(yi)
-      print("\r%.2f" % t[-1],end='',flush=True)
-    t = asarray(t[1:])
-    q = asarray(q[1:])
-    y = asarray(y[1:])
+    app.run()
+    

@@ -16,6 +16,7 @@ class MotorModel( object ):
         self.goalPos = 0 # [rad] Goal position to move to
         self.goalVel = 0 # [rad/sec] Goal velocity to use
         self.maxSpeed = 1 # [rad/sec] Limit on commanded speeds used by controller
+        self.error = None # Current error condition
         ## PID gains
         self.Kp = 4. # [amp/rad]
         self.Kd = 3. # [amp/(rad/sec)]
@@ -28,13 +29,19 @@ class MotorModel( object ):
         self.thrm = 0.05 # [amp**2/sec] thermal sink rate
         self.nolo = 2. # [rad/sec] No-load speed of motor
         self.cmax = 10. # [amp] Maximal drive power system can produce
+        self.maxTemp = 7.5 # [internal units] Thermal shutdown temperature 85C
+        self.maxLog = 50 # maximal number of points in the simulation log
         return self.clear()
 
     def clear(self):
+        self.clearError()
         self.y = [zeros(TMP+1)]
         self.t = [0]
         self._aux = {} # store for aux outputs
 
+    def clearError(self):
+        self.error = None
+        
     def _ext(self, t, th):
         return 0
 
@@ -49,9 +56,15 @@ class MotorModel( object ):
             dei = satFb(ei,self.sat,de)
         tqc0 = -self.Kp * e - self.Kd * de - self.Ki * ei
         tqc1 = clip(tqc0,-self.tqLimit, self.tqLimit)
-        # Correct torque (current) for Back EMF (generated current)
+        # Correct torque (current) for Back EMF (generated current) and temp
         tqc2 = tqc1 - om/self.nolo
         tqc3 = clip( tqc2, -self.cmax, self.cmax )
+        # Thermal shutdown
+        if tmp > self.maxTemp:
+          self.error = "Thermal error"
+        # Under error conditions the motor shuts down
+        if self.error is not None:
+          tqc3 = 0
         # Disturbance torque
         if callable(self._ext):
           tqd = self._ext(t,th-bl)
@@ -96,6 +109,9 @@ class MotorModel( object ):
         k4 = h*self._flow(*st)
         self.y.append(y0+(k1+2*k2+2*k3+k4)/6.)
         self.t.append(t1)
+        if len(self.t)>self.maxLog:
+          self.t = self.t[-self.maxLog:]
+          self.y = self.y[-self.maxLog:]
         yield False, (self.t[-1], self.y[-1])
         
     def step(self,h):
@@ -103,7 +119,7 @@ class MotorModel( object ):
           pass
         return t,y
 
-    def get_ty(self):
+    def _get_ty(self):
         """ (INTERNAL)
         Get time history of the simulation
         """
@@ -115,6 +131,18 @@ class MotorModel( object ):
         Obtain current position
         """
         return int(self.y[-2][GP] * 18000/3.14159) + randint(-200,200)
+      
+    def get_temp(self):
+        """
+        Obtain motor temperature (Centigrade)
+        """
+        return int(self.y[-2][TMP] * 8 + 25)
+                   
+    def get_error(self):
+        """
+        Obtain current error code
+        """
+        return self.error
       
     def set_pos(self,pos):
         """

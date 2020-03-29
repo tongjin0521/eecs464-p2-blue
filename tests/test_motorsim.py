@@ -1,10 +1,11 @@
-from numpy import ( asarray, zeros, sin, cos, int16, pi)
+from numpy import ( asarray, sin, cos, int16, pi)
 from pylab import (plot, grid, legend, figure, subplot, title, show, rand)
 from motorsim import *
 
 class DbgMotorModel(MotorModel):
     def __init__(self):
         MotorModel.__init__(self)
+        self.maxLog = 1e9
 
     def lt4(self,n,withLbl=False):
         c = ['#ff7f0e','#2ca02c','#d62728','#9467bd','#8c564b','#e377c2',
