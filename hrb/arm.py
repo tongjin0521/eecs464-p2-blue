@@ -220,6 +220,13 @@ class Arm( object ):
     """
     raise RuntimeError("uninitialized method called")
 
+  def getSkel( self, A, withTool = True):
+    """
+    Get 'skeleton' of arm -- only the points connecting the segments
+    """
+    return asarray([ dot(a,g[:,0]) for a,g in zip(A, self.geom) ]
+                    + ([] if not withTool else [dot(A[-1],self.tool)]))
+    
   def plotIJ( self, A, axI=0, axJ=1 ):
     """
     Display the specified axes of the arm at the specified set of angles
@@ -237,7 +244,6 @@ class Arm( object ):
     """
     if ax is None:
         ax = gcf().add_subplot(111,projection='3d')
-    ax.plot3D( [-10]*4+[10]*4,[-10,-10,10,10]*2,[-10,10]*4,'w.')
     for a,g in zip(A, self.geom):
       ng = dot(a,g)
       ax.plot3D( ng[0,:], ng[1,:], ng[2,:], '.-' )
