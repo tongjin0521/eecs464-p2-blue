@@ -33,9 +33,12 @@ class MotorModel( object ):
         self.maxLog = 50 # maximal number of points in the simulation log
         return self.clear()
 
-    def clear(self):
+    def clear(self,ics=None):
         self.clearError()
-        self.y = [zeros(TMP+1)]
+        y0 = zeros(TMP+1)
+        if ics is not None:
+          y0[:len(ics)] = ics
+        self.y = [y0]
         self.t = [0]
         self._aux = {} # store for aux outputs
 
@@ -130,7 +133,7 @@ class MotorModel( object ):
         """
         Obtain current position
         """
-        return int(self.y[-2][GP] * 18000/3.14159) + randint(-200,200)
+        return int((self.y[-1][TH]+self.y[-1][BL]) * 18000/3.14159) + randint(-200,200)
       
     def get_temp(self):
         """
@@ -153,6 +156,14 @@ class MotorModel( object ):
             return
         self.goalPos = pos * 3.14159 / 18000.
 
+    def get_goal(self):
+        """
+        Get goal position / None if in velocity control mode
+        """
+        if self.goalPos is None:
+            return None
+        return int(self.goalPos * 18000/3.14159)
+      
     def set_rpm(self,rpm):
         """
         """
