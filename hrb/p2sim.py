@@ -343,7 +343,7 @@ class ArmAnimatorApp( JoyApp ):
       # projected track is pale blue
       ax.plot(lp[0],lp[1],'-b',alpha=0.2)
       # Find when pen was up, and remove those points
-      up = qq[2]<0
+      up = (qq[2]<0) | (qq[0]<0) | (qq[0]>1) | (qq[1]<0) | (qq[1]>1)
       lp[:,up]=nan
       # Draw in black
       ax.plot(lp[0],lp[1],'-k',lw=2)
