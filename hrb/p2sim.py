@@ -5,7 +5,7 @@ Created on Mon Mar 23 01:14:25 2020
 
 @author: shrevzen
 """
-from time import clock
+from time import clock,time
 from numpy import ( 
     asarray, stack, ones, identity, dot, newaxis, cumsum, c_, nan, inf
 )
@@ -18,27 +18,6 @@ from joy.decl import KEYDOWN, K_q, K_ESCAPE, progress
 from vis3d import FourViewPlot, xyzCube, iCube, iFace, plotVE
 from joy.misc import requiresPyGame
 requiresPyGame()
-
-# Student team selection -- transform from workspace coordinates to world
-Tws2w = asarray([
-     [1,0,0,  0],
-     [0,1,0, -5],
-     [0,0,1,-10],
-     [0,0,0,  1]
-]) 
-# Arm specification
-armSpec = asarray([
-        [0,0.02,1,  4,  0],
-        [0,   1,0,  4,  0],
-        [0,   1,0,  4,  0],
-    ]).T
-# Transform of paper coordinates to workspace
-Tp2ws = asarray([
-     [0.7071,0,-0.7071,0],
-     [0,     1,      0,0],
-     [0.7071,0, 0.7071,0],
-     [0,     0,      0,1]
-])
 
 class MassArm(Arm):
     def __init__(self):
@@ -190,7 +169,7 @@ class ArmSim(MassArm):
         return t,ang1,stack(y,1)
       
 class ArmAnimatorApp( JoyApp ):
-    def __init__(self,wlc,*arg,**kw):
+    def __init__(self,wlc,Tws2w,Tp2ws,*arg,**kw):
       if 'cfg' not in kw:
         kw['cfg'] = {}
       kw['cfg'].update(windowSize = [1200, 800])
@@ -211,12 +190,6 @@ class ArmAnimatorApp( JoyApp ):
       # World to relative paper (i.e. paper is unit cube)
       self.Tw2rp = self.Tw2p / self.paper_p[-1][:,newaxis]
       
-    def onStart(self):
-      self.ani = AnimatorPlan(self,self._animation)
-      self.t,self.q,self.y,self.p,self.l = [],[],[],[],[]
-      self.T0 = self.now
-      self.ani.start()
-
     def _integrate(self):
       last = self.T0
       dt = 0.1
@@ -279,7 +252,7 @@ class ArmAnimatorApp( JoyApp ):
     def _animation(self, fig):
       fig.clf()
       last = self.T0
-      fvp = FourViewPlot(fig,f=inf)
+      fvp = FourViewPlot(fig,f=80.)
       sim = self._integrate()
       dt = 0.1
       while True:
@@ -301,24 +274,6 @@ class ArmAnimatorApp( JoyApp ):
             ) for m in self.arm
         ]),sameLine=True)
         yield
-
-    def onEvent(self,evt):
-      # Ignore everything except keydown events
-      if evt.type != KEYDOWN:
-        return
-      # Punt exit keys
-      if evt.key in {K_q, K_ESCAPE}:
-        return JoyApp.onEvent(self,evt)
-      # row of 'a' on QWERTY keyboard increments motors
-      p = "asdfghjkl".find(evt.unicode)
-      if p>=0:
-        self.arm[p].set_pos(self.arm[p].get_goal() + 500)
-        return
-      # row of 'z' in QWERTY keyboard decrements motors
-      p = "zxcvbnm,.".find(evt.unicode)
-      if p>=0:
-        self.arm[p].set_pos(self.arm[p].get_goal() - 500)
-        return      
       
     def onStop(self):
       # We need this kind of import so as not to mess up JoyApp plotting
@@ -333,7 +288,7 @@ class ArmAnimatorApp( JoyApp ):
       # Prepare output as integers:
       #  time, x, y, depth
       pout = c_[t,asarray(lp[:2]*100,int).T,asarray(qq[2]*100,int)]
-      with open("result.csv","w") as rf:
+      with open("result-%d.csv" % time(),"w") as rf:
         for pp in pout:
           rf.write(repr(list(pp))[1:-1]+"\n")
       # Draw on "paper"
@@ -357,19 +312,40 @@ class ArmAnimatorApp( JoyApp ):
       ax.plot(fr[0],fr[1],'b--',lw=2)
       ax.axis('equal')
       ax.grid(1)
-      savefig("result.png",dpi=300)
+      savefig("result-%d.png" % time(),dpi=300)
       
+    def onStart(self):
+      """
+      Start the JoyApp and the simulation
+      """
+      self.ani = AnimatorPlan(self,self._animation)
+      self.t,self.q,self.y,self.p,self.l = [],[],[],[],[]
+      self.T0 = self.now
+      self.ani.start()      
+
+    def onEvent(self,evt):
+      """
+      The keyboard row: asdfghjkl moves your motors one way
+      The keyboard row: zxcvbnm,. moves your motors the other way
+      'q' will quit and store the results in a results.png image and results.csv
+      file.
+      """
+      # Ignore everything except keydown events
+      if evt.type != KEYDOWN:
+        return
+      # Punt exit keys
+      if evt.key in {K_q, K_ESCAPE}:
+        return JoyApp.onEvent(self,evt)
+      # row of 'a' on QWERTY keyboard increments motors
+      p = "asdfghjkl".find(evt.unicode)
+      if p>=0:
+        self.arm[p].set_pos(self.arm[p].get_goal() + 500)
+        return
+      # row of 'z' in QWERTY keyboard decrements motors
+      p = "zxcvbnm,.".find(evt.unicode)
+      if p>=0:
+        self.arm[p].set_pos(self.arm[p].get_goal() - 500)
+        return      
       
 if __name__=="__main__":
-    """
-    Define your arm here: (x,y,z) of motor axis, length of segment
-    
-    The keyboard row: asdfghjkl moves your motors one way
-    The keyboard row: zxcvbnm,. moves your motors the other way
-    
-    'q' will quit and store the results in a results.png image and results.csv
-    file.
-    """
-    app = ArmAnimatorApp(armSpec)
-    app.run()
-    
+  raise RuntimeError("This is not a script. Try 'myarmsim.py'")
