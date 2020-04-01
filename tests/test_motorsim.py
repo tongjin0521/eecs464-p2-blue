@@ -1,6 +1,8 @@
 from numpy import ( asarray, sin, cos, int16, pi)
 from pylab import (plot, grid, legend, figure, subplot, title, show, rand)
-from motorsim import *
+from motorsim import (
+    TH, OM, BL, EI, TMP,TQ0,TQ1,TQ2,TQ3,TQD,POS,GV,GP, MotorModel
+)
 
 class DbgMotorModel(MotorModel):
     def __init__(self):
@@ -25,7 +27,8 @@ class DbgMotorModel(MotorModel):
         # th, om, bl, ei, tmp
         idx = asarray(idx,int16)
         isAng = { TH, POS, GP }
-        t,y = self.get_ty()
+        t = asarray(self.t[:-1])
+        y = asarray(self.y[:-1])
         for n,yi in enumerate(y.T):
           if not n in idx:
             continue
