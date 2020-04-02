@@ -1,15 +1,20 @@
 import types, sys
 
-# For NBRPlan
-from os import O_NONBLOCK
-from fcntl import F_SETFL, F_GETFL, fcntl
-from errno import EAGAIN
-
+from warnings import warn
+try:
+  # For NBRPlan
+  from os import O_NONBLOCK
+  from fcntl import F_SETFL, F_GETFL, fcntl
+  from errno import EAGAIN
+  __UseNBR = True
+except ImportError:
+  warn("POSIX non-blocking IO not supported; NBRPlan will not be useable")
+  __UseNBR = False
+  
 from . pygix import EventType
 from . decl import *
 
 from math import pi,exp,floor
-from warnings import warn
 
 # Logging interface
 from . loggit import progress, debugMsg, dbgId
@@ -1287,7 +1292,8 @@ class MultiClick( Plan ):
     """
     return self.app.onMultiClick(self,evts)
 
-class NBRPlan( Plan ):
+if __UseNBR:
+ class NBRPlan( Plan ):
   """
   NBRPlan concrete class for non-blocking file reader
 

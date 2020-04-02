@@ -5,7 +5,7 @@ Created on Mon Mar 23 01:14:25 2020
 
 @author: shrevzen
 """
-from time import clock,time
+from time import time
 from numpy import ( 
     asarray, stack, ones, identity, dot, newaxis, cumsum, c_, nan, inf
 )
@@ -264,11 +264,11 @@ class ArmAnimatorApp( JoyApp ):
           continue
         last = now        
         # Draw graphics, measure execution time
-        tic = clock()
+        tic = time()
         self._show(fvp)
-        dt = clock() - tic
+        dt = time() - tic
         # Display progress
-        progress("(%4.2f) " % ( clock()-tic) +
+        progress(("(%4.2f) " % dt) +
             " ".join(["%15s" % (
             "%d/%d/%d" % (m.get_pos(),m.get_goal(),int(m.get_temp())) 
             ) for m in self.arm
