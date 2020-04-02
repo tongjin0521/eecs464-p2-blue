@@ -10,5 +10,4 @@ minimalVoltage : 10
 positionTolerance: 200000
 robotPollRate: 10000000
 windowSize: [800, 600]
-# On windows, comment this out 
 remote : { allowMisc : 10 }
