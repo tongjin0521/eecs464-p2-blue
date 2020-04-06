@@ -18,6 +18,14 @@ from . loggit import progress
 # Default UDP port used for communications
 DEFAULT_PORT = 0xBAA
 
+try:
+  # Windows decided to invent its own special exception type
+  BlockingIOError()
+except NameError:
+  # We fake it if it isn't there
+  class BlockingIOError(RuntimeError):
+    pass
+
 class Sink( Plan ):
   """
   Concrete class remote.Sink
@@ -110,6 +118,10 @@ class Sink( Plan ):
         # Create event from the next packet
         pkt = self.sock.recv(1024)
         dic = json_loads(pkt)
+      #
+      except BlockingIOError:
+        # Windows version of the above
+        break 
       #
       except SocketError as err:
         # If socket is out of data --> we're done

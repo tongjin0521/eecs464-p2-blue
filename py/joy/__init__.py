@@ -315,8 +315,8 @@ class JoyApp( object ):
       self.__scr_upd = {}
     # initialize midi module (this is safe to call again multiple times)
     if self.cfg.midi:
+      progress("Requesting MIDI support")
       midi_init()
-      progress("MIDI support initialized")
     else:
       progress("MIDI support was not requested")
     # init Plan scheduling structures

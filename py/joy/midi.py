@@ -1,6 +1,13 @@
-import pygame.midi as pygm
+
+from joy.decl import MIDIEVENT, progress
 from sys import stdout, version_info
-from joy.decl import MIDIEVENT
+if version_info.major>2:
+  progress("WARNING: found version %d.%d; Disabling MIDI -- pygame MIDI here is broken"
+     % (version_info.major, version_info.minor)
+  )
+  pygm = None
+else:
+  import pygame.midi as pygm
 from joy.events import JoyEvent
 
 DEV = None
@@ -203,6 +210,8 @@ def joyEventIter():
   """(protected) generate all pending events as JoyApp events
   This is used internally by JoyApp's event pump to collect midi events
   """
+  if pygm is None:
+    return
   for k,dev in DEV.items():
     for sc,kind,index,value in dev.eventIter():
       yield JoyEvent( MIDIEVENT,
@@ -248,8 +257,9 @@ def init():
    Initialize the pygame midi interface and enumerate the devices in
    the .DEV module variable
    """
-   if version_info.major>2:
-       raise RuntimeError("python 3 support for MIDI is broken but version %d.%d detected; only use this with python 2.x" % (version_info.major, version_info.minor))
+   if pygm is None:
+     progress("WARNING: MIDI init() called but MIDI is disabled")
+     return
    global DEV
    if DEV is not None:
      return
