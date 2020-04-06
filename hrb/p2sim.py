@@ -20,16 +20,18 @@ from joy.misc import requiresPyGame
 requiresPyGame()
 
 class MassArm(Arm):
-    def __init__(self):
-      Arm.__init__(self)
-  
+    def __init__(self,wl):
+      return self.setup(wl)
+    
     def setup(self,wl):
       Arm.setup(self,wl)
-      m = ones(self.geom[1].shape[1])
       CoM = [ asarray([0,0,0,1]) ] # Center of mass
+      m = ones(self.geom[1].shape[1]) # Mass distribution
       M = [ 0 ] # Mass
       I = [ identity(3) ] # Geometric inertia (I/m)
-      for gn in self.geom[1:]:
+      for gn,l in zip(self.geom[1:],wl[3]):
+        # Mass distribution - baseline, plus linear with segment length
+        m[:] = (3.+5*l)/m.size
         # CoM position
         M.append(sum(m))
         com = dot(gn,m)/M[-1]
@@ -113,10 +115,9 @@ class MassArm(Arm):
                
 class ArmSim(MassArm):
     def __init__(self,wlc):
-        MassArm.__init__(self)
         wlc = asarray(wlc)
         assert wlc.ndim == 2 and wlc.shape[0] == 5
-        self.setup(wlc[:-1])
+        MassArm.__init__(self,wlc[:-1])
         self.m = []
         for k in range(wlc.shape[1]):
           mm = MotorModel()
@@ -217,13 +218,18 @@ class ArmAnimatorApp( JoyApp ):
           self.l.append(pen)
 
     def _show(self,fvp):
+        """
+        Wrapper for show(), to allow subclasses to override
+        """
+        fvp.cla()
+        fvp.set(xticks=[],yticks=[])
+        return self.show(fvp)
+      
+    def show(self,fvp):
         ti = self.t[-1]
         qi = self.q[-1]
         pen = self.p[-1]
         li = self.l[-1]
-        # Display it, world frame image
-        fvp.cla()
-        fvp.set(xticks=[],yticks=[])
         # self.arm.plot3D(self.arm.at(qi),fvp)
         sk = self.arm.getSkel(self.arm.at(qi)).T
         fvp.plot3D(sk[0],sk[1],sk[2],lw=3,marker='o',color='#808080')

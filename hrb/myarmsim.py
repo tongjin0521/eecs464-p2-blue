@@ -24,11 +24,15 @@ class MyArmSim(ArmAnimatorApp):
       ### Arm specification
       ###
       armSpec = asarray([
-              [0,0.02,1,  4,  0],
-              [0,   1,0,  4,  0],
-              [0,   1,0,  4,  0],
+              [0,0.02,1,  5,  0],
+              [0,   1,0,  5,  0],
+              [0,   1,0,  5,  0],
           ]).T
       ArmAnimatorApp.__init__(self,armSpec,Tws2w,Tp2ws)
+
+    def show(self,fvp):
+      fvp.plot3D([0],[0],[0],'^k',ms=10) # Plot black triangle at origin
+      return ArmAnimatorApp.show(self,fvp)
     
     def onStart(self):
       ArmAnimatorApp.onStart(self)

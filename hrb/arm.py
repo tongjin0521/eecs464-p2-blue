@@ -139,9 +139,9 @@ class Arm( object ):
   ATTRIBUTES:
     tw --
   """
-  def __init__(self):
-      self.setup(asarray([[0,1,0,3],[0,0,1,3]]*3).T)
-
+  def __init__(self,wl):
+    return self.setup(wl)
+  
   def setup(self, wl):
     self.ll = wl[3]
     # arm geometry to draw
@@ -244,13 +244,16 @@ class Arm( object ):
     """
     if ax is None:
         ax = gcf().add_subplot(111,projection='3d')
+    mx = 0
     for a,g in zip(A, self.geom):
       ng = dot(a,g)
+      mx = max(mx,abs(ng.max()))
       ax.plot3D( ng[0,:], ng[1,:], ng[2,:], '.-' )
     tp = dot(a, self.tool)
     ax.plot3D( [tp[0]], [tp[1]], [tp[2]], 'hk' )
     ax.plot3D( [tp[0]], [tp[1]], [tp[2]], '.y' )
-
+    ax.plot3D( [-mx,mx], [-mx,mx], [-mx,mx], '.w', alpha=0.1 )
+    
   def plotAll( self, ang ):
     """
     Plot arm in 3 views

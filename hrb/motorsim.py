@@ -1,6 +1,5 @@
 from numpy import zeros, asarray, asfarray, concatenate
 from numpy.random import randint
-#!!!from integro import odeDP5
   
 def clip(a,mn,mx):
     return mn if a<mn else (mx if a>mx else a) # Hybrid clip
@@ -81,7 +80,6 @@ class MotorModel( object ):
         dtmp = -tmp*self.thrm + tqc3*tqc3
         # Keep a copy of all auxillary outputs
         gp = self.goalPos if self.goalPos else 0
-        #!!!self._aux[t] = tqc0,tqc1,tqc2,tqc3,tqd,th-bl,self.goalVel,gp
         self._aux = asfarray( (tqc0,tqc1,tqc2,tqc3,tqd,th-bl,self.goalVel,gp) )
         return asfarray( (om,dom,dbl,dei,dtmp) )
 
