@@ -276,7 +276,8 @@ class ArmAnimatorApp( JoyApp ):
         # Display progress
         progress(("(%4.2f) " % dt) +
             " ".join(["%15s" % (
-            "%d/%d/%d" % (m.get_pos(),m.get_goal(),int(m.get_temp())) 
+            "%d/%d/%s" % (m.get_pos(),m.get_goal(),
+              (str(int(m.get_temp())) if m.get_error() is None else "*ERR*")) 
             ) for m in self.arm
         ]),sameLine=True)
         yield
