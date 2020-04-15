@@ -7,7 +7,7 @@ Created on Tue Mar 31 04:11:41 2020
 """
 
 from numpy import asarray,ones,c_,inf
-    
+
 def hyperCube(d):
     """
     Iterator yielding the corners of the d-dimensional hypercube in binary
@@ -42,7 +42,7 @@ def plotVE( ax, v, ei, *arg, **kw ):
     """
     Plot edges between vertices.
     INPUT:
-      ax -- 3D projection matplotlib axes object 
+      ax -- 3D projection matplotlib axes object
       v -- N x 3 or N x 4 -- points in 3D
       ei -- edge iterable -- iterator producing indices of points to connect with lines
     """
@@ -56,7 +56,7 @@ class FourViewPlot:
   def __init__(self, fig, f = inf):
     """
     Display four standard views in the specified figure.
-    
+
     If specified, f gives focal distance; use inf for isometric
     """
     self.xyz = fig.add_subplot(221)
@@ -68,10 +68,10 @@ class FourViewPlot:
   def __getattr__(self,attr):
     """
     Attempt to map all attributes to the axes.
-    
+
     On getting a value, we get the xyz axes
     On calling a method, we call all four and collect the results
-    
+
     >>> fvp.grid(1) # turns grid on in all the grids
     >>> fvp.figure # returns the figure holding the xyz axes
     """
@@ -87,7 +87,7 @@ class FourViewPlot:
         getattr(self.zy,attr)(*arg,**kw), getattr(self.xy,attr)(*arg,**kw)
       ]]
     return _doAll
-  
+
   def plot3D(self,x,y,z,*arg,**kw):
     """
     Plot 3D lines in all 4 views

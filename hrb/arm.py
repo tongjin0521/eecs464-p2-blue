@@ -203,6 +203,9 @@ class Arm( object ):
       A.append(dot(A[-1],M))
     return A
 
+  def __len__(self):
+    return len(self.tw)
+  
   def getTool( self, ang ):
     """
     Get "tool tip" position in world coordinates
