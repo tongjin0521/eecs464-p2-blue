@@ -6,7 +6,7 @@ Created on Mon Mar 23 01:14:25 2020
 @author: shrevzen
 """
 from time import time
-from numpy import ( 
+from numpy import (
     asarray, stack, ones, identity, dot, newaxis, cumsum, c_, nan, inf
 )
 from numpy.linalg import inv
@@ -22,7 +22,7 @@ requiresPyGame()
 class MassArm(Arm):
     def __init__(self,wl):
       return self.setup(wl)
-    
+
     def setup(self,wl):
       Arm.setup(self,wl)
       CoM = [ asarray([0,0,0,1]) ] # Center of mass
@@ -73,15 +73,15 @@ class MassArm(Arm):
     def getGravityTorque(self,ang):
       """
       Compute the torque exerted by gravity on each of the joints (up to scale)
-      
+
       INPUT:
         ang -- N -- joint angles
-      
+
       OUTPUT: 1 x N
         torque on each of the joints
       """
       raise RuntimeError("should be overriden by constructor")
-  
+
     def getFrzI( self, A ):
       """
       Compute the frozen chain inertia for all segments.
@@ -106,13 +106,13 @@ class MassArm(Arm):
       # Computer frozen inertia from each segment out
       fI = [ dot(dot(ia,ic),ia.T) for ia,ic in zip(iA,Ic) ]
       return fI
-    
+
     def plot3D(self,A,ax):
       Arm.plot3D(self,A,ax)
       cx,cy,cz,_ = self.getCoMs(A).T
       ax.plot3D(cx,cy,cz,'ow')
       ax.plot3D(cx,cy,cz,'+k')
-               
+
 class ArmSim(MassArm):
     def __init__(self,wlc):
         wlc = asarray(wlc)
@@ -129,27 +129,27 @@ class ArmSim(MassArm):
           self.m.append(mm)
         # Set joint compliance
         self.c = ones(len(self.m))
-        
+
     def __iter__(self):
         for mm in self.m:
           yield mm
-          
+
     def __getitem__(self,idx):
         return self.m[idx % len(self.m)]
-    
+
     def __len__(self):
         return len(self.m)
-      
+
     def step(self,h):
         """
-        Do an integration step for the whole arm. 
-        
+        Do an integration step for the whole arm.
+
         THEORY OF OPERATION:
-          This is a rather tricky thing to do, because the RK integrator 
+          This is a rather tricky thing to do, because the RK integrator
         requires multiple function evaluations per time point. To support this,
         each motor model has an internal iterator that generates these quadrature
         points. Thus, we call next() on all the motor models to obtain their
-        quadrature points, then compute the coupling term (gravity torque), 
+        quadrature points, then compute the coupling term (gravity torque),
         set it up for them, and let them compute the next quadrature point,
         until we are done. Then we return the results.
         """
@@ -168,20 +168,22 @@ class ArmSim(MassArm):
             mi._ext = -tqi
         ang1 = ang0 - self.c*tq # sagged angles
         return t,ang1,stack(y,1)
-      
+
 class ArmAnimatorApp( JoyApp ):
-    def __init__(self,wlc,Tws2w,Tp2ws,*arg,**kw):
+    def __init__(self,wlc,Tws2w,Tp2ws,simTimeStep=0.1,*arg,**kw):
       if 'cfg' not in kw:
         kw['cfg'] = {}
       kw['cfg'].update(windowSize = [1200, 800])
+      self.simTS = simTimeStep
       JoyApp.__init__(self,*arg,**kw)
+      progress("Simulation time: %g sec = 0.1 sec simulated" % self.simTS)
       self.arm = ArmSim(wlc)
       self.Tp2w = dot(Tws2w,Tp2ws)
       # World to paper
       self.Tw2p = inv(self.Tp2w)
       # Paper with origin at origin
       self.paper_p = asarray([[8,11,-1/2.56,1]])*xyzCube
-      self.paper_w = dot(self.paper_p,self.Tp2w.T)  
+      self.paper_w = dot(self.paper_p,self.Tp2w.T)
       # Workspace box
       L = 12 # Workspace in arm units
       self.ws_w = dot(asarray([[L,L,L,1]])*xyzCube,Tws2w.T)
@@ -190,10 +192,10 @@ class ArmAnimatorApp( JoyApp ):
       self.Tprj = dot(self.Tp2w,asarray([[1,1,0,1]]).T*self.Tw2p)
       # World to relative paper (i.e. paper is unit cube)
       self.Tw2rp = self.Tw2p / self.paper_p[-1][:,newaxis]
-      
+
     def _integrate(self):
       last = self.T0
-      dt = 0.1
+      dt = self.simTS
       qi = None
       ti = None
       while True:
@@ -204,7 +206,7 @@ class ArmAnimatorApp( JoyApp ):
           yield
           continue
         last = now
-        ti,qi,yi =self.arm.step(h) # Speedup ratio into simulation time
+        ti,qi,yi =self.arm.step(h*0.1/dt) # Speedup ratio into simulation time
         # Store simulation time-step
         self.t.append(ti)
         self.q.append(qi)
@@ -224,7 +226,7 @@ class ArmAnimatorApp( JoyApp ):
         fvp.cla()
         fvp.set(xticks=[],yticks=[])
         return self.show(fvp)
-      
+
     def show(self,fvp):
         ti = self.t[-1]
         qi = self.q[-1]
@@ -254,7 +256,7 @@ class ArmAnimatorApp( JoyApp ):
         plotVE(fvp,self.paper_w,iCube,'g--',alpha=0.3)
         plotVE(fvp,self.paper_w[::2,:],iFace,'g-')
         plotVE(fvp,self.ws_w,iCube,'k:')
-      
+
     def _animation(self, fig):
       fig.clf()
       last = self.T0
@@ -262,13 +264,13 @@ class ArmAnimatorApp( JoyApp ):
       sim = self._integrate()
       dt = 0.1
       while True:
-        next(sim) # allow simulation to run        
+        next(sim) # allow simulation to run
         # Make sure graphics run at most 33% of the time
         now = self.now
         if now-last < dt * 2:
           yield
           continue
-        last = now        
+        last = now
         # Draw graphics, measure execution time
         tic = time()
         self._show(fvp)
@@ -277,11 +279,11 @@ class ArmAnimatorApp( JoyApp ):
         progress(("(%4.2f) " % dt) +
             " ".join(["%15s" % (
             "%d/%d/%s" % (m.get_pos(),m.get_goal(),
-              (str(int(m.get_temp())) if m.get_error() is None else "*ERR*")) 
+              (str(int(m.get_temp())) if m.get_error() is None else "*ERR*"))
             ) for m in self.arm
         ]),sameLine=True)
         yield
-      
+
     def onStop(self):
       # We need this kind of import so as not to mess up JoyApp plotting
       from pylab import figure,savefig
@@ -320,7 +322,7 @@ class ArmAnimatorApp( JoyApp ):
       ax.axis('equal')
       ax.grid(1)
       savefig("result-%d.png" % time(),dpi=300)
-      
+
     def onStart(self):
       """
       Start the JoyApp and the simulation
@@ -328,7 +330,7 @@ class ArmAnimatorApp( JoyApp ):
       self.ani = AnimatorPlan(self,self._animation)
       self.t,self.q,self.y,self.p,self.l = [],[],[],[],[]
       self.T0 = self.now
-      self.ani.start()      
+      self.ani.start()
 
     def onEvent(self,evt):
       """
@@ -352,7 +354,7 @@ class ArmAnimatorApp( JoyApp ):
       p = "zxcvbnm,.".find(evt.unicode)
       if p>=0:
         self.arm[p].set_pos(self.arm[p].get_goal() - 500)
-        return      
-      
+        return
+
 if __name__=="__main__":
   raise RuntimeError("This is not a script. Try 'myarmsim.py'")

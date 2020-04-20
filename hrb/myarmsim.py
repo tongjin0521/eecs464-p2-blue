@@ -24,12 +24,13 @@ class MyArmSim(ArmAnimatorApp):
       ### Arm specification
       ###
       armSpec = asarray([
-              [0,0.02,1,  3,  0],
-              [0,   1,0,  6,  1.57],
-              [0,   1,0,  4,  0],
-              [0,   1,0,  4,  0],
-          ]).T
-      ArmAnimatorApp.__init__(self,armSpec,Tws2w,Tp2ws)
+        [0,0.02,1,5,0],
+        [0,1,0,5,1.57],
+        [0,1,0,5,0],
+      ]).T
+      ArmAnimatorApp.__init__(self,armSpec,Tws2w,Tp2ws,
+        simTimeStep=0.1 # Real time that corresponds to simulation time of 0.1 sec
+      )
 
     def show(self,fvp):
       fvp.plot3D([0],[0],[0],'^k',ms=10) # Plot black triangle at origin
