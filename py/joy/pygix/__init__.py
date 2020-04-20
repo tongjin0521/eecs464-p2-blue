@@ -166,7 +166,7 @@ else: # pygame import failed / bypassed
     yield Event( TIMEREVENT )
     _TNEXT = t+_TIMESLICE
 
-  def showMplFig(buf,sz,bg=(255,255,255)):
+  def showMplFig(buf,sz,scr,bg=(255,255,255)):
     "Running headless"
     pass
 
