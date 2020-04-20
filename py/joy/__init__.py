@@ -292,6 +292,16 @@ class JoyApp( object ):
       if self.cfg.logProgress:
         progress('Progress messages will be logged')
         PROGRESS_LOG.add(self.logger)
+    if not self.cfg.logVideo:
+        self.frNmGen = None
+    else:
+        progress('Saving video frames to sequence %s' % (self.cfg.logVideo % 0))
+        def _gen():
+            n = 1
+            while True:
+                yield self.cfg.logVideo % n
+                n += 1
+        self.frNmGen = _gen()
     #
     self.now = pygix.now()
     # initialize safety provider list
@@ -341,7 +351,8 @@ class JoyApp( object ):
       logFile = None,
       logProgress = False,
       remote = None,
-      midi = None
+      midi = None,
+      logVideo = None,
     )
     pth = PYCKBOTPATH + 'cfg%sJoyApp.yml' % OS_SEP
     if glob(pth):
@@ -749,7 +760,12 @@ class JoyApp( object ):
 
       If no self.fig (headless system), call is silently ignored
       """
-      if self.fig:
+      if not self.fig:
+          return
+      if self.frNmGen is not None:
+          fn = next(self.frNmGen)
+          self.fig.savefig(fn)
+      else: # video only when not saving frames
           self._frame = self.fig.canvas.print_to_buffer()
 
   def stop(self):

@@ -10,7 +10,7 @@ from numpy import asarray
 from p2sim import ArmAnimatorApp
 
 class MyArmSim(ArmAnimatorApp):
-    def __init__(self,Tp2ws):
+    def __init__(self,Tp2ws,**kw):
       ###
       ### Student team selection -- transform from workspace coordinates to world
       ###
@@ -29,7 +29,8 @@ class MyArmSim(ArmAnimatorApp):
         [0,1,0,5,0],
       ]).T
       ArmAnimatorApp.__init__(self,armSpec,Tws2w,Tp2ws,
-        simTimeStep=0.1 # Real time that corresponds to simulation time of 0.1 sec
+        simTimeStep=0.1, # Real time that corresponds to simulation time of 0.1 sec
+        **kw
       )
 
     def show(self,fvp):
@@ -56,5 +57,10 @@ if __name__=="__main__":
        [0.7071,0, 0.7071,0],
        [0,     0,      0,1]
   ])
-  app = MyArmSim(Tp2ws)
+  app = MyArmSim(Tp2ws,
+     ## Uncomment the next line (cfg=...) to save video frames;
+     ## you can use the frameViewer.py program to view those
+     ## frames in real time (they will not display locally)
+     # cfg=dict(logVideo="f%04d.png")
+    )
   app.run()
