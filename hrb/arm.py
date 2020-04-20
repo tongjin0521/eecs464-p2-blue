@@ -1,7 +1,7 @@
 from mpl_toolkits.mplot3d import Axes3D
 from scipy.linalg import expm as expM
 from numpy import (
-  asarray, all, allclose, empty, empty_like, concatenate, cross, dot,
+  asarray, all, empty, empty_like, concatenate, cross, dot,
   ones, newaxis, identity, zeros_like, array, diag, sum
 )
 from pylab import (
@@ -41,24 +41,6 @@ def screw( v ):
       [ v[...,5],  z,-v[...,3], v[...,1] ],
       [-v[...,4],  v[...,3], z, v[...,2] ],
       [ z,         z,        z, z] ])
-
-def unscrew( S ):
-  """
-  Convert a screw matrix to a 6-vector
-
-  The function is vectorized, such that:
-  INPUT:
-    S -- N... x 4 x 4 -- input screws
-  OUTPUT:
-    N... x 6
-
-  This is the "safe" function -- it tests for screwness first.
-  Use unscrew_UNSAFE(S) to skip this check
-  """
-  S = asarray(S)
-  assert allclose(S[...,:3,:3].transpose(0,1),-S[...,:3,:3]),"S[...,:3,:3] is skew"
-  assert allclose(S[...,3,:],0),"Bottom row is 0"
-  return unscrew_UNSAFE(S)
 
 def jacobian_cdas( func, scl, lint=0.8, tol=1e-12, eps = 1e-30, withScl = False ):
   """Compute Jacobian of a function based on auto-scaled central differences.
