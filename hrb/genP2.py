@@ -57,7 +57,6 @@ ofs = rand(3) * scl - mn # compute uniform random offset in BBox
 Tp2ws = eye(4)
 Tp2ws[:3,:3] = R
 Tp2ws[:-1,-1] = ofs
-Tp2ws[:,[-1]] += wso.T
 Tp2ws = Tp2ws.round(2)
 
 print("Tp2ws=%r" % Tp2ws)
@@ -68,11 +67,12 @@ s = rand()*4+2
 x = rand()*(Lx - s)
 y = rand()*(Ly - s)
 sq_p = xyzCube[::2,:] * [[s,s,0,1]] + [[x,y,0,0]]
-sq = dot(sq_p,Tp2ws.T)
+sq = dot(sq_p,Tp2ws.T)+wso
 
 print(f"x,y,s = %.1g,%.1g,%.1g" % (x+s/2,y+s/2,s))
 
 # Apply to "paper"
+Tp2ws[:,[-1]] += wso.T
 paper_w = dot(paper_p,Tp2ws.T)
 fig = figure(1)
 fig.clf()
