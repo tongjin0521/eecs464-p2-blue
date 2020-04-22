@@ -97,10 +97,9 @@ plotVE(fvp,paper_w,iCube,'g--',alpha=0.3)
 plotVE(fvp,paper_w[::2,:],iFace,'g-')
 plotVE(fvp,ws,iCube,'k:')
 plotVE(fvp,sq,iFace,'r-')
-show()
 
 if rs is not None:
-  savefig("p2specs-%d.png" % rs)
+  fig.savefig("p2specs-%d.png" % rs)
 
 
 
