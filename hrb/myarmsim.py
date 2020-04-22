@@ -57,6 +57,10 @@ if __name__=="__main__":
        [0.7071,0, 0.7071,0],
        [0,     0,      0,1]
   ])
+  Tp2ws=asarray([[  1.  ,   0.  ,   0.  ,   0.16],
+       [  0.  ,   0.71,   0.71,   1.92],
+       [  0.  ,  -0.71,   0.71,  10.63],
+       [  0.  ,   0.  ,   0.  ,   1.  ]])
   app = MyArmSim(Tp2ws,
      ## Uncomment the next line (cfg=...) to save video frames;
      ## you can use the frameViewer.py program to view those

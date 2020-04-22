@@ -69,7 +69,7 @@ y = rand()*(Ly - s)
 sq_p = xyzCube[::2,:] * [[s,s,0,1]] + [[x,y,0,0]]
 sq = dot(sq_p,Tp2ws.T)+wso
 
-print(f"x,y,s = %.1g,%.1g,%.1g" % (x+s/2,y+s/2,s))
+print(f"x,y,s = %.1g,%.1g,%.1g" % (x+s/2,y+s/2,s/2!))
 
 # Apply to "paper"
 Tp2ws[:,[-1]] += wso.T
