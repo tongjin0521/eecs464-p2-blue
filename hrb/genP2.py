@@ -5,8 +5,17 @@ Created on Tue Apr 21 01:42:48 2020
 
 @author: shrevzen
 """
-from numpy.random import rand, randint
+from sys import argv
 
+from numpy.random import rand, randint, seed
+
+if len(argv)>1:
+  rs = int(argv[1])
+  seed(rs)
+  print(f"# Seed used {rs}")
+else:
+  rs = None
+  
 from numpy import (
     asfarray, asarray, dot, cross, newaxis, eye, c_, allclose, sqrt
     )
@@ -60,7 +69,11 @@ Tp2ws[:-1,-1] = ofs
 Tp2ws = Tp2ws.round(2)
 
 print("Tp2ws=%r" % Tp2ws)
-
+if rs is not None:
+  with open("p2specs.py","a+") as fi:
+    fi.write(f"\n#seed {rs}\n")
+    fi.write("Tp2ws=%r\n" % Tp2ws)
+    
 # Build x,y,s
 
 s = rand()*4+2
@@ -69,7 +82,10 @@ y = rand()*(Ly - s)
 sq_p = xyzCube[::2,:] * [[s,s,0,1]] + [[x,y,0,0]]
 sq = dot(sq_p,Tp2ws.T)+wso
 
-print(f"x,y,s = %.1g,%.1g,%.1g" % (x+s/2,y+s/2,s/2!))
+print("x,y,s = %.1g,%.1g,%.1g" % (x+s/2,y+s/2,s/2))
+if rs is not None:
+  with open("p2specs.py","a+") as fi:
+    fi.write("x,y,s = %.1g,%.1g,%.1g\n" % (x+s/2,y+s/2,s/2))
 
 # Apply to "paper"
 Tp2ws[:,[-1]] += wso.T
@@ -83,7 +99,8 @@ plotVE(fvp,ws,iCube,'k:')
 plotVE(fvp,sq,iFace,'r-')
 show()
 
-
+if rs is not None:
+  savefig("p2specs-%d.png" % rs)
 
 
 
