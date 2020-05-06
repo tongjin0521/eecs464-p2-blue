@@ -520,7 +520,7 @@ class JoyApp( object ):
       if (m.__promise):
         pos = m.pna.async_parse('h',m.__promise)
         if abs(pos-m.__last_pos)>self.cfg.positionTolerance:
-          evt = pygix.Event(CKBOTPOSITION, module = m.node_id, pos = pos )
+          evt = JoyEvent(CKBOTPOSITION, module = m.node_id, pos = pos )
           pygix.postEvent(evt)
         m.__last_pos = pos
       m.__promise = m.get_pos_async()
@@ -538,21 +538,28 @@ class JoyApp( object ):
       progress('Scratch connection aborted')
       return
     for nm,val in var.items():
-      evt = pygix.Event(SCRATCHUPDATE, scr=0, var=nm, value=val )
+      evt = JoyEvent(SCRATCHUPDATE, scr=0, var=nm, value=val )
       pygix.postEvent(evt)
     for nm in bcast:
-      evt = pygix.Event(SCRATCHUPDATE, scr=0, var=nm, value=None )
+      evt = JoyEvent(SCRATCHUPDATE, scr=0, var=nm, value=None )
       pygix.postEvent(evt)
 
   # Table of functions for converting various event kinds into Scratch sensors
   SCRATCHY = {
-    JOYAXISMOTION : lambda x : ('joy%d axis%d' % (x.joy,x.axis), x.value),
-    JOYBALLMOTION : lambda x : ('joy%d ball%d' % (x.joy,x.ball), x.rel),
-    JOYHATMOTION : lambda x : ('joy%d hat%d'% (x.joy,x.hat), x.value) ,
-    JOYBUTTONUP  : lambda x : ('joy%d btn%d' % (x.joy,x.button), None) ,
-    JOYBUTTONDOWN : lambda x : ('joy%d bup%d' % (x.joy,x.button), None),
-    QUIT : lambda x : ('JoyAppQuit',None),
-    CKBOTPOSITION : lambda x : ('bot Nx%x pos' % x.module, x.pos),
+    JOYAXISMOTION : lambda x : [('joy%d axis%d' % (x.joy,x.axis), x.value)],
+    JOYBALLMOTION : lambda x : [('joy%d ball%d' % (x.joy,x.ball), x.rel)],
+    JOYHATMOTION : lambda x : [('joy%d hat%d'% (x.joy,x.hat), x.value)] ,
+    JOYBUTTONUP  : lambda x : [('joy%d btn%d' % (x.joy,x.button), None)] ,
+    JOYBUTTONDOWN : lambda x : [('joy%d bup%d' % (x.joy,x.button), None)],
+    QUIT : lambda x : [('JoyAppQuit',None)],
+    CKBOTPOSITION : lambda x : [('bot Nx%x pos' % x.module, x.pos)],
+    MOUSEMOTION : lambda x : ([ ('mm x', x.pos[0]), ('mm y', x.pos[1]) ]),
+    MOUSEBUTTONDOWN : lambda x : ([ ('mm x', x.pos[0]), ('mm y', x.pos[1]),
+        ('mbtn%d dn' % x.button, None) ]),
+    MOUSEBUTTONUP : lambda x : ([ ('mm x', x.pos[0]), ('mm y', x.pos[1]),
+        ('mbtn%d up' % x.button, None) ]),
+    KEYDOWN : lambda x : ( [('K_%s ' % x.unicode, None)]
+          if x.unicode.isalnum() else []),
   }
   def scratchifyEvent( self, evt ):
     """Convert event to a corresponding scratch message and send it
@@ -562,17 +569,17 @@ class JoyApp( object ):
     fun = self.SCRATCHY.get(evt.type,None)
     if fun is None:
       return False
-    msg,val = fun(evt)
-    if val is None:
-      if 'S' in self.DEBUG: debugMsg('Defer scratch broadcast %s' % msg)
-      # Quit events must be sent immediately
-      if evt.type==QUIT:
-        self.scr.broadcase(msg)
-      else:
-        self.__scr_cast.add(msg)
-    else:
-      if 'S' in self.DEBUG: debugMsg(self,'Defer scratch update %s=%s' % (msg,str(val)))
-      self.__scr_upd[msg]= val
+    for msg,val in fun(evt):
+        if val is None:
+          if 'S' in self.DEBUG: debugMsg(self,'Defer scratch broadcast %s' % msg)
+          # Quit events must be sent immediately
+          if evt.type==QUIT:
+            self.scr.broadcast(msg)
+          else:
+            self.__scr_cast.add(msg)
+        else:
+          if 'S' in self.DEBUG: debugMsg(self,'Defer scratch update %s=%s' % (msg,str(val)))
+          self.__scr_upd[msg]= val
     return True
 
   def setScratch(self, sensor, value):
@@ -601,7 +608,7 @@ class JoyApp( object ):
     if self.__scr_upd:
       self.scr.sensorUpdate( **self.__scr_upd )
       if 'S' in self.DEBUG:
-        debugMsg(self,'Scratch update %s' % repr(self.__scr_udp) )
+        debugMsg(self,'Scratch update %s' % repr(self.__scr_upd) )
       self.__scr_upd = {}
 
   def _pollSafety( self ):
@@ -744,6 +751,7 @@ class JoyApp( object ):
     try:
       self.onStop()
       if self.scr:
+        self.scratchifyEvent(JoyEvent(QUIT))
         self.scr.close()
       if self.robot:
         self.robot.off()
