@@ -59,8 +59,6 @@ if __name__=="__main__":
     elif arg=='--names' or arg=='-n':
       names = yaml.safe_load( '{%s}'% args.pop(0) )
       robot.update( names=names )
-    elif arg=='--walk' or arg=='-w':
-      robot.update( walk=True )
     elif arg=='--any' or arg=='-a':
       robot.update( count=None )
     elif arg=='--duration' or arg=='-d':
@@ -96,9 +94,6 @@ if __name__=="__main__":
       --names <names> | -n <names>
         Where <names> is a valid YAML mapping from node numbers
         to names, e.g. '0x36: head, 223: tail'
-
-      --walk | -w
-        Attempt to walk the Object Dictionary of the modules found
 
       --bus <bus-name> | -b <bus-name>
         Supported busses are 'pololu' and 'dynamixel'

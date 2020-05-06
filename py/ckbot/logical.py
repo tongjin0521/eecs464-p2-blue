@@ -165,7 +165,7 @@ class Cluster(dict):
       return self.populate(*args,**kwargs)
 
   def populate(self, count = None, names = {}, timeout=2, timestep=0.1,
-                required = set(), fillMissing=None, walk=False,
+                required = set(), fillMissing=None,
                 autonamer=lambda nid : "Nx%02X" % nid ):
     """
     Tries to populate the cluster based on heartbeats observed on the bus.
@@ -186,7 +186,6 @@ class Cluster(dict):
             with instances of this class. If boolean true, uses MissingModule
             NOTE: the nobus mechanism bypasses this; use nobus.NID_CLASS
       names -- dictionary of Modules names based with node id as their key.
-      walk -- bool -- if true, walks each module to indentify its interface
       autonamer -- names the modules if no names are given.
     """
     self.clear()
@@ -202,8 +201,6 @@ class Cluster(dict):
       name = names.get(nid, autonamer(nid))
       mod = self.newModuleIX( nid, name )
       self.add(mod)
-      if walk:
-        mod.get_od()
     if fillMissing:
       if type(fillMissing) is not type:
         fillMissing = MissingModule

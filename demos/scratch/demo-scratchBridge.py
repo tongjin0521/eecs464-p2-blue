@@ -1,7 +1,7 @@
 '''
 File demo-scratchBridge.py
 
-This file performs scratch operations with joystick and also controls 
+This file performs scratch operations with joystick and also controls
 motors using scratch. This does this by exposing all properties of CKbot cluster
 to scratch and using SCRATCHUPDATE to detect any change in the scratch file.
 '''
@@ -12,25 +12,25 @@ import re
 class ScratchBridge(JoyApp):
   '''
   This class controls and performs all scratch and module operations on user input
-  
+
   It passes the event to connceted scratch window to perform jotystick operations
-  
-  This class looks for SCRATCHUPDATE event if any event occurs on the scratch window and 
+
+  This class looks for SCRATCHUPDATE event if any event occurs on the scratch window and
   processes the events,
   First, it looks in the cache if it has any callbacks associated with the event.
   If not, it will try to create a new callback using the newSetter function
 
-  It will be useful for those who need to create callbacks from strings or tuples  
+  It will be useful for those who need to create callbacks from strings or tuples
   '''
-  def __init__(self,count=None,names={},walk=False):
+  def __init__(self,count=None,names={}):
     JoyApp.__init__(self,scr={},
-      robot=dict(count=count,names=names,walk=walk))
+      robot=dict(count=count,names=names))
   #This will look for a string in the "ckbot://Nx40/@set_pos" format
   REX_CLP = re.compile("\Ackbot://(\S+)\Z")
-  
+
   def onStart( self ):
     self.cache = {}
-  
+
   def newSetter( self, key ):
     # Pattern match with CLP pattern
     m = self.REX_CLP.match(key)
@@ -59,7 +59,7 @@ class ScratchBridge(JoyApp):
       print(evt.var+" Event Value "+str(evt.value))
       print("Function before if:"+str(fun))
       # If cache hit --> call setter function
-      if fun: 
+      if fun:
         fun(int(evt.value))
         print("function")
       elif fun is False: # cached as a bad name --> ignore
@@ -76,13 +76,13 @@ class ScratchBridge(JoyApp):
     elif evt.type != TIMEREVENT:
       self.scratchifyEvent(evt)
       JoyApp.onEvent(self,evt)
-      
+
 if __name__=="__main__":
   import sys
   print('''
   Scratch to CKBot Bridge
   -----------------------
-  
+
   When running, this JoyApp exposes all properties of the CKBot
   cluster to Scratch. In addition, it emits game controller state
   updates into scratch.
@@ -92,22 +92,21 @@ if __name__=="__main__":
   2. Run demo-scratchBridge.py in another terminal
   3. To move the cat, click on the green flag in the scratch window and move the controller's left
      analog
-  4. To make the cat talk, go to the pygame window and click the controller's face buttons 
+  4. To make the cat talk, go to the pygame window and click the controller's face buttons
   5. To move the motors, create a variable ckbot://Nx40/@set_pos corresponding to
-     your module name. Then click on Sprite 2 and update the variable in the script which says 
+     your module name. Then click on Sprite 2 and update the variable in the script which says
      'when Sprite2 clicked'
-  5. Click and move the Nx36 icon to move the motors   
-  
+  5. Click and move the Nx36 icon to move the motors
+
   The commandline version (which you are running now) expects
-  the number of modules to be given as a parameter, but the 
-  ScratchBridge class does not require this. If the number of 
+  the number of modules to be given as a parameter, but the
+  ScratchBridge class does not require this. If the number of
   modules is not specified, the default Cluster.populate() settings are used.
   ''')
   if len(sys.argv)==2:
-    sb = ScratchBridge(count=int(sys.argv[1]),walk=True)
+    sb = ScratchBridge(count=int(sys.argv[1]))
   else:
-    sb = ScratchBridge(walk=True)
-    
+    sb = ScratchBridge()
+
   DEBUG = 'S'
   sb.run()
-  
