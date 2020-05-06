@@ -51,13 +51,13 @@ def event_name(typ):
 
 def describeEvt( evt, parseOnly = False ):
   """
-  Describe an event stored in a pygix.Event object.
+  Describe an event stored in an event object.
 
   Returns a human readable string that consists of all fields in the
   event object. These are printed in a format that makes it easy to
   cut and paste them into code that pattern matches events, e.g.
 
-  >>> evt = pygix.Event(pygame.locals.MOUSEMOTION,pos=(176, 140),rel=(0, 1),buttons=(0, 0, 0))
+  >>> evt = joy.events.JoyEvent(pygame.locals.MOUSEMOTION,pos=(176, 140),rel=(0, 1),buttons=(0, 0, 0))
   >>> print(describeEvt(evt,0))
   type==MOUSEMOTION pos==(176, 140) rel==(0, 1) buttons==(0, 0, 0)
 

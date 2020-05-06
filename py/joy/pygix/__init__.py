@@ -111,10 +111,10 @@ else: # pygame import failed / bypassed
     _EVENT_Q.append(evt)
 
   class Event( object ):
-    def __init__(self, typecode, **attr):
+    def __init__(self, typecode, attr=None):
       self.type=typecode
       if attr:
-        self.__dict__.update(**attr)
+        self.__dict__.update(attr)
 
   # If forced use of headless scheduler then we should have
   #   all constants provided by pygame
