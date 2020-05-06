@@ -10,7 +10,7 @@ try:
 except ImportError:
   warn("POSIX non-blocking IO not supported; NBRPlan will not be useable")
   __UseNBR = False
-  
+
 from . pygix import EventType
 from . decl import *
 
@@ -893,6 +893,7 @@ class StickFilter( Plan ):
   and the related events are .push()-ed into the StickFilter plan.
 
   The schemata:
+  mouse
   joy<joystick-number>ball<ball-number>
   joy<joystick-number>hat<hat-number>
   joy<joystick-number>axis<axis-number>, e.g. joy0axis1, for joystick events
@@ -1087,6 +1088,8 @@ class StickFilter( Plan ):
       return 'Nx%02X' % evt.module, evt.pos
     elif evt.type==MIDIEVENT:
       return 'midi%dsc%d%s%d' % (evt.dev,evt.sc,evt.kind,evt.index), evt.value
+    elif evt.type==MOUSEMOTION:
+      return 'mouse', evt.pos[0]+1j*evt.pos[1]
     return None, None
 
   def onEvent( self, evt ):
