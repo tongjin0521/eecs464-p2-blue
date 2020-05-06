@@ -35,47 +35,44 @@ class ScratchBridge(JoyApp):
     # Pattern match with CLP pattern
     m = self.REX_CLP.match(key)
     if m is None:
-      self.cache[key] = None
-      return None
+      return False
     # Search for extracted CLP
     clp = m.group(1)
-    print("ClP="+clp)
     try:
       fun = self.setterOf(clp)
     except (KeyError,AttributeError,ValueError) as ex:
-      fun = ex
-    # If failed --> invalid property name
-    if isinstance(fun,StandardError):
-      self.cache[key] = False
+      progress(ex)
       return False
-    # Record new cache value
-    self.cache[key]= fun
     return fun
 
   def onEvent( self, evt ):
-    if evt.type==SCRATCHUPDATE:
-      # Lookup in cache for a setter function
-      fun = self.cache.get(evt.var,None)
-      print(evt.var+" Event Value "+str(evt.value))
-      print("Function before if:"+str(fun))
-      # If cache hit --> call setter function
-      if fun:
-        fun(int(evt.value))
-        print("function")
-      elif fun is False: # cached as a bad name --> ignore
-        print("None")
-        pass
-      else: # New --> lookup in robot, and cache result
+    if evt.type==TIMEREVENT:
+        return
+    if evt.type!=SCRATCHUPDATE:
+      self.scratchifyEvent(evt)
+      return JoyApp.onEvent(self,evt)
+    #
+    assert evt.type == SCRATCHUPDATE
+    progress("Scratch sent "+evt.var+", value "+str(evt.value))
+    # Lookup in cache for a setter function
+    fun = self.cache.get(evt.var,None)
+    if fun is None:
+        progress("\t --> No handler in cache")
         assert fun is None
         fun = self.newSetter( evt.var )
-        print("Function in else:"+str(fun))
-        print("New function")
-        if fun:
-          print("New function created")
-          fun(int(evt.value))
-    elif evt.type != TIMEREVENT:
-      self.scratchifyEvent(evt)
-      JoyApp.onEvent(self,evt)
+        self.cache[evt.var]= fun
+        if not fun:
+           progress("\t '%s' was not found" % evt.var)
+        else:
+           progress("\t found setter :"+str(fun))
+           fun(int(evt.value))
+        return
+    if fun is False:
+        progress("\t --> known bad; ignored")
+        return
+    assert callable(fun)
+    progress("\t --> found %r" % fun)
+    fun(int(evt.value))
 
 if __name__=="__main__":
   import sys
@@ -85,28 +82,21 @@ if __name__=="__main__":
 
   When running, this JoyApp exposes all properties of the CKBot
   cluster to Scratch. In addition, it emits game controller state
-  updates into scratch.
+  updates into scratch, and mouse motions.
 
   Instructions:
   1. Start demo-scratchBridge.sb from command line by typing 'scrach demo-scratchBridge.sb'
-  2. Run demo-scratchBridge.py in another terminal
-  3. To move the cat, click on the green flag in the scratch window and move the controller's left
-     analog
-  4. To make the cat talk, go to the pygame window and click the controller's face buttons
-  5. To move the motors, create a variable ckbot://Nx40/@set_pos corresponding to
-     your module name. Then click on Sprite 2 and update the variable in the script which says
-     'when Sprite2 clicked'
-  5. Click and move the Nx36 icon to move the motors
+  2. Run UI front end enabling mouse events: 'ctrl -e MOUSEMOTION -e MOUSEBUTTONDOWN'
+  3. Run demo-scratchBridge.py and give it the number of modules you have connected; in this documentation we will assume there are two: Nx09 and Nx59
+  4. To move the cat, click on the green flag in the scratch window. If you now move the mouse over the JoyApp UI window, the cat will make corresponding motions
+  5. To make the cat talk, left-click your mouse
+  6. You can also control motors from scratch. To move the motors, create a variable corresponding to your module name, with the following schema: if your module is Nx40, use ckbot://Nx40/@set_pos . Then click on Sprite 2 (the "Move Me!" sprite) and update the variable in the script which says      'when Sprite2 clicked'. Now activate this sprite by clicking on it, and drag it up and down to control the motor.
+  7. If you hit the 'space' key in scratch, it will wiggle the motors three times. You will need to set variables accordingly.
 
-  The commandline version (which you are running now) expects
-  the number of modules to be given as a parameter, but the
-  ScratchBridge class does not require this. If the number of
-  modules is not specified, the default Cluster.populate() settings are used.
+  Many different event types are emitted to scratch, and some events (like mouse events) produce multiple sensor updates. Search for SCRATCHY in joy/__init__.py for a complete list of event types that are converted.
   ''')
-  if len(sys.argv)==2:
-    sb = ScratchBridge(count=int(sys.argv[1]))
-  else:
-    sb = ScratchBridge()
-
+  if len(sys.argv)!=2:
+    raise ValueError("Must give number of modules on commandline")
+  sb = ScratchBridge(count=int(sys.argv[1]))
   DEBUG = 'S'
   sb.run()
