@@ -3,11 +3,16 @@ keyboardRepeatDelay: 500
 keyboardRepeatInterval: 50
 nodeNames: {
   0x01: UninitializedNode,
-  0x0c: lwheel,
-  0x3C: rwheel,
+ # 0x08: lwheel,
+ # 0x0c: rwheel,
+   0x02: front,
+   0x08: rear,
+#  0x0a: w3,
+#  0x0c: w4,
+#  0x3c: w5,
 }
 minimalVoltage : 10
 positionTolerance: 200000
 robotPollRate: 10000000
-windowSize: [800, 600]
+windowSize: [200, 150]
 remote : { allowMisc : 10 }

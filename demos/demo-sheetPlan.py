@@ -49,10 +49,7 @@ if __name__=="__main__":
   In default, debug mode -- outputs to the screen
   
   With a robot, use the --withRobot or -r switches and set up your JoyApp.yml to map some robot nodes to 'front' and 'rear'. 
-  Those nodes will move according to the gait table in the csv file.
-  
-  With scratch,  use the --withScratch or -s switches, after starting Scratch with the demo-plans.sb Scratch project in another window. 
-  Click on the green flag to start the cat drawing. The cat will move according to the gait table in the csv file.
+  Those nodes will move according to the gait table in the csv file.  
   
   When any key is pressed, starts the SheetPlan moving through the gait table.
 
@@ -67,15 +64,9 @@ if __name__=="__main__":
       app = SheetPlanApp(bind=dict(
           x='front/@set_pos', y='rear/@set_pos'), 
         robot=dict(count=2) )
-   # if argument is --withScratch, it does cat drawing according to the table
-    elif sys.argv[1]=='--withScratch' or sys.argv[1]=='-s':
-      app = SheetPlanApp(bind=dict(
-          x='>catX', y='>catY'),
-        scr={} )
   # in default, output is printed to the terminal from CSV
   #creates an object(interface)
   if app is None:
     app = SheetPlanApp(bind=dict(x="#x ", y="#y "))
   #goes to onStart    
   app.run()
-

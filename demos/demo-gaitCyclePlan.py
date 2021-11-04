@@ -22,21 +22,21 @@ class GaitCyclePlanApp( JoyApp ):
   SHEET = loadCSV("M4ModLab.csv")
   
   def __init__(self,*arg,**kw):
-    JoyApp.__init__(self,scr={},*arg,**kw)
+    JoyApp.__init__(self,*arg,**kw)
+
   #initializes a plan based on the arguemnets passed on __init__function  
   def onStart( self ):
     if self.robot is not None:
       self.plan = GaitCyclePlan( self, self.SHEET, maxFreq = 0.3,
         x='front/@set_pos', y='rear/@set_pos')
-    elif self.scr is not None:    
-      self.plan = GaitCyclePlan( self, self.SHEET, maxFreq = 0.3,
-        x='>catX', y='>catY')
     else:
-      raise RuntimeError("Must initialize either Scratch or Robot outputs")
+      self.plan = GaitCyclePlan( self, self.SHEET, maxFreq = 0.3,
+        x='#catX', y='#catY')
     #Curry function creates a callback using it's arguements
     self.plan.onStart = curry(progress,">>> START")
     self.plan.onStop = curry(progress,">>> STOP")
     self.plan.setFrequency(0.2)
+
   #acts on our inputs
   def onEvent(self, evt):
     if evt.type==KEYDOWN:
@@ -76,20 +76,15 @@ if __name__=="__main__":
   print("""
   Demo of SheetPlan class
   -----------------------
-  
-  Use this demo with the demo-plans.sb Scratch project.
-  
-  When any key is pressed, starts a SheetPlan making the 
-  cat move around a W shaped figure.
-  This passes frequency, x and y with functions as arguements to start a cycle
-  pass arguements in __init__ to select thre mode
-  pass robot={} to work on real robot
-  pas scr={} to work in scratch
+  When any key is pressed, starts a SheetPlan
   The application can be terminated with 'q' or [esc]
   """)
   import joy
-  #starts an interface
-  app=GaitCyclePlanApp()
+  from sys import argv
+  if len(argv)>1 and "robot".startswith(argv[1].lower()):
+    app = GaitCyclePlanApp(robot={'count':2})
+  else:
+    app=GaitCyclePlanApp()
   #directs  to onStart function
   app.run()
 

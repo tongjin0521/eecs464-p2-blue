@@ -34,6 +34,9 @@ class HelloJoyApp( JoyApp ):
     self.output = self.setterOf(self.spec)
 
   def onEvent(self,evt):
+    # Supress bogus VM events that convert mouse to joystick
+    if evt.type==JOYAXISMOTION and evt.joy==1:
+      return
     # All unknown events --> punt to superclass
     if evt.type != MOUSEMOTION or evt.buttons[0] == 0:
       return JoyApp.onEvent(self,evt)

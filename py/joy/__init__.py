@@ -90,7 +90,7 @@ from . loggit import progress,LogWriter,dbgId,debugMsg,PROGRESS_LOG
 # Plan classes
 from . plans import ( Plan,
   SheetPlan, CyclePlan, FunctionCyclePlan,
-  GaitCyclePlan, StickFilter, MultiClick
+  GaitCyclePlan, StickFilter
   )
 from . import plans
 from . import remote

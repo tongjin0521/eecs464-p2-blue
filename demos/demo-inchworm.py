@@ -71,6 +71,10 @@ class InchwormApp( JoyApp ):
     self.joyMode = False
     # Create a temporal filter that is true once every 0.5 seconds
     self.oncePer = self.onceEvery(0.5)
+    # Make sure all the motors are in servo mode
+    for m in self.robot.itermodules():
+      m.set_mode("SERVO")
+
 
   def onStop( self ):
     # Make sure we go_slack on all servo modules when we exit
