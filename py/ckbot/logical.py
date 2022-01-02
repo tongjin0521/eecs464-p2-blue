@@ -16,14 +16,15 @@
 """
 from re import compile as re_compile
 from time import sleep, time as now
-from warnings import warn
 from traceback import extract_stack
 
-from .ckmodule import *
+from .ckmodule import ( 
+    AbstractProtocol, progress, MissingModule, Module, DebugModule, PermissionError
+)
 from . import polowixel
 from . import pololu
 from . import dynamixel
-from .defaults import *
+from .defaults import DEFAULT_ARCH, DEFAULT_PORT
 
 def nids2str( nids ):
   return ",".join(["Nx%02x" % nid for nid in nids])
@@ -136,7 +137,7 @@ class Cluster(dict):
         If DEFAULT_PORT is None (default value), looks for DEFAULT_PORT in arch
 
         This can be used to specify serial devices and baudrates, e.g.
-        port = 'tty={glob="/dev/ttyACM1",baudrate=115200}'
+        port = dict(TYPE='tty',glob="/dev/ttyACM1",baudrate=115200)
 
       *argc, **kw -- if any additional parameters are given, the
         .populate(*argc,**kw) method is invoked after initialization
@@ -150,14 +151,15 @@ class Cluster(dict):
     dict.__init__(self)
     if arch is None:
       arch = DEFAULT_ARCH
-    if port is None:
-      port = DEFAULT_PORT
-    if port is None:
-      port = arch.DEFAULT_PORT
     if isinstance(arch,AbstractProtocol):
       self.p = arch
     else:
+      if port is None:
+        port = DEFAULT_PORT
+      if port is None:
+        port = arch.DEFAULT_PORT
       self.p = arch.Protocol(bus = arch.Bus(port=port))
+    assert isinstance(self.p,AbstractProtocol)
     self._updQ = [self.p]
     self.at = ModulesByName()
     self.limit = 2.0
@@ -194,6 +196,8 @@ class Cluster(dict):
     else:
       exc = None
     required = set(required)
+    if required and (count is None or count<len(required)):
+       count = len(required)
     if names != {} and count is None:
        count = len(names)
     nids = self.discover(count,timeout,timestep,required,raiseClass = exc)
@@ -235,8 +239,8 @@ class Cluster(dict):
       nids = self.getLive(timeout)
       progress("Discover: done. Found %s" % nids2str(nids))
       return nids
-    elif required and (count is 0 or len(required)==count):
-      # If we only want the required nodes, hint them to protocol
+    # If some nodes are required --> hint them to protocol
+    if required:
       self.p.hintNodes( required )
     # else --> collect nodes with count limit, timeout, required
     time_end = now()+timeout
@@ -341,7 +345,7 @@ class Cluster(dict):
     if limit is None:
       limit = self.limit
     t0 = now()
-    self.p.update()
+    self.p.update(t0)
     s = set( ( nid
       for nid,(ts,_) in self.p.heartbeats.items()
       if ts + limit > t0 ) )
@@ -412,7 +416,8 @@ Module.Types.update(
     # Inherit all module ID strings defined in dynamixel.MODELS
     { tc : mc for tc,(mm,mc) in dynamixel.MODELS.items() },
     PolServoModule = pololu.ServoModule,
-    PoloWixelModule = polowixel.ServoModule,
+    PoloWixelCR = polowixel.ServoModuleCR,
+    PoloWixelUB = polowixel.ServoModuleUB,
 )
 Module.Types[MissingModule.TYPECODE] = MissingModule
 Module.Types[DebugModule.TYPECODE] = DebugModule
