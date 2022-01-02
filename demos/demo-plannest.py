@@ -5,7 +5,9 @@ This file demonstrates how to do subplan nesting.
 subplan nesting is often used incorrectly so it is crucial to
 use yield function to successfully control the schedule of multiple plans
 '''
-from joy import JoyApp, Plan, progress
+from joy.decl import *
+from joy.plans import Plan
+from joy import JoyApp
 
 class PlanTest(Plan):
   '''
