@@ -73,8 +73,17 @@ class PoseRecorder( object ):
                 continue
             m.update(t)
 
-    def getPose(self):
+    def getPose(self,blocking=True,wait=0.05):
         """collect positions of all servos"""
+        for k in range(400): # Obtain current motor states
+          pose = list(filter( lambda p : p is not None, 
+                             ( m.get_pos() for m in self.servos ) ))
+          if (not blocking) or len(pose) == len(self.servos):
+            return pose # Success!
+          self.update()
+          sleep(wait)
+        return [] # Failed
+        
         return [ m.get_pos() for m in self.servos ]
 
     def setPose(self,pose):
@@ -302,11 +311,15 @@ class LiveJoyRemote( object ):
         print("#### END")
 
     def run(self):
-        # Obtain current motor states
-        self.pose = list(self.pr.getPose())
+        self.pose = self.pr.getPose()
+        if not self.pose:
+          print("\tMissing position measurements; getting %r" % self.pr.getPose(blocking=False))
+          print("\t--> aborting live mode")
+          return
+          
         # Create JoyApp event source
         pth = dirname(__file__)+"/../../bin"
-        cmd = "%s/ctrl -p %d -n -e KEYUP -e KEYDOWN -e MIDIEVENT" % (pth,self.sock.getsockname()[1])
+        cmd = "%s/ctrl -p %d -n -u -e KEYDOWN -e MIDIEVENT" % (pth,self.sock.getsockname()[1])
         print("\trunning: %s" % cmd)
         joy = Popen(cmd,shell=True,stdout=open('/dev/null','w'))
         self._player = None
@@ -410,12 +423,12 @@ class LiveJoyRemote( object ):
             self.pr.snap()
             self.show()
             return
-        idx = "wertyuio".find(unicode)
+        idx = "asdfghjkl".find(unicode)
         if idx>=0:
           self.pose[idx % len(self.pose)] += 1000
           self.pr.setPose(self.pose)
           return
-        idx = "sdfghjkl".find(unicode)
+        idx = "zxcvbnm,.".find(unicode)
         if idx>=0:
           self.pose[idx % len(self.pose)] -= 1000
           self.pr.setPose(self.pose)
@@ -637,7 +650,9 @@ class PoseRecorderCLI( Cmd ):
              self.pr.playback()
              self._update()
          except KeyboardInterrupt:
-             self.pr.off()
+             print("\t>>> STOPPED <<<")
+         self.pr.off()
+         return self.do_update("1")
 
     def do_inline(self,line=None):
          "Show inline code for recording"
@@ -666,10 +681,10 @@ def recordFromCluster( c ):
     while True:
         p.reset()
         while True:
-            if input("<Enter> to store <q><Enter> when done: ") is 'q':
+            if input("<Enter> to store <q><Enter> when done: ") == 'q':
                 break
             p.snap()
             p.show()
-        if input("Have successfuly recorded? (y/n): ") is 'y':
+        if input("Have successfuly recorded? (y/n): ") == 'y':
             break
     return p
