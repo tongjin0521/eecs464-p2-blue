@@ -38,13 +38,17 @@ from time import time as now, sleep
 from struct import pack, unpack, calcsize
 from collections import deque
 
-from .ckmodule import Module, AbstractNodeAdaptor, AbstractProtocol, AbstractBus, progress, AbstractServoModule, AbstractProtocolError, AbstractBusError, MemInterface, MissingModule
+from .ckmodule import (
+    AbstractNodeAdaptor, AbstractProtocol, AbstractBus, progress,
+    AbstractServoModule, AbstractProtocolError, AbstractBusError, 
+    MemInterface, MissingModule
+)
 from .port2port import newConnection
 
 DEFAULT_PORT = dict(TYPE='tty', baudrate=115200, timeout=0.01)
 
 class DynamixelServoError( AbstractBusError ):
-  "(organizational) Error for Dynamixel Servo """
+  "(organizational) Error for Dynamixel Servo "
   def __init__(self,*arg,**kw):
     AbstractBusError.__init__(self,*arg,**kw)
 
@@ -359,15 +363,6 @@ class Bus( AbstractBus ):
         self.DEBUG = DEBUG
         self.reset()
 
-    def reconnect( self, **changes ):
-        # Close the connection and try the new baudrate
-        self.ser.close()
-        spec = self.ser.newConnection_spec
-        spec.update( changes )
-        self.ser = newConnection( spec )
-        if not self.ser.isOpen():
-          raise ValueError('Could not open newly configured connection')
-
     def getSupportedBaudrates(self):
         """
         List of supported baud rates
@@ -422,7 +417,7 @@ class Bus( AbstractBus ):
             ]
 
     def reconnect( self, **changes ):
-        # Close the connection and try the new baudrate
+        " Close the connection and reopen with modified parameters "
         self.ser.close()
         spec = self.ser.newConnection_spec
         spec.update( changes )
@@ -574,20 +569,17 @@ class Bus( AbstractBus ):
         SYNC = Dynamixel.SYNC
         MAX_ID = Dynamixel.MAX_ID
         assert self.expect >= 6
-        while len(self.buf)+self.ser.inWaiting()>=self.expect:
-            # If we don't have at least self.expect bytes --> nothing to do
-            # if len(self.buf)+self.ser.inWaiting()<self.expect:
-            #  return None
-            rdhold = bytes(self.ser.read(self.ser.inWaiting()))
-
-            rd = bytearray()
-            rd.extend(rdhold)
-
-            ##MUST CHANGE HERE UP ABOVE, self.buf might be wrong along with self.count
-
+        while True:
+            # Read all available data
+            n = self.ser.inWaiting()
+            if n>0:
+                rd = bytes(self.ser.read(n))
             self.buf += rd
             self.count += len(rd)
-
+            # Expecting at least self.expect bytes
+            if len(self.buf)<self.expect:
+                # --> if not available then done with loop
+                return None
             # Expecting sync byte
             if not self.buf.startswith(SYNC):
                 # --> didn't find sync; drop the first byte
@@ -605,7 +597,9 @@ class Bus( AbstractBus ):
             if L > maxlen or L < 6:
               self._dropByte('eLen')
               continue
+            # If there isn't enough data for length in packet
             if len(self.buf)<L:
+              # --> record that as the expected length and try again
               self.expect = L
               continue
             assert len(self.buf)>=L
@@ -633,6 +627,7 @@ class Bus( AbstractBus ):
             # Run error check
             self.parseErr(pkt)
             #print("PKT TYPE: ", type(pkt))
+            self.expect = 6 # Reset expect value
             return pkt
         # ends parsing loop
         # Function terminates returning a valid packet payload or None
@@ -843,12 +838,14 @@ class ProtocolNodeAdaptor( AbstractNodeAdaptor ):
         OUTPUTS:
           msg -- string -- transmitted packet minus SYNC
 
+        <<BROKEN AS OF RECENT FIRMWARE; REPLACED WITH REGULAR WRITE>>
         THEORY OF OPERATION:
           Call write command with BROADCAST_ID as id, SYNC_WRITE as cmd, and params
           as ( start_address, length_of_data, nid, data1, data2, ... ) as per
           section 3-5-7 pp. 39
         """
-        return self.p.mem_write( self.nid, addr, self.mm.val2pkt( addr, val ) )
+        return self.mem_write_sync( addr, val )
+        ### return self.p.mem_write( self.nid, addr, self.mm.val2pkt( addr, val ) )
 
     def mem_write_sync( self, addr, val ):
         """
@@ -1358,10 +1355,10 @@ class Protocol( AbstractProtocol ):
         If it requires a response -- complete it or time-out; if not,
         complete with a None reply
 
-        TODO finish comment
+        TODO: this code branch has never been tested... check async operations
         """
         if inc.nid == Dynamixel.BROADCAST_ID:
-            if cmd != Dynamixel.CMD_SYNC_WRITE:
+            if inc.cmd != Dynamixel.CMD_SYNC_WRITE:
                 self.bus.send(*inc.sendArgs())
                 inc.setResponse(None)
             else:
@@ -1636,8 +1633,8 @@ class DynamixelModule( AbstractServoModule ):
 
     def get_pos_async(self):
         """
-  <<Disabled>>
-  """
+        <<Disabled>>
+        """
         pass
 
     def set_pos(self,pos):
