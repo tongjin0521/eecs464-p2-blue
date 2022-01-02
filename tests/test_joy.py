@@ -1,4 +1,7 @@
-execfile("joy.py")
+from joy.plans import Plan, SheetPlan
+from joy import JoyApp
+from joy.events import describeEvt
+from joy.decl import *
 
 class TestAppMixin( object ):
   def log( self, msg ):
@@ -113,12 +116,12 @@ class BasicPlanTestApp( JoyApp, TestAppMixin ):
       JoyApp.onEvent(self,evt)
 
 class Example(JoyApp):
-  def __init__(self):
-    JoyApp.__init__(self,required=set([0x3c]))
+  def __init__(self,arch):
+    JoyApp.__init__(self,robot=dict(arch=arch,required=set([0x3])))
 
   def onStart(self):
-    self.getpos = self.robot.at.Nx3C.get_pos
-    self.setpos = self.robot.at.Nx3C.set_pos
+    self.getpos = self.robot.at.Nx03.get_pos
+    self.setpos = self.robot.at.Nx03.set_pos
 
   def onEvent(self,evt):
     progress( describeEvt(evt) )
@@ -128,3 +131,8 @@ class Example(JoyApp):
       self.setpos(pos)
     elif evt.type==QUIT or (evt.type==KEYDOWN and evt.key==K_ESCAPE):
       self.stop()
+
+if __name__=="__main__":
+  from ckbot import nobus
+  app =Example(arch=nobus)
+  app.run()
