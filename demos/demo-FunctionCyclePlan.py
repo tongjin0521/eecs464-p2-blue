@@ -13,7 +13,7 @@ from joy.plans import FunctionCyclePlan
 class FunctionCyclePlanApp( JoyApp ):
   '''
   This is a concrete class
-  
+
   This class is used to start  a function cycle plan using the function defined in onStart 
   and controls the function cycle parameters using user inputs defined in onEvent
 
@@ -25,59 +25,50 @@ class FunctionCyclePlanApp( JoyApp ):
   '''
   def __init__(self,*arg,**kw):
     JoyApp.__init__(self,*arg,**kw)
-    
+
+  def fun( self, phase ):
+    """
+    This is where we put our periodic behavior. Typically we would send commands like
+      self.robot.at.angle.set_angle( (phase-0.5) * 4000 )
+    """
+    s = sin(phase*2*pi)
+    # plots hash with the given spaces
+    progress( " "*(int((s+1)*30)) + "#" )
+
   def onStart( self ):
-    # gives default value to start 
-    def fun( phase ):
-      s = sin(phase*2*pi)
-      # plots hash with the given spaces
-      progress( " "*(int((s+1)*30)) + "#" )   
-    self.plan = FunctionCyclePlan(self, fun, 24)
-    #curry function returning a callable with initial parameters already set
-    #It basically creates a new function
-    self.plan.onStart = curry(progress,">>> START")
-    self.plan.onStop = curry(progress,">>> STOP")
-    self.freq = 1.0
-    self.rate = 0.05
-    self.limit = 1/0.45
-      
-  def onEvent(self, evt):
-    if evt.type==KEYDOWN:
-      '''
-      if evt.key in [ord('q'),27]: # 'q' and [esc] stop program
-        self.stop()
-      '''
-      if evt.key==K_SPACE: # [space] stops cycles
-        self.plan.setPeriod(0)
-        progress('Period changed to %s' % str(self.plan.period))
-        #
-      elif evt.key in (K_COMMA,K_PERIOD):
-        f = self.freq
-        # Change frequency up/down in range -limit..limit hz
-        if evt.key==K_COMMA:
-          f = (1-self.rate)*f - self.rate*self.limit
-        else:
-          f = (1-self.rate)*f + self.rate*self.limit
-        if abs(f) < 1.0/self.limit:
-          self.plan.setPeriod( 0 )
-        else:
-          self.plan.setPeriod( 1/f )
-        self.freq = f
-        progress('Period changed to %g, %.2f Hz' % (self.plan.period,f))
-        #help message
-      elif evt.key==K_h:
-        progress( "HELP: ',' to decrease/reverse period; '.' opposite; ' ' stop; 'q' end program; 'h' this help; other keys start Plan" )
-        #starts the cycle given any key
-      else:
-        progress( "Starting cycles...." )
-        self.plan.start()
-      JoyApp.onEvent(self,evt)
-      
+    # gives default value to start
+    self.plan = FunctionCyclePlan(self, self.fun, 24)
+    self.period = 1
+
+  def on_K_SPACE(self,evt):
+    self.plan.setPeriod(0)
+    progress('Paused; "s" to continue')
+
+  def _updatePeriod(self):
+    self.plan.setPeriod( self.period )
+    progress(f'Period changed to {self.period}')
+
+  def on_K_COMMA(self,evt):
+    self.period *= 1.2
+    return self._updatePeriod()
+
+  def on_K_PERIOD(self,evt):
+    self.period /= 1.2
+    return self._updatePeriod()
+
+  def on_K_h(self,evt):
+    progress( "HELP: ',' and '.' to change period; ' ' stop; 'q' end program; 'h' this help; 's' to start Plan" )
+
+  def on_K_s(self,evt):
+    progress( "Starting cycles...." )
+    self._updatePeriod()
+    self.plan.start()
+
 if __name__=="__main__":
   print("""
   Demo of FunctionCyclePlan class
   -------------------------------
-  
+
   When any key is pressed, starts a FunctionCyclePlan that prints
   an ASCII art sine wave under keyboard control.
 
@@ -85,8 +76,8 @@ if __name__=="__main__":
   q -- quit
   , and . -- change rate
   SPACE -- pause / resume
-  any other key -- start 
-  
+  s -- start 
+
   The application can be terminated with 'q' or [esc]
   """)
   app=FunctionCyclePlanApp()
