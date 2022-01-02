@@ -49,6 +49,13 @@ def event_name(typ):
       nm = "EVENT_%02d" % typ
   return nm
 
+
+def describeKey( val ):
+  """
+  Return human readable name for a key number
+  """
+  return pygix.KEY_NAMES.get(val,"K_<<UNKNOWN>>")
+
 def describeEvt( evt, parseOnly = False ):
   """
   Describe an event stored in an event object.
@@ -67,7 +74,12 @@ def describeEvt( evt, parseOnly = False ):
   {'buttons': (0, 0, 0), 'type': 'MouseMotion', 'pos': (176, 140), 'rel': (0, 1)}
   """
   assert type(evt) is pygix.EventType
-  plan = pygix.EVENT_STRUCTURE[evt.type]
+  plan = pygix.EVENT_STRUCTURE.get(evt.type,None)
+  if plan is None:
+    res = "UNKNOWN event type (repr='%s')" % repr(evt)
+    if parseOnly:
+      res = { 'ERROR' : res } 
+    return res
   nm = event_name(evt.type)
   if parseOnly:
     res = dict(type=nm, type_code=evt.type)
@@ -77,8 +89,9 @@ def describeEvt( evt, parseOnly = False ):
     detail = ["type==%s" % nm.upper()]
     if plan:
       for item in plan:
+        show = describeKey if item == "key" else repr
         detail.append("%s==%s" %(
-          item, repr(getattr(evt,item)) ))
+          item, show(getattr(evt,item)) ))
     res = " ".join(detail)
   return res
 
@@ -96,7 +109,7 @@ def JoyEvent( type_code=None, **kw ):
   if type_code is not None:
     et = type_code
   else:
-    if 'type' in kw:#kw.has_key('type'):
+    if 'type' in kw:
       et = kw['type']
     else:
       return ValueError('Unknown event type -- pass a type_code parameter')
