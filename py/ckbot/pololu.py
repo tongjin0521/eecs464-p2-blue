@@ -9,33 +9,40 @@ Main uses of this module:
 (*) mimics the behaviour of the CAN Bus, except using the Pololu Maestro Device as a communications channel, can currently only
 send position and go_slack commands
 
-Example 1 - Pololu robot module only:
-nodes = {0:0x23, 5:0x65}
-bus = pololu.Bus()
-p = pololu.Protocol(bus = bus, nodes = nodes)
-p.send_cmd(0x23,4,1000)
+Example 1 - direct use of node adaptor objects (positions given in Pololu units)
+>>> import ckbot.pololu as POL
+>>> p = POL.Protocol(nodes=4)
+>>> m = POL.ProtocolNodeAdaptor(p,16)
+>>> m.set_pos(0)
 
-Example 2 - Integrate with CKBot.logical python module:
-import logical
-nodes = {0xD1:0, 0xA7:1, 0xDA:2}
-bus = pololu.Bus()  #J on mac for now do .Bus("/dev/tty.usbserial-A70041hF")
-p = pololu.Protocol(bus = bus, nodes = nodes)
-c = logical.Cluster(p)
-c.populate(3,{0xD1:'head', 0xA7:'mid', 0xDA:'tail'})
-c.at.head.set_pos(1000)
+Example 2 - typical useage (with Clusters)
+>>> import ckbot.pololu as POL, ckbot.logical as L
+>>> c = L.Cluster(POL,required=[0x16,0x1E],names={0x16:'head',0x1E:'tail'}) # Specifying which node IDs get mapped
+>>> c = L.Cluster(POL.Protocol(nodes=18),names={0x10:'first',0x10+17 : 'last'}) # Autonumbering starting with 0x10
 
 Both examples sets the position of the 0x23 robot module, connected to Pololu Maestro channel 0, to 1000 (10 degrees from the  neutral position)
 """
 
-from time import time as now
 from os import getenv
 from struct import pack, unpack
 
-from .ckmodule import Module, AbstractNodeAdaptor, AbstractProtocol, AbstractBus, progress, AbstractServoModule
+from .ckmodule import AbstractNodeAdaptor, AbstractProtocol, AbstractBus, AbstractServoModule
 from .port2port import newConnection
+
+DEFAULT_PORT = dict(
+    TYPE='tty',
+    glob="/dev/ttyACM0",
+    baudrate=38400,
+    #timeout=0.1,
+)
 
 # DEBUG flags
 DEBUG = (getenv("PYCKBOTDEBUG",'')).split(",")
+
+CR = 0x40 # Bits indicating a CR node type
+UB = 0x80 # Bits indicating a UB node type
+NID_MASK = 0x3F # Mask for valid IDs
+assert (NID_MASK & (CR|UB)) == 0
 
 class Bus(AbstractBus):
   """
@@ -48,7 +55,7 @@ class Bus(AbstractBus):
   Maestro User Manual located at http://www.pololu.com/docs/0J40/all
   """
 
-  def __init__(self, port = 'tty={ "glob":"/dev/ttyACM0", "baudrate":38400, "timeout":0.1}', crc_enabled=False, *args,**kw):
+  def __init__(self, port = DEFAULT_PORT, crc_enabled=False, *args,**kw):
     """
     Initialize a Pololu Bus class
 
@@ -99,9 +106,7 @@ class Bus(AbstractBus):
       raise IOError("Serial port is not open")
 
     # Format the values into serial-writable string
-    packed_cmd = [ pack("B", val_part) \
-                     for val_part in val ]
-    cmd_str = "".join(packed_cmd)
+    cmd_str = pack("B"*len(val), *val)
 
     if self.crc_enabled:
       cmd_str = self.crc7(cmd_str) # Calculate and append Cyclic Redundancy Check byte
@@ -223,10 +228,11 @@ class Protocol( AbstractProtocol ):
       self.bus = Bus()
     else:
       self.bus = bus
-    self.count = 6 # number of motors listed in command
-    if nodes is None:
-      # By default, map all of the maestro to 0x10..0x1C
-      nodes = dict(zip(range(0x10,0x10+self.count),range(self.count)))
+    if type(nodes) is int:
+      # Default to all CR nodes (for backward compatibility)
+      nodes = { (nid | CR) : nid for nid in range(nodes) }
+    elif nodes is None:
+      nodes = {}
     self.nodes = nodes
     self.heartbeats = {} # Gets populated by update
     self.msgs = {}
@@ -252,35 +258,36 @@ class Protocol( AbstractProtocol ):
 
     channel = self.nodes[nid] # Extract channel from node ID to channel map
 
-    # Correctly format the command
-    ##V: This seems to be fishy...
-    cmd = list(cmd)
-    cmd.insert(0, cmd_type)
-    cmd.insert(1, channel)
-    cmd = tuple(cmd)
-
-    self.bus.write(cmd)
+    self.bus.write([cmd_type,channel]+list(cmd))
 
   def hintNodes( self, nodes ):
-    """#!!! BROKEN!
-    Specify which nodes to expect on the bus
     """
-    self.nodes = set(nodes)
+    Specify which nodes to expect on the bus.
+    By default, nodes start with NID 0x10 which corresponds to channel 0.
+    All NIDs hinted will be mapped to channel number NID-16
+    """
+    upd = { nid : (nid & NID_MASK) for nid in nodes }
+    k = set(upd.keys())
+    v = set(upd.values())
+    if len(upd) != len(v):
+      raise KeyError("Duplicated physical IDs. %r map to %r" % (k,v))
+    n = k.intersection(self.nodes.keys())
+    if n:
+      raise KeyError("Overwrites NIDs %s" % n)
+    n = v.intersection(self.nodes.values())
+    if n:
+      raise KeyError("Conflicts on %s" % n)
+    self.nodes.update( upd )
 
-  def update(self):
+  def update(self,t):
     """
-    Updates the pololu.Protocol state that mimics the behaviour of can.Protocol. It updates
-    timestamps of heartbeats heard on the bus.
+    Updates the pololu.Protocol periodically
+    It updates timestamps of heartbeats "heard" on the bus.
     """
     # sets the of value all the entries in the heartbeats dictionary to the current time
     # This allows Cluster to believe that all the modules connected through Pololu are alive
-    timestamp = now()
-    dummydata = 0 # dummy data
-
-    for nid in self.nodes.keys():
-      self.heartbeats[nid] = (timestamp, dummydata)
-
-    # We have no incomplete messages
+    self.heartbeats.update( { nid : (t,0)
+      for nid in self.nodes.keys() } )
     return 0
 
   def generatePNA(self, nid):
@@ -324,32 +331,22 @@ class ProtocolNodeAdaptor( AbstractNodeAdaptor ):
   # This is also to initialize the Maestro to begin receiving commands using the PololuProtocol
   POLOLU_BYTE = 0xAA
 
-  ##V: Need to put this in a proper location
-  SLACK_MESSAGE = 0
-
   def __init__(self, protocol, nid):
     self.p = protocol
     self.nid = nid
 
   def go_slack(self):
-    cmd = ( self.SLACK_MESSAGE, )
-    self.p.send_cmd(self.COMPACT_BYTE, self.nid, cmd)
+    self.p.send_cmd(self.COMPACT_BYTE, self.nid, (0x00,) )
 
   def set_pos(self, target):
     """
-    Sends a command to the Pololu device over serial via the
+    Sends a position command to the Pololu device over serial via the
     pololu.Protocol.send_cmd()
 
     INPUT:
-    cmd_type -- int -- command type specified by the Pololu User Manual
-    (see pololu.Protocol.send_cmd for more info.)
-
-    data -- int -- the payload data to send to the module
+    target -- byte -- the command
     """
-
-    # Essentially passes on the call to the protocol, includes the nid
-    cmd = ( target, )
-    self.p.send_cmd(self.MINISSC2_BYTE, self.nid, cmd)
+    return self.p.send_cmd(self.MINISSC2_BYTE, self.nid, (target,) )
 
   def get_typecode( self ):
     return "PolServoModule"
@@ -403,6 +400,14 @@ class ServoModule( AbstractServoModule ):
     WARNING: This function does NOT actually read states from the pololu device, returns an attribute that is updated by calls to set_pos and go_slack. If any external communications fail, then this function may report incorrect states
     """
     return self.slack
+
+  def get_pos_async(self):
+    """
+    Returns the 'believed' position of the module, none if set_pos has not been called yet.
+
+    WARNING: This function does NOT actually read states from the pololu device, returns an attribute that is updated by calls to set_pos and go_slack. If any external communications fail, then this function may report incorrect states
+    """
+    return self.pos
 
   def get_pos(self):
     """
