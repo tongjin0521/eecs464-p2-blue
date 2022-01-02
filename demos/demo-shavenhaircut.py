@@ -6,7 +6,8 @@ on the argument given. It operates plans sequentially by passing multiple plans 
 arguments and yielding one after the other.
 '''
 from joy.decl import *
-from joy import JoyApp, Plan, SheetPlan
+from joy import JoyApp
+from joy.plans import Plan, SheetPlan
 from joy.misc import loadCSV
 
 class ShaveNHaircutPlan( Plan ):
@@ -96,7 +97,6 @@ if __name__=="__main__":
   from sys import argv, stdout, exit
   #give default values to the command line arguements
   robot = None
-  scr = None
   shaveSpec = "#shave "
   hairSpec = "#haircut "
   #process the command line arguements
@@ -110,11 +110,9 @@ if __name__=="__main__":
     elif arg=='--shave' or arg=='-s':
     #detects the shavespec specified after -s  which basically controls the type of output we will see for shave
       shaveSpec = args.pop(0)
-      if shaveSpec[:1]==">": scr = {}
     elif arg=='--haircut' or arg=='-h':
     #detects the shavespec specified after -s  which basically controls the type of output we will see for shave
       hairSpec = args.pop(0)
-      if hairSpec[:1]==">": scr = {}
     elif arg=='--help':
     #help
       stdout.write("""
@@ -141,7 +139,6 @@ if __name__=="__main__":
 
         Typical <spec> values would be:
          '#shave ' -- to print messages to the terminal with '#shave ' as prefix
-         '>x' -- send to Scratch sensor 'x'
          'Nx3C/@set_pos' -- send to position of CKBot servo module with ID 0x3C
 
         NOTE: to use robot modules you MUST also specify a -c option
@@ -150,6 +147,6 @@ if __name__=="__main__":
       exit(1)
     # ENDS cmdline parsing loop
   #start an interface
-  app = ShaveNHaircutApp(shaveSpec,hairSpec,robot=robot,scr=scr)
+  app = ShaveNHaircutApp(shaveSpec,hairSpec,robot=robot)
   #directs to onStart
   app.run()
