@@ -1,6 +1,7 @@
-from pygame import image as pg_image, draw as pg_draw
+import pygame as PG
 from numpy import array, asarray, any, unique, arange
 from numpy.random import rand
+
 
 class DataWindow( object ):
   """
@@ -154,12 +155,12 @@ class Glyph( object ):
       len(size)
     except:
       size = (size,size)
-    self.img = pg_image.fromstring(
+    self.img = PG.image.fromstring(
       b' ' * (size[0]*size[1]*4), size,"RGBA" )
     self.ofs = (size[0]/2, size[1]/2)
     self.img.fill((0,0,0,0))
-    pg_draw.line(self.img, color, (0,self.ofs[1]),(size[0],self.ofs[1]),3)
-    pg_draw.line(self.img, color, (self.ofs[0],0),(self.ofs[1],size[1]),3)
+    PG.draw.line(self.img, color, (0,self.ofs[1]),(size[0],self.ofs[1]),3)
+    PG.draw.line(self.img, color, (self.ofs[0],0),(self.ofs[1],size[1]),3)
 
   def put( self, surf, x, y ):
     """
@@ -173,6 +174,74 @@ class Glyph( object ):
     for xi,yi in zip(x,y):
       surf.blit( self.img, (xi-self.ofs[0],yi-self.ofs[1],sz[0],sz[1]))
 
+class Text( object ):
+  DEFAULT_FONT = "Arial",10
+  DEFAULT_COLOR = (0,0,0)
+  if PG.version.ver < "1.9.4":
+    DEFAULT_BACKGROUND = (255,255,255)
+  else:
+    DEFAULT_BACKGROUND = None
+  
+  def __init__(self,s = None):
+    if not PG.font.get_init():
+      PG.font.init()
+      if not PG.font.get_init():
+        raise RuntimeError("Could not start pygame font engine")
+    self.set_font(*Text.DEFAULT_FONT)
+    self.set_c = self.set_color
+    self.set_c(Text.DEFAULT_COLOR)
+    self.set_bg = self.set_background
+    self.set_bg(Text.DEFAULT_BACKGROUND)
+    self.set(align=())
+    self.img = None
+    if s is not None:
+      self.set_text(s)
+
+  def set(self,**kw):
+    """
+    Set multiple attributes
+    """
+    for k,v in kw.items():
+      sf = getattr(self,"set_"+k)
+      sf(*v)
+  
+  def set_background(self,r,g=None,b=None):
+    if r is None:
+      self.bg = None
+    elif g is None:
+      self.bg = r
+    else:
+      self.bg = (r,g,b)
+    
+  def set_color(self,*arg):
+    if len(arg) is 3:
+      self.color = arg
+    else:
+      self.color = arg[0]
+  
+  def set_font(self,*arg,**kw):
+    self.font = PG.font.SysFont(*arg,**kw)
+  
+  def set_align(self,hv=None,v=None):
+    if hv is None:
+      self.ofs = (0,0)
+    elif v is None:
+      self.ofs = hv
+    else:
+      self.ofs = hv,v
+  
+  def set_text(self,s):
+    """
+    Set the text this text object will display
+    """
+    self.img = self.font.render(str(s),True,self.color,self.bg)
+  
+  def put(self, surf, x, y):
+    sz = self.img.get_size()
+    dx = int(sz[0] * self.ofs[0])
+    dy = int(sz[1] * self.ofs[1])
+    surf.blit( self.img, (x-dx, y-dy, sz[0], sz[1] ))
+    
 class LinePlotter( object ):
   """
   Concrete class LinePlotter implements simple line plotting functionality
@@ -194,8 +263,8 @@ class LinePlotter( object ):
       .axes -- 4-list -- (xmin,ymin,width,height)
     """
     w,h = surf.get_size()
-    x0,y0,x1,y1 = box
-    self._surf = surf.subsurface( (w*x0, h*y0, w*x1, h*y1) )
+    x0,y0,ww,hh = box
+    self._surf = surf.subsurface( (w*x0, h*y0, w*ww, h*hh) )
     self.c = LinePlotter.color
     self.mrk = Glyph((5,5),color=LinePlotter.color)
     LinePlotter.color = (LinePlotter.color + array([0x85,0x05,0x50])) % 255
@@ -222,7 +291,7 @@ class LinePlotter( object ):
     if self.mrk:
       self.mrk.put(self._surf,px,py)
     if len(px)>1:
-      pg_draw.aalines( self._surf, self.c, False, tuple(zip(px,py)))
+      PG.draw.aalines( self._surf, self.c, False, tuple(zip(px,py)))
 
   def cla( self ):
     """
@@ -230,31 +299,54 @@ class LinePlotter( object ):
     """
     self._surf.fill(self.bg)
 
+class AnimatedWindow( object ):
+  def __init__(self, size = (640,480) ):
+    PG.init()
+    self.screen = PG.display.set_mode((640,480))
+    self.clock = PG.time.Clock()
+  
+  def run(self):
+    """
+    Animate screen updates by calling self.update(t)
+    If returns true, display the frame.
+    
+    Allows user to quit with escape or q
+    """
+    from pygame.locals import QUIT, KEYDOWN, K_ESCAPE, K_q
+    while True:
+      self.clock.tick(60)
+      PG.event.pump()
+      event = PG.event.poll()
+      if event.type == QUIT:
+          break
+      if event.type == KEYDOWN and event.key in (K_ESCAPE,K_q):
+          break
+      t = PG.time.get_ticks()
+      if self.update(t):
+        PG.display.flip()
+
+  def update(self,t):
+    pass
+
+  
 if __name__=="__main__":
-  from pygame.locals import *
-  import pygame
-  pygame.init()
-  screen = pygame.display.set_mode((640,480))
-  clock = pygame.time.Clock()
+  aw = AnimatedWindow()
   bx = planBoxes('abc\ndef')
   plt = [
-    [LinePlotter( screen, b ),DataWindow( 2000 )]
+    [LinePlotter( aw.screen, b ),DataWindow( 2000 )]
     for b in bx
   ]
-  while True:
-    clock.tick(60)
-    pygame.event.pump()
-    event = pygame.event.poll()
-    if event.type == QUIT:
-        break
-    if event.type == KEYDOWN and event.key in (K_ESCAPE,K_q):
-        break
-    t = pygame.time.get_ticks()
-    screen.fill(0)
+  txt = Text()
+  txt.set(bg=(0,255,0), font=("Arial",24),align=(0.5,0.5))
+  def update(t):
+    aw.screen.fill(0)
+    txt.set_text(t)
     for lp,dw in plt:
       lp.cla()
       dw.push(t,rand())
       lp.axes[3] = float(dw.duration)
-      #print(dw.data)#!!!
       lp.plot( dw.data )
-    pygame.display.flip()
+    txt.put(aw.screen, 320, 240 )
+    return True
+  aw.update = update
+  aw.run()
