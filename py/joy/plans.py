@@ -1,5 +1,5 @@
-import types, sys
-
+from types import GeneratorType
+from sys import exc_info
 from warnings import warn
 try:
   # For NBRPlan
@@ -266,7 +266,7 @@ class Plan( object ):
       except Exception:
         # exception was not caught, killing top
         # tracebacks are now concatenated, so get new head of traceback
-        exinfo = sys.exc_info()
+        exinfo = exc_info()
     # (only reached if exception handled)
     printExc(exinfo)
     if '!' in self.DEBUG:
@@ -325,7 +325,7 @@ class Plan( object ):
       if 'p' in self.DEBUG: debugMsg(self,"   <<terminated>> "+dbgId(sub)+repr(S))
     except Exception:
       # An exception occurred -- unwind the stack to expose its origin
-      sub = self._unwind( sys.exc_info() )
+      sub = self._unwind( exc_info() )
     return sub
 
   def step( self ):
@@ -377,13 +377,45 @@ class Plan( object ):
         debugMsg(self,"new sub-Plan "+dbgId(sub)+" isR "+repr(sub.isRunning()))
         debugMsg(self,"  app plans %s" % dbgId(self.app.plans) )
       # Push Plan behavior() generator on stack
+      return
+    # If not a generator --> Try converting to a sleep time
+    if type(sub) is not GeneratorType:
+      try:
+        sub = self.forDuration(float(sub))
+      except TypeError:
+        pass
     # If a generator --> top is None,execution
-    elif type(sub) is types.GeneratorType:
+    if type(sub) is GeneratorType:
       self.__stack.append(sub)
       if 's' in self.DEBUG: debugMsg(self,"new sub-generator "+dbgId(sub))
-    else: # --> yield returned object of the wrong type
-      raise TypeError("Plan-s may only yield None, Plan-s or generators")
+      return
+    raise TypeError("Plan-s may only yield None, sleep time, Plan-s or generators")
 
+class EventWrapperPlan( Plan ):
+  """
+  concrete EventWrapperPlan is use to automatically wrap generators returned
+  by on_K_* event handlers.
+  
+  It does so by storing the event in the .evt attribute, and running through
+  the generator
+  """
+  def __init__(self,app,evt,gen):
+    """
+    Initialize wrapper for generator gen created by event evt in JoyApp app
+    INPUT:
+      app -- JoyApp -- app instance within which to run
+      evt -- Event -- event that created this wrapper
+      gen -- generator / number -- the generator to be wrapped or sleep time
+    """
+    Plan.__init__(self,app)
+    self.evt = evt
+    self.gen = gen
+    
+  def behavior(self):
+    # NOTE: we could just yield self.gen, but that would run with a deeper stack
+    for o in self.gen:
+      yield o
+      
 class SheetPlan( Plan ):
   """
   concrete class SheetPlan implements a Plan that is read from
