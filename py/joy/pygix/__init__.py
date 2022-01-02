@@ -115,6 +115,8 @@ else: # pygame import failed / bypassed
       self.type=typecode
       if attr:
         self.__dict__.update(attr)
+    def __repr__(self):
+      return "<%s.Event at %x : %s>" % (__name__,id(self),repr(self.__dict__))
 
   # If forced use of headless scheduler then we should have
   #   all constants provided by pygame
@@ -221,3 +223,6 @@ JOY_EVENT_NAMES = {
     TIMEREVENT : "TimerEvent",
     MIDIEVENT : "MIDIEvent"
   }
+
+KEY_NAMES = { eval(kn) : kn for kn in dir() if kn.startswith("K_") }
+    
