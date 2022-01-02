@@ -154,11 +154,11 @@ class LogWriter( object ):
     """
     if self.s is None:
       raise IOError("LogWriter stream is not open")
-    t = long((time()-T0)/self.timeUnit)
+    t = int((time()-T0)/self.timeUnit)
     kw.update(TIME=t,TOPIC=topic)
     entry = "--- " + yaml.safe_dump(kw)
-    # print "~~> ",entry
-    self.s.write(entry)
+    # print("~~> ",entry)
+    self.s.write(entry.encode('utf-8'))
     if self.sync:
       self.flush()
 
