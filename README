@@ -19,6 +19,34 @@ Environment variables:
       On pololu:
         'w' -- display all serial writes
 
+2020-07-17 change notes:
+  * Added UB, CR support to polowixel. UB modules are mapped to 0x20-0x2F; CR to 0x10-0x1F
+  * Added text capabilities to scope.py, plus the AnimatedWindow class
+  
+2020-06-23 change notes:
+  * Added support for flatscript operation. See demo-flatscript for example.
+    This includes adding extensive support for default event handlers based on reflection. The event 
+    processing sequence in JoyApp.onEvent is:
+    1 drop TIMEREVENTS
+    2 Translate event into a keypress using app.remapToKey(evt), unless it was already KEYDOWN
+    3 if was K_ESCAPE --> stop app
+    4 Look for an app.on_K_* event handler; if not found return, displaying the key
+    5 Check return type of event handler. If it is a GeneratorType, wrap as an EventWrapperPlan and start
+  * Yielding a number from a Plan now automatically becomes a sleep of that duration in seconds
+
+2020-05-06 release notes:
+  Merged major changes that were made for the 2020 Hands On Robotics class, which was converted to remote teaching due to COVID-19. The following changes are in this update:
+  * When running without a physical robot, PyCkbot 3.0 now runs on both Window 10 and MacOS X. NOTE: THIS CAPABILITY WILL NOT BE SUPPORTED
+  * Removed --walk from botscan.py
+  * logVideo capability added to JoyApps, and the frameViewer app was added to allow those logged video frames to be seen
+  * posable.py now works under python3
+  * scratchBridge repaired and tested.
+
+  Hands On Robotics specific updates:
+  * Added visArena and visRobot to hrb robot simulators
+  * waypointTask can use randomly generated arenas
+  * Added a complete servo motor simulator and arm simulator on top of it 
+
 Version 3.0 release notes:
   * All tools and demos should now work with both python and python3; however, pygame support for python3 is spotty (see controller.py below)
   * By default, all JoyApp applications now use the FAST scheduler and do not require pygame. The default cfg/JoyApp.yml activates a remote Sink to allow HID events to be sent from an external source.
@@ -38,4 +66,4 @@ Version 3.0 release notes:
       - joy/scope.py tested and working
       - multijoy support allowing clusters to be combined under a JoyApp (partially working)
   * Removed all CAN specific code; all od (Object Directory) support
-  *
+  * Added threaded JoyApp debug tool to allow JoyApp debugging from ipython commandline

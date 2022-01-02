@@ -1,2 +1,5 @@
 *.pyc
-hrb/randAreaOutput.py
+*.vscode
+__pycache__
+*.bak
+
