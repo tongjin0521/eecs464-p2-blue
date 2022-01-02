@@ -44,18 +44,18 @@ if not GLOB_GLOB(PYCKBOTPATH+"py%sckbot%sckmodule.py" % (sep,sep)):
 
 class AbstractProtocol( object ):
   """abstract superclass of all Protocol classes
-
-  Protocol classes are responsible for generating the Protocol Node
-  Adaptors for each module on the bus, when the bus is scanned.
+  
+  Protocol classes are responsible for generating the Protocol Node 
+  Adaptors for each module on the bus, when the bus is scanned. 
   Protocols implement the transactions that the underlying communication
   infrastructure supports, and typically maintain state representing any
-  incomplete transactions.
-
+  incomplete transactions. 
+  
   AbstractProtocol subclasses must implement the following methods:
     p.update()
     p.hintNodes(nodes)
     p.generatePNA( nid )
-
+  
   AbstractProtocol instances must have the following data attributes:
     p.heartbeats -- dict -- nid to last heartbeat
   """
@@ -71,25 +71,25 @@ class AbstractProtocol( object ):
     *PURE* perform Protocol housekeeping operations
     """
     raise TypeError("pure method called")
-
+    
   def hintNodes( self, nodes ):
     """
     *PURE* use hint that specified nodes are available
     """
     raise TypeError("pure method called")
-
+    
   def generatePNA( self, nid ):
     """
     *PURE* Generate a ProtocolNodeAdaptor for the specified nid
     """
-    raise TypeError("pure method called")
-
+    raise TypeError("pure method called")  
+  
 class AbstractBus( object ):
   """abstract superclass of all Bus classes
-
+  
      Bus classes are responsible for wrapping OS hardware drivers and
      presenting a pythonically correct, human readable interface.
-
+     
      Bus instances should be (mostly) stateless, and bus methods should
      return as fast as possible.
   """
@@ -102,7 +102,7 @@ class AbstractBus( object ):
 
 class AbstractNodeAdaptor( object ):
   """abstract superclass of all ProtocolNodeAdaptor classes
-
+  
   AbstractNodeAdaptor subclasses must implement the get_typecode()
   method, returning the module's type identification string
   """
@@ -127,17 +127,17 @@ class AttributeGetter( object ):
   """
   Callable wrapper for providing access to object properties via
   a getter function
-
-  AttributeGetter(obj,attr)() is getattr(obj,attr)
+  
+  AttributeGetter(obj,attr)() is getattr(obj,attr) 
   """
   def __init__(self,obj,attr):
     self.obj = obj
     self.attr = attr
-
+  
   def __repr__( self ):
     return "<%s at 0x%x for %s of %s>" % (
       self.__class__.__name__, id(self), self.attr, repr(self.obj) )
-
+    
   def __call__(self):
     return getattr(self.obj,self.attr)
 
@@ -145,17 +145,17 @@ class AttributeSetter( object ):
   """
   Callable wrapper for providing access to object properties via
   a setter function
-
-  AttributeSetter(obj,attr)(value) is setattr(obj,attr,value)
+  
+  AttributeSetter(obj,attr)(value) is setattr(obj,attr,value) 
   """
   def __init__(self,obj,attr):
     self.obj = obj
     self.attr = attr
-
+  
   def __repr__( self ):
     return "<%s at 0x%x for %s of %s>" % (
       self.__class__.__name__, id(self), self.attr, repr(self.obj) )
-
+    
   def __call__(self,value):
     setattr(self.obj,self.attr,value)
 
@@ -165,7 +165,6 @@ class Module(object):
   Cluster creates the appropriate Module subclass by calling
   Module.newFromDiscovery
   """
-  # dictionary mapping module type-codes (as read from CAN via object
   # dictionary to the appropriate Module subclass
   Types = {}
 
@@ -177,7 +176,7 @@ class Module(object):
       nid -- int -- the node id
       typecode -- string -- the typecode string, which is looked up in
          the Module.Types dictionary
-      pna -- a ProtocolNodeAdaptor -- typically created using a
+      pna -- a ProtocolNodeAdaptor -- typically created using a 
          Protocol instance's .generatePNA(nid) factory method
     """
     subclass = cls.Types.get(typecode,GenericModule)
@@ -187,11 +186,11 @@ class Module(object):
 
   def __init__(self, node_id, typecode, pna ):
     """
-    Concrete constructor.
+    Concrete constructor. 
 
     ATTRIBUTES:
       node_id -- 7 bit number to address a module uniquely
-      typecode -- version number of module code
+      typecode -- version number of module code 
       pna -- ProtocolNodeAdaptor -- specialized for this node_id
     """
     self.node_id = int(node_id)
@@ -206,7 +205,7 @@ class Module(object):
     self.mcu = None
     self.mem = None
     self.od = None
-
+  
   def get_od(self):
     """
     This method creates an Object dictionary for this module.
@@ -217,19 +216,19 @@ class Module(object):
   def iterhwaddr(self):
     """
     Iterator for all Object Dictionary index addresses in this module
-
-    The addresses are returned as integers
+    
+    The addresses are returned as integers 
     """
     if self.od is None:
       return iter([])
     return iter(self.od.index_table.keys())
-
+ 
   def iterprop(self, perm=''):
     """
     Iterator for Object Dictionary properties exposed by this module
-
+    
     INPUTS:
-      perm -- string -- ''(default) all properties;
+      perm -- string -- ''(default) all properties; 
             'R' readable/gettable
             'W' writable/settable
     OUTPUT:
@@ -243,11 +242,11 @@ class Module(object):
     elif perm=='W':
       return (nm for nm in idx if self.od.name_table[nm].isWritable())
     return idx
-
+  
   def iterattr(self,perm=''):
     """
     Iterator for module attributes exposed by this module class
-
+    
     INPUTS:
       perm -- string -- ''(default) all properties; 'R' readable/gettable
                 'W' writable/settable
@@ -258,10 +257,10 @@ class Module(object):
     if perm:
       return (nm for nm,acc in plan if perm in acc)
     return (nm for nm,_ in plan)
-
+  
   def _getAttrProperty( self, prop, req ):
     """(private)
-    Access python attributes exposed as properties
+    Access python attributes exposed as properties 
     ('/@' property names)
     """
     def boolambda( b ):
@@ -271,8 +270,8 @@ class Module(object):
     # Check what access is provided to this attribute
     perm = self._attr.get(prop,None)
     if perm is None:
-      raise KeyError("Property '@%s' was not found in class %s"
-                     % (prop,self.__class__.__name__) )
+      raise KeyError("Property '@%s' was not found in class %s" 
+                     % (prop,self.__class__.__name__) )        
     # Try to access attribute; generates error on failure
     val = getattr( self, prop )
     ## Attribute permissions:
@@ -288,8 +287,8 @@ class Module(object):
     elif req == 'set':
       if "2" in perm: return val
       if "W" in perm: return AttributeSetter(self,prop)
-    raise TypeError("Property '@%s' does not provide '%s'" % (prop,req))
-
+    raise TypeError("Property '@%s' does not provide '%s'" % (prop,req)) 
+    
   def _getModAttrOfClp( self, clp, attr ):
     """
     Obtain a module attribute from a clp
