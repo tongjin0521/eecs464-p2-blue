@@ -23,7 +23,6 @@ class GaitCyclePlanApp( JoyApp ):
   
   def __init__(self,*arg,**kw):
     JoyApp.__init__(self,*arg,**kw)
-
   #initializes a plan based on the arguemnets passed on __init__function  
   def onStart( self ):
     if self.robot is not None:
@@ -78,6 +77,10 @@ if __name__=="__main__":
   -----------------------
   When any key is pressed, starts a SheetPlan
   The application can be terminated with 'q' or [esc]
+
+  If the second argument is the word 'robot' or any prefix thereof,
+  will attemp to use the motors named 'front' and 'rear'
+  Otherwise, outputs to debug
   """)
   import joy
   from sys import argv
