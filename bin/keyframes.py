@@ -24,22 +24,20 @@ parser = ArgumentParser(description="""
 parser.add_argument('--arch','-a',action='store',type=str,default='dynamixel',help='Robot bus architecture to use: "dynamixel", "pololu", "polowixel"/"wixel", "simulation"; any prefix valid')
 parser.add_argument('--count','-c',action='store',type=int,default=1,help='Number of modules to find on bus')
 args = parser.parse_args(argv[1:])
+#number of modules to look for
+n = int(args.count)
 
 #creates objects for the modules
 import ckbot.logical as L
 if "dynamixel".startswith(args.arch):
-    c = L.Cluster(arch=DX)
+    c = L.Cluster(arch=DX,count=n,timeout=n*0.5)
 elif "pololu".startswith(args.arch):
-    c = L.Cluster(arch=PO)
+    c = L.Cluster(arch=PO,count=n,required=list(range(0x10,0x10+n)))
 elif "polowixel".startswith(args.arch) or "wixel".startswith(args.arch):
-    c = L.Cluster(arch=PX)
+    c = L.Cluster(arch=PX,count=n,required=list(range(0x10,0x10+n)))
 elif "simulation".startswith(args.arch):
     raise RuntimeError("Not implemented YET")
 
-#number of modules to look for
-n = int(args.count)
-#Timeout occurs if the modules are not found by the specific time
-c.populate(n,timeout=n*0.5)
 '''
 It is a concrete class which does all the background stuff for recording and playback such as
 loading and saving CSV file, taking snaps, dropping snaps etc.
