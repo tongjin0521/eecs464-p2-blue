@@ -17,9 +17,7 @@ Overview
 ========
 
 JoyApp provides an application framework for writing software for the CKBot
-modular robots developed in [ ModLab ](http://modlabupenn.org). It can also
-communicate with the [ Scratch ](http://scratch.mit.edu) visual programming
-language, if it is running on the same machine.
+modular robots developed in [ ModLab ](http://modlabupenn.org).
 
 The JoyApp framework is based on the excellent [ pygame ](http://www.pygame.org),
 which it extends with several custom event types. Programmers using JoyApp will
@@ -33,7 +31,7 @@ similar to threads in that they execute concurrently with each other. Unlike
 threads, they cooperatively multitask by releasing control of the processor
 using the Python keyword `yield`. In addition, Plans maintain their own event
 queue and event handler. Their constructor offers facilities for binding the
-plan to settable `ckbot.logical.Cluster` properties or Scratch variables.
+plan to settable `ckbot.logical.Cluster` properties.
 
 Debugging
 ---------
@@ -53,13 +51,10 @@ have individually overriden this behavior byusing some other list in their
 
 # Standard library dependencies
 import sys
-import types
-import traceback
-#from itertools import izip
 from warnings import warn
-from math import floor,exp,pi
 from glob import glob
-from os import environ, getenv, sep as OS_SEP
+from os import getenv, sep as OS_SEP
+from types import GeneratorType
 
 # pygame interface or compatibility layer
 from . import pygix
@@ -82,17 +77,14 @@ from . misc import *
 
 # Interface to robots
 import ckbot
-from ckbot.logical import Cluster,AbstractServoModule,AbstractProtocolError
+from ckbot.logical import Cluster
+from ckbot.ckmodule import AbstractServoModule,AbstractProtocolError
 
 # Logging interface
 from . loggit import progress,LogWriter,dbgId,debugMsg,PROGRESS_LOG
 
 # Plan classes
-from . plans import ( Plan,
-  SheetPlan, CyclePlan, FunctionCyclePlan,
-  GaitCyclePlan, StickFilter
-  )
-from . import plans
+from . plans import EventWrapperPlan
 from . import remote
 from . import safety
 
@@ -112,11 +104,8 @@ DEBUG = (getenv("JOYDEBUG",'')).split(",")
 # Connect debug hooks of sub-modules
 ckbot.logical.progress = progress
 
-# Interface to Scratch
-from . import scratch
-
 # Joy event classes and support functions
-from . events import describeEvt
+from . events import describeEvt, describeKey
 
 # MIDI interface
 try:
@@ -213,7 +202,7 @@ class JoyAppConfig( object ):
 
 class JoyApp( object ):
   """
-  Framework for robot, Scratch and pygame combined applications, with support
+  Framework for robot and pygame combined applications, with support
   for cooperative multithreading (using Plan subclasses)
 
   A JoyApp collects together several useful objects in one place. It also
@@ -221,9 +210,9 @@ class JoyApp( object ):
 
   Lifecycle -- JoyApp Creation
   ============================
-  __init__ constructor, specifying parameters for self.robot - a
-  ckbot.logical.Cluster, self.scr - a scratch.Board interface and self.cfg - a
-  JoyAppConfig.
+  __init__ constructor, specifying parameters for:
+    self.robot - a ckbot.logical.Cluster
+    self.cfg - a JoyAppConfig.
 
   NOTE: Plan.start should never be called from a JoyApp.__init__ constructor.
 
@@ -244,7 +233,7 @@ class JoyApp( object ):
    3. onStop, called prior to full shutdown.
 
   """
-  def __init__(self, confPath=None, robot=None, scr=None, cfg={}):
+  def __init__(self, confPath=None, robot=None, cfg={}):
     """
     Initialize a JoyApp application. This superclass constructor MUST be called
     by all subclasses.
@@ -257,9 +246,6 @@ class JoyApp( object ):
             the resulting Cluster will be in self.robot
             Some useful parameters include arch= to set bus hardware
             and count= to set number of modules to populate with.
-      scr -- dict -- parameters for the Scratch interface; passed to
-            scratch.Board when starting up; the resulting scratch.Board will be
-            found in self.scr
       cfg -- dict -- new/overridden configuration parameters. These override the
             configuration found in JoyApp.yml and confPath (if present). The
             configuration will be in a JoyAppConfig instance in self.cfg
@@ -273,7 +259,6 @@ class JoyApp( object ):
       DEBUG -- list of str -- list of debug topics to monitor, by default shares
             the joy module DEBUG topics..
       cfg -- JoyAppConfig -- configuration settings.
-      scr -- scratch.Board -- interface to Scratch
       robot -- ckbot.logical.Cluster -- interface to robot
       remote -- interface to event factory
       now -- float - current time; updated every timer event
@@ -313,16 +298,6 @@ class JoyApp( object ):
       progress("No robot")
       self.robot = None #: Interface to CKBot robot modules
       'Interface to CKBot robot modules'
-    # init Scratch interface
-    if scr is None:
-      progress("No connection to Scratch")
-      self.scr = None
-      # Interface to the Scratch programming environment
-    else:
-      self.scr = scratch.Board(**scr)
-      progress("Connected to Scratch")
-      self.__scr_cast = set()
-      self.__scr_upd = {}
     # initialize midi module (this is safe to call again multiple times)
     if self.cfg.midi:
       progress("Requesting MIDI support")
@@ -454,8 +429,8 @@ class JoyApp( object ):
 
     If specification is a tuple, its second member must be a function that
     pre-processes the values, e.g.:
-        ('>x',lambda x : x/2.0)
-    specified output to Scratch variable 'x', after scaling down by two.
+        ('#x',lambda x : x/2.0)
+    specified output to debug variable 'x', after scaling down by two.
         '^Nx22/@set_pos'
     would set the position on NID 0x22, and also log the set operation using
     the JoyApp's logger.
@@ -476,11 +451,7 @@ class JoyApp( object ):
           return fun( pre( value ) )
       func = preProcFun
     elif type(func)==str:
-      # If is a Scratch sensor output
-      if func[:1]==">":
-        # --> obtain curried setter function
-        func = curry(self.setScratch,func[1:])
-      elif func[:1]=="#":
+      if func[:1]=="#":
         # --> obtain customized message emitter
         pfx = func
         def emitMsg( val ):
@@ -501,7 +472,6 @@ class JoyApp( object ):
       else: # else --> obtain setter from cluster
         func = self.robot.setterOf(func)
     return func
-
 
   def _posEventPump( self ):
     """(private)
@@ -525,91 +495,6 @@ class JoyApp( object ):
         m.__last_pos = pos
       m.__promise = m.get_pos_async()
       m.__promise_time = t
-
-  def _scrEventPump( self ):
-    """(private)
-
-    Check the scratch.Board inerface for new updates and
-    push the necessary custom events into pygame
-    """
-    var,bcast = self.scr.poll()
-    if var is None: #!!!need better error handling here
-      self.scr = None
-      progress('Scratch connection aborted')
-      return
-    for nm,val in var.items():
-      evt = JoyEvent(SCRATCHUPDATE, scr=0, var=nm, value=val )
-      pygix.postEvent(evt)
-    for nm in bcast:
-      evt = JoyEvent(SCRATCHUPDATE, scr=0, var=nm, value=None )
-      pygix.postEvent(evt)
-
-  # Table of functions for converting various event kinds into Scratch sensors
-  SCRATCHY = {
-    JOYAXISMOTION : lambda x : [('joy%d axis%d' % (x.joy,x.axis), x.value)],
-    JOYBALLMOTION : lambda x : [('joy%d ball%d' % (x.joy,x.ball), x.rel)],
-    JOYHATMOTION : lambda x : [('joy%d hat%d'% (x.joy,x.hat), x.value)] ,
-    JOYBUTTONUP  : lambda x : [('joy%d btn%d' % (x.joy,x.button), None)] ,
-    JOYBUTTONDOWN : lambda x : [('joy%d bup%d' % (x.joy,x.button), None)],
-    QUIT : lambda x : [('JoyAppQuit',None)],
-    CKBOTPOSITION : lambda x : [('bot Nx%x pos' % x.module, x.pos)],
-    MOUSEMOTION : lambda x : ([ ('mm x', x.pos[0]), ('mm y', x.pos[1]) ]),
-    MOUSEBUTTONDOWN : lambda x : ([ ('mm x', x.pos[0]), ('mm y', x.pos[1]),
-        ('mbtn%d dn' % x.button, None) ]),
-    MOUSEBUTTONUP : lambda x : ([ ('mm x', x.pos[0]), ('mm y', x.pos[1]),
-        ('mbtn%d up' % x.button, None) ]),
-    KEYDOWN : lambda x : ( [('K_%s ' % x.unicode, None)]
-          if x.unicode.isalnum() else []),
-  }
-  def scratchifyEvent( self, evt ):
-    """Convert event to a corresponding scratch message and send it
-    """
-    if self.scr is None:
-      raise RuntimeError('Scratch interface was not started')
-    fun = self.SCRATCHY.get(evt.type,None)
-    if fun is None:
-      return False
-    for msg,val in fun(evt):
-        if val is None:
-          if 'S' in self.DEBUG: debugMsg(self,'Defer scratch broadcast %s' % msg)
-          # Quit events must be sent immediately
-          if evt.type==QUIT:
-            self.scr.broadcast(msg)
-          else:
-            self.__scr_cast.add(msg)
-        else:
-          if 'S' in self.DEBUG: debugMsg(self,'Defer scratch update %s=%s' % (msg,str(val)))
-          self.__scr_upd[msg]= val
-    return True
-
-  def setScratch(self, sensor, value):
-    """
-    Send a sensor update to Scratch
-
-    This method is never used internally by JoyApp; it is primarily
-    used by Plan.__init__ when binding Scratch sensors ($ prefix)
-    """
-    if self.scr is None:
-      raise RuntimeError('Scratch interface was not started')
-    if 'S' in self.DEBUG:
-      debugMsg(self,'Scratch update %s=%s' % (sensor,str(value)))
-    self.__scr_upd[sensor]= value
-
-  def _scrEventEmit(self):
-    """(private)
-
-    Emit deferred Scratch updates
-    """
-    if self.__scr_cast:
-      self.scr.broadcast( *tuple( self.__scr_cast) )
-      if 'S' in self.DEBUG:
-        debugMsg(self,'Scratch broadcast %s' % " ".join(self.__scr_cast) )
-      self.__scr_cast = set()
-    if self.__scr_upd:
-      self.scr.sensorUpdate( **self.__scr_upd )
-      if 'S' in self.DEBUG:
-        debugMsg(self,'Scratch update %s' % repr(self.__scr_upd) )
-      self.__scr_upd = {}
 
   def _pollSafety( self ):
     """(private)
@@ -685,7 +570,7 @@ class JoyApp( object ):
         cfg = dict(self.cfg.remote)
     except:
         cfg = {}
-    self.remote = remote.Sink(self, convert=lambda x: x, **cfg )
+    self.remote = remote.Sink(self, **cfg )
     progress("Starting up a remote.Sink interface")
     self.remote.start()
 
@@ -716,10 +601,6 @@ class JoyApp( object ):
       while self.isRunning():
         # Check all safety check providers
         self._pollSafety()
-        # Poll scratch interface (if enabled)
-        if self.scr:
-          self._scrEventPump()
-          self._scrEventEmit()
         # Poll midi interfaces (if requested)
         if self.cfg.midi:
           for evt in midi_joyEventIter():
@@ -750,9 +631,6 @@ class JoyApp( object ):
     # App cleanup bugs
     try:
       self.onStop()
-      if self.scr:
-        self.scratchifyEvent(JoyEvent(QUIT))
-        self.scr.close()
       if self.robot:
         self.robot.off()
       if self.logger:
@@ -809,19 +687,93 @@ class JoyApp( object ):
     """
     progress("%s --- shutting down" % str(self) )
 
+  def remapToKey(self,evt):
+    """(default)
+    Remap other events into keypress events
+
+    INPUT:
+      evt -- event object -- the event that occurred
+
+    OUTPUT: key code or None
+      The key code must be one of the K_ constants, or None if the event
+      should be ignored
+    """
+    return None
+
+  def on_K_q(self,evt):
+    """(default)
+    Handler for K_q -- terminate JoyApp
+    """
+    return self.stop()
+
+  def _doOnK(self,evt):
+    """(private)
+
+    Process event and look for on_K_* event handler
+    Return True iff successful in handling
+
+    The event handler is found based on the key code from a KEYDOWN event,
+    or produced by .remapToKey(evt). In the latter case, if the number
+    returned is unfamiliar as a key, looks for on_K_XXXX where XXXX is a
+    0 padded 4 digit hex representation of the key value (%04X format)
+    """
+    event = None
+    if evt.type == KEYDOWN:
+      event = evt.key
+    elif evt.type == QUIT:
+      event = K_ESCAPE
+    else:
+      event = self.remapToKey(evt)
+    # Look for named event handler for keys
+    if event is None:
+      return False
+    # Escape always terminates; cannot be overriden by on_K_ESCAPE
+    if event is K_ESCAPE:
+      self.stop()
+      return True
+    # Search for on_K_* event handler
+    dcr = describeKey(event)
+    # Exotic keys get hex codes
+    if dcr is None:
+      dcr = "K_%04X" % event
+    hndlr = getattr(self, "on_"+dcr,None)
+    if self.logger:
+      self.logger.write('handler',dcr=dcr,h=repr(hndlr))
+    if hndlr is None:
+      return False
+    res = hndlr(evt)
+    if type(res) is GeneratorType:
+      pln = EventWrapperPlan(self,evt,res)
+      pln.start()
+      if self.logger:
+        self.logger.write('wrapper',plan=pln,evt=evt,gen=res)
+    return True
+
+  def onTimer(self):
+    """
+    Called on timer events, i.e. every timeslice
+    """
+    pass
+
   def onEvent( self, evt ):
     """(default)
 
     Top-level event handler
 
     Override this method to install your event handling code.
+    The default JoyApp will try to handle keys with on_K_*() methods, and
+    will try to map all other events into keys using
     The default JoyApp displays all events in human readable form on screen.
     Hitting <escape> or closing the window will cause it to quit.
     """
-    if evt.type != TIMEREVENT:
-        progress( describeEvt(evt) )
+    if evt.type == TIMEREVENT:
+      return self.onTimer()
     if self.logger:
         self.logger.write('event',**describeEvt(evt,parseOnly=1))
+    # Map any non-key events into key events using self.remapToKey
+    if self._doOnK(evt):
+      return
+    # Unhandled key -- display it
     if self.fig and evt.type==KEYDOWN:
       # Display keypress in the GUI (if GUI exists)
       self.fig.clf()
@@ -829,8 +781,34 @@ class JoyApp( object ):
       ax.plot([-1,1,1,1,-1],[-1,-1,1,1,-1],'w-')
       ax.text(0,0,evt.unicode)
       self.animate()
-    if evt.type==QUIT or (evt.type==KEYDOWN and evt.key in (K_q,K_ESCAPE)):
-      self.stop()
+    progress('Event '+describeEvt(evt))
+
+def runFlatScript(loc):
+  """
+  Implements the ability to construct a JoyApp as a flat script.
+  Typical usage is:
+    >>> from joy import runFlatScript
+    >>> runFlatScript(locals())
+
+  This will copy over all on_* functions and onStart and onStop into the
+  scope of a new JoyApp instance, and then run that instance.
+
+  To configure the JoyApp, you can have ROBOT and/or CFG defined in the
+  loc namespace. These are mapped into the robot= and cfg= keyword arguments
+  of the JoyApp constructor.
+
+  See demos/demo-flatscript.py for more information
+  """
+  rob = loc.get('ROBOT',None)
+  cfg = loc.get('CFG',{})
+  app = JoyApp(robot=rob,cfg=cfg)
+  loc['app']=app
+  if rob:
+    loc['robot']=app.robot.at
+  for k,v in loc.items():
+    if k.startswith("on_") or k in {"onTimer","onStart","onStop"}:
+      setattr(app,k,v)
+  app.run()
 
 def test():
   import sys
@@ -841,8 +819,6 @@ def test():
     arg = args.pop(0)
     if arg=='--with-robot' or arg=='-r':
       cmds.update(robot={})
-    elif arg=='--with-scratch' or arg=='-s':
-      cmds.update(scr={})
     elif arg=='--help' or arg=='-h':
       cmds = None
     elif arg=='--mod-count' or arg=='-c':
