@@ -573,18 +573,18 @@ class Bus( AbstractBus ):
             # Read all available data
             n = self.ser.inWaiting()
             if n>0:
-                rd = bytes(self.ser.read(n))
-            self.buf += rd
-            self.count += len(rd)
+              rd = bytes(self.ser.read(n))
+              self.buf += rd
+              self.count += len(rd)
             # Expecting at least self.expect bytes
             if len(self.buf)<self.expect:
-                # --> if not available then done with loop
-                return None
+              # --> if not available then done with loop
+              return None
             # Expecting sync byte
             if not self.buf.startswith(SYNC):
-                # --> didn't find sync; drop the first byte
-                self._dropByte('eSync')
-                continue
+              # --> didn't find sync; drop the first byte
+              self._dropByte('eSync')
+              continue
             ## assert self.buf.startswith(SYNC)
             # Make sure that our nid makes sense
             ID = self.buf[2]
