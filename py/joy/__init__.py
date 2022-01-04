@@ -819,6 +819,8 @@ def test():
     arg = args.pop(0)
     if arg=='--with-robot' or arg=='-r':
       cmds.update(robot={})
+    if arg=='--with-midi' or arg=='-m':
+      cmds['cfg'].update(midi=True)
     elif arg=='--help' or arg=='-h':
       cmds = None
     elif arg=='--mod-count' or arg=='-c':
@@ -839,8 +841,8 @@ Usage: %s [options]
     --with-robot | -r
       Start robot interface
 
-    --with-scratch | -s
-      Start with Scratch connection
+    --with-midi | -m
+      Attempt to collect MIDI controller events
 
     --mod-count <number> | -c <number>
       Search for specified number of modules at startup
