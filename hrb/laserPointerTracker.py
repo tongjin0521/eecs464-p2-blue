@@ -56,10 +56,10 @@ class LaserTracker( object ):
 
   def _outBlobs( self, t, b ):
     if not b:
-      self.out.write("%.2f, 0, 0, 0\n" % t)
+      self.out.write(b"%.2f, 0, 0, 0\n" % t)
     else:
       for n,(x,y) in enumerate(b):
-        self.out.write("%.2f, %d, %d, %d\n" % (t,n+1,x,y))
+        self.out.write(b"%.2f, %d, %d, %d\n" % (t,n+1,x,y))
     self.out.flush()
 
   def _showBlobs( self, b ):
@@ -107,7 +107,7 @@ class LaserTracker( object ):
       self.cam.release()
       destroyAllWindows()
       [ waitKey(50) for k in range(10) ]
-      print "\n"+"*"*40+"\nSafely terminated\n"+"*"*40
+      print("\n"+"*"*40+"\nSafely terminated\n"+"*"*40)
 
 
 if __name__=="__main__":
