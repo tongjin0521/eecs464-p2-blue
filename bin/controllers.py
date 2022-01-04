@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # NOTE: this program should always run under python2
 #   at least until MIDI starts working in pygame on python 3.x
 '''
