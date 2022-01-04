@@ -4,7 +4,7 @@ This is a collection of constants for compatibility with python-pygame 1.9.1 amd
 If these ever cause trouble by not matching the values received in event packets, look at the sending pygame implementation
 """
 from os import getenv
-SCHD=getenv("PYGIXSCHD","FAST")
+SCHD=getenv("PYGIXSCHD","pygame")
 del getenv
 
 if SCHD=="pygame": # Allow override to force into pygame compatibility mode
