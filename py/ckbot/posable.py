@@ -50,7 +50,7 @@ class PoseRecorder( object ):
         self.reset()
         self.off()
         self.kind = 'linear'
-        self.period = 1.
+        self.period = None
         self.count = 1
 
     def setServos(self,mods):
@@ -243,7 +243,9 @@ class PoseRecorder( object ):
         gaitfun = interp1d( gait[:,0], gait[:,1:].T, kind=kind ) # Gait interpolater function
         dur = gait[-1,0]-gait[0,0]
         if period is None:
-            period = self.plan[-1][0] - self.plan[0][0]
+            period = self.period
+            if self.period is None:
+                period = self.plan[-1][0] - self.plan[0][0]
         if count is None:
             count = self.count
         t0 = now()
@@ -306,7 +308,7 @@ class LiveJoyRemote( object ):
     def show(self):
         """Show current plan"""
         print("#### Recording")
-        print("# duration ",self.pr.duration," count ",self.pr.count)
+        print("# period ",self.pr.period," count ",self.pr.count)
         self.pr.show()
         print("#### END")
 
@@ -453,7 +455,7 @@ class PoseRecorderCLI( Cmd ):
         assert isinstance(pr,PoseRecorder)
         self.pr = pr
         self.liv = LiveJoyRemote(pr)
-        self.pr.duration = None
+        self.pr.period = None
         self.pr.count = 1
         self.updT = 0.2
         self.pr.kind = 'linear'
@@ -567,7 +569,7 @@ class PoseRecorderCLI( Cmd ):
 
     def do_show(self,line=None):
         """Show the current recording in text form"""
-        print("# duration ",self.pr.duration," count ",self.pr.count)
+        print("# period ",self.pr.period," count ",self.pr.count)
         self.pr.show()
 
     def do_pose(self,line=None):
@@ -622,13 +624,13 @@ class PoseRecorderCLI( Cmd ):
          except ValueError as ve:
             print(ve)
 
-    def do_duration(self,line):
-         """Set duration of one playback period (empty for automatic)"""
+    def do_period(self,line):
+         """Set period of one playback period (empty for automatic)"""
          if not line:
-             self.pr.duration = None
+             self.pr.period = None
          else:
              try:
-                 self.pr.duration = float(line)
+                 self.pr.period = float(line)
              except ValueError as ve:
                  print(ve)
 
@@ -641,10 +643,10 @@ class PoseRecorderCLI( Cmd ):
                 val = 0.001
             self.updT = val
         except ValueError:
-            print("Could not parse '%s' as a valid duration")
+            print("Could not parse '%s' as a valid period")
 
     def do_run(self,line=None):
-         """Run the recording. Set duration and cycle count with 'duration' and 'count' commands"""
+         """Run the recording. Set period and cycle count with 'period' and 'count' commands"""
          try:
              self._update()
              self.pr.playback()
