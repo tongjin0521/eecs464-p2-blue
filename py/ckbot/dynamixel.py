@@ -40,7 +40,7 @@ from collections import deque
 
 from .ckmodule import (
     AbstractNodeAdaptor, AbstractProtocol, AbstractBus, progress,
-    AbstractServoModule, AbstractProtocolError, AbstractBusError, 
+    AbstractServoModule, AbstractProtocolError, AbstractBusError,
     MemInterface, MissingModule
 )
 from .port2port import newConnection
@@ -1585,9 +1585,11 @@ class DynamixelModule( AbstractServoModule ):
         """
         assert min_pos <= max_pos, "Range of motion is meaningful"
         if type(mode) is int:
-            if mode != 0 and mode != 1:
+            mode = {0:"SERVO", 1:"MOTOR"}.get(mode,None)
+            if mode is None:
                 raise ValueError("Unknown mode %s requested, valid modes are 0 (SERVO) and 1 (MOTOR)" % mode)
-            mode = {0:"SERVO", 1:"MOTOR"}[mode]
+        else:
+            mode = mode.upper()
         if "SERVO".startswith(mode): #mode==0 or 'SERVO'.startswith(mode.upper()):
             return self._set_mode(0,
                 self.ang2dynamixel(min_pos),
@@ -1658,6 +1660,8 @@ class DynamixelModule( AbstractServoModule ):
         INPUT:
           val -- units in 1/100s of degrees between -10000 and 10000
         """
+        if pos < self.MIN_LIM: pos = self.MIN_LIM
+        elif pos > self.MAX_LIM: pos = self.MAX_LIM
         return self.pna.mem_write_fast( self.mcu.goal_position, self.ang2dynamixel(pos))
 
     def set_pos_sync(self,val):
@@ -1812,7 +1816,9 @@ class DX_MX_Module(DynamixelModule):
           in the dynamixel before it returns.
         """
         if type(mode) is int:
-            mode = {0:"SERVO", 1:"MOTOR", 2:"CONTINUOUS"}[mode]
+            mode = {0:"SERVO", 1:"MOTOR", 2:"CONTINUOUS"}.get(mode,None)
+            if mode is None:
+                raise ValueError("Unknown mode %s requested, valid modes are 0 (SERVO), 1 (MOTOR), 2 (CONTINUOUS)" % mode)
         else:
             mode = mode.upper()
         if "CONTINUOUS".startswith(mode):
