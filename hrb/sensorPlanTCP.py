@@ -19,7 +19,7 @@ from socket import (
 from json import loads as json_loads
 
 # The main program is a JoyApp
-from joy import Plan, progress
+from joy.plans import Plan, progress
 
 # Include all the modeling functions provided to the teams
 #  this ensures that what the server does is consistent with the model given
