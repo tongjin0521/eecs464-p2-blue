@@ -1,5 +1,10 @@
 #!/bin/bash
-export PYCKBOTPATH=`find $1 -type d -path **/py/ckbot -print -quit | sed s:/py/ckbot::g`
+if [ "$1" = "" ]; then
+  PTH=`pwd`
+else
+  PTH="$1"
+fi
+export PYCKBOTPATH=`find $PTH -type d -path **/py/ckbot -print -quit | sed s:/py/ckbot::g`
 export PYTHONPATH=$PYCKBOTPATH/py
 if [ "$2" = "" ]; then
   unset PYGIXSCHD
