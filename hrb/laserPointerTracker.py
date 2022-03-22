@@ -8,7 +8,8 @@ from cv2 import (
     SimpleBlobDetector_create as SimpleBlobDetector, VideoCapture, drawKeypoints,
     imshow as cv2_imshow, imwrite as cv2_imwrite,
     COLOR_RGB2GRAY, cvtColor, circle as cv2_circle,
-    destroyAllWindows, waitKey, SimpleBlobDetector_Params
+    destroyAllWindows, waitKey, SimpleBlobDetector_Params,
+    CAP_PROP_FRAME_WIDTH, CAP_PROP_FRAME_HEIGHT,
     )
 from numpy import (
   zeros, int16, uint8, asarray, mean, std
@@ -23,6 +24,8 @@ class LaserTracker( object ):
     bdp.filterByConvexity = False
     self.bd = SimpleBlobDetector(bdp)
     self.cam = VideoCapture(cam)
+    self.cam.set(CAP_PROP_FRAME_WIDTH, 1280)
+    self.cam.set(CAP_PROP_FRAME_HEIGHT, 720)
     #self.cam = VideoCapture("http://admin:hrb2018@172.18.18.3:8080/video")
     self.clearBG()
     if not fn:
