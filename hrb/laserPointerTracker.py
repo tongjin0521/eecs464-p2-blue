@@ -85,7 +85,7 @@ class LaserTracker( object ):
     if self.bg is not None:
       d0 = img - (self.bg+3*self.bgs+self.guard)
       d1 = (d0 / max(64,d0.max())).clip(0,1)
-      d2 = d1 * (img > 192)
+      d2 = d1 * (img > 128)
       self.ind = 255-asarray(255*d2,uint8)
       cv2_imshow('ind',self.ind)
       kp = self.bd.detect(self.ind)

@@ -5,9 +5,10 @@ Created on Mon Mar 23 01:14:25 2020
 
 @author: shrevzen
 """
-from time import time
+
+from datetime import datetime
 from numpy import (
-    asarray, stack, ones, identity, dot, newaxis, cumsum, c_, nan, inf
+    asarray, stack, ones, identity, dot, newaxis, cumsum, c_, nan
 )
 from numpy.linalg import inv
 from arm import Arm, jacobian_cdas
@@ -178,18 +179,18 @@ class ArmAnimatorApp( JoyApp ):
       JoyApp.__init__(self,*arg,**kw)
       progress("Simulation time: %g sec = 0.1 sec simulated" % self.simTS)
       self.arm = ArmSim(wlc)
-      self.Tp2w = dot(Tws2w,Tp2ws)
+      self.Tp2w = Tws2w @ Tp2ws
       # World to paper
       self.Tw2p = inv(self.Tp2w)
       # Paper with origin at origin
-      self.paper_p = asarray([[8,11,-1/2.56,1]])*xyzCube
-      self.paper_w = dot(self.paper_p,self.Tp2w.T)
+      self.paper_p = asarray([[8,11,-1,1]])*xyzCube
+      self.paper_w = self.paper_p @ self.Tp2w.T
       # Workspace box
       L = 12 # Workspace in arm units
-      self.ws_w = dot(asarray([[L,L,L,1]])*xyzCube,Tws2w.T)
-      self.ws_p = dot(self.ws_w,self.Tw2p.T)
+      self.ws_w = (asarray([[L,L,L,1]])*xyzCube)@ Tws2w.T
+      self.ws_p = self.ws_w @ self.Tw2p.T
       # Projection onto paper in world
-      self.Tprj = dot(self.Tp2w,asarray([[1,1,0,1]]).T*self.Tw2p)
+      self.Tprj = self.Tp2w @ (asarray([[1,1,0,1]]).T*self.Tw2p)
       # World to relative paper (i.e. paper is unit cube)
       self.Tw2rp = self.Tw2p / self.paper_p[-1][:,newaxis]
 
@@ -242,15 +243,15 @@ class ArmAnimatorApp( JoyApp ):
           if qq[2]>1: # Pressed too far in
             lt = dict(marker='o',color='r')
           elif qq[2]>0: # Drawing
-            lt = dict(marker='.',color='g')
+            lt = dict(marker='x',color='g',ms=15,mew=2)
           else: # Above sheet
             lt = dict(marker="+", ms=15, color="m")
         else: # Not above or below sheet
             lt = dict(marker="+",color="b")
         # Project onto paper and bring back to world coordinates
-        wp = dot(self.Tprj,pen)
+        wp = self.Tprj @ pen
         fvp.plot3D([wp[0]],[wp[1]],[wp[2]],**lt)
-        wl = dot(self.Tprj,li)
+        wl = self.Tprj @ li
         fvp.plot3D([wl[0]],[wl[1]],[wl[2]],'xk')
         fvp.xyz.set_title("t = %.2f, n=%d" % (ti,len(self.t)))
         plotVE(fvp,self.paper_w,iCube,'g--',alpha=0.3)
@@ -272,9 +273,9 @@ class ArmAnimatorApp( JoyApp ):
           continue
         last = now
         # Draw graphics, measure execution time
-        tic = time()
+        tic = datetime.now().timestamp()
         self._show(fvp)
-        dt = time() - tic
+        dt = datetime.now().timestamp() - tic
         # Display progress
         progress(("(%4.2f) " % dt) +
             " ".join(["%15s" % (
@@ -285,6 +286,9 @@ class ArmAnimatorApp( JoyApp ):
         yield
 
     def onStop(self):
+      return self.saveResult(True)
+      
+    def saveResult(self,withCSV=False):
       # We need this kind of import so as not to mess up JoyApp plotting
       from pylab import figure,savefig
       # Collect pen motions and tool tip motions
@@ -294,12 +298,13 @@ class ArmAnimatorApp( JoyApp ):
       # Convert to paper coordinates
       qq = dot(self.Tw2rp,p)
       lp = dot(self.Tw2p,l)
-      # Prepare output as integers:
-      #  time, x, y, depth
-      pout = c_[t,asarray(lp[:2]*100,int).T,asarray(qq[2]*100,int)]
-      with open("result-%d.csv" % time(),"w") as rf:
-        for pp in pout:
-          rf.write(repr(list(pp))[1:-1]+"\n")
+      if withCSV:
+        # Prepare output as integers:
+        #  time, x, y, depth
+        pout = c_[t,asarray(lp[:2]*100,int).T,asarray(qq[2]*100,int)]
+        with open("result-%s.csv" % self.TS,"w") as rf:
+          for pp in pout:
+            rf.write(repr(list(pp))[1:-1]+"\n")
       # Draw on "paper"
       fig = figure(2)
       fig.clf()
@@ -321,16 +326,19 @@ class ArmAnimatorApp( JoyApp ):
       ax.plot(fr[0],fr[1],'b--',lw=2)
       ax.axis('equal')
       ax.grid(1)
-      savefig("result-%d.png" % time(),dpi=300)
+      savefig("result-%s.png" % self.TS,dpi=300)
 
     def onStart(self):
       """
       Start the JoyApp and the simulation
       """
+      # Start timestamp
+      self.TS = datetime.now().strftime("%Y%m%d-%H%M")      
       self.ani = AnimatorPlan(self,self._animation)
       self.t,self.q,self.y,self.p,self.l = [],[],[],[],[]
       self.T0 = self.now
       self.ani.start()
+      self.timeToPlot = self.onceEvery(1)
 
     def onEvent(self,evt):
       """
@@ -339,22 +347,9 @@ class ArmAnimatorApp( JoyApp ):
       'q' will quit and store the results in a results.png image and results.csv
       file.
       """
-      # Ignore everything except keydown events
-      if evt.type != KEYDOWN:
-        return
-      # Punt exit keys
-      if evt.key in {K_q, K_ESCAPE}:
-        return JoyApp.onEvent(self,evt)
-      # row of 'a' on QWERTY keyboard increments motors
-      p = "asdfghjkl".find(evt.unicode)
-      if p>=0:
-        self.arm[p].set_pos(self.arm[p].get_goal() + 500)
-        return
-      # row of 'z' in QWERTY keyboard decrements motors
-      p = "zxcvbnm,.".find(evt.unicode)
-      if p>=0:
-        self.arm[p].set_pos(self.arm[p].get_goal() - 500)
-        return
+      if self.timeToPlot():
+        self.saveResult()
+      return JoyApp.onEvent(self,evt)
 
 if __name__=="__main__":
   raise RuntimeError("This is not a script. Try 'myarmsim.py'")

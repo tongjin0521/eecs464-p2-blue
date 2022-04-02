@@ -5,7 +5,7 @@ Created on Wed Apr  1 14:23:10 2020
 
 @author: shrevzen
 """
-
+from joy.decl import progress, KEYDOWN
 from numpy import asarray
 from p2sim import ArmAnimatorApp
 
@@ -43,10 +43,26 @@ class MyArmSim(ArmAnimatorApp):
       ### TEAM CODE GOES HERE
       ###
 
+    ###
+    ### TEAM event handlers go here
+    ###    Handle events as you see fit, and return after
+    def on_K_r(self,evt):
+      progress("(say) r was pressed")
+      
     def onEvent(self,evt):
-      ###
-      ### TEAM CODE GOES HERE
-      ###    Handle events as you see fit, and return after
+      # Ignore everything except keydown events
+      if evt.type != KEYDOWN:
+        return ArmAnimatorApp.onEvent(self,evt)
+      # row of 'a' on QWERTY keyboard increments motors
+      p = "asdfghjkl".find(evt.unicode)
+      if p>=0:
+        self.arm[p].set_pos(self.arm[p].get_goal() + 500)
+        return
+      # row of 'z' in QWERTY keyboard decrements motors
+      p = "zxcvbnm,.".find(evt.unicode)
+      if p>=0:
+        self.arm[p].set_pos(self.arm[p].get_goal() - 500)
+        return
       return ArmAnimatorApp.onEvent(self,evt)
 
 if __name__=="__main__":
