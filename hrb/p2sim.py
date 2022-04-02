@@ -350,7 +350,7 @@ class ArmAnimatorApp( JoyApp ):
       file.
       """
       if self.timeToPlot():
-        self.saveResult()
+        self.saveResult(withCSV=False)
       return JoyApp.onEvent(self,evt)
 
 if __name__=="__main__":

@@ -48,21 +48,23 @@ class MyArmSim(ArmAnimatorApp):
     ###    Handle events as you see fit, and return after
     def on_K_r(self,evt):
       progress("(say) r was pressed")
-      
+    
     def onEvent(self,evt):
       # Ignore everything except keydown events
       if evt.type != KEYDOWN:
         return ArmAnimatorApp.onEvent(self,evt)
-      # row of 'a' on QWERTY keyboard increments motors
-      p = "asdfghjkl".find(evt.unicode)
-      if p>=0:
-        self.arm[p].set_pos(self.arm[p].get_goal() + 500)
-        return
-      # row of 'z' in QWERTY keyboard decrements motors
-      p = "zxcvbnm,.".find(evt.unicode)
-      if p>=0:
-        self.arm[p].set_pos(self.arm[p].get_goal() - 500)
-        return
+      ## disable this block (change to 0) to use on_K for these keys
+      if 1: 
+        # row of 'a' on QWERTY keyboard increments motors
+        p = "asdfghjkl".find(evt.unicode)
+        if p>=0:
+          self.arm[p].set_pos(self.arm[p].get_goal() + 500)
+          return
+        # row of 'z' in QWERTY keyboard decrements motors
+        p = "zxcvbnm,.".find(evt.unicode)
+        if p>=0:
+          self.arm[p].set_pos(self.arm[p].get_goal() - 500)
+          return
       return ArmAnimatorApp.onEvent(self,evt)
 
 if __name__=="__main__":
