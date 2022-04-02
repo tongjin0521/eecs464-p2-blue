@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 
 import pygame as G
-from os import stat, system
-from time import sleep, time
-from sys import stdout
+from os import stat
+from time import sleep
+from sys import stdout, argv
 
 stdout.write("""
 ##
@@ -16,16 +16,26 @@ stdout.write("""
 ## You can install mencoder with:
 ## sudo apt install mencoder
 ##
+## NOTE: you can provide an alternative filename pattern on the commandline
+##    as a python format string, e.g. someprefix-%02d.jpg
+##
 ## Quit the current program with Ctrl-C
 ##
 """)
-scr = G.display.set_mode([1200,800])
-G.display.flip()
+
+fmt = "f%04d.png"
+if len(argv)>1:
+  assert len(argv)==2
+  fmt = argv[1]
+  assert "%" in fmt
+  assert fmt.find("d") > fmt.find("%")
+  
+scr = None
 img = None
 fn = None
 for n in range(1,10000):
     lfn = fn # Update last filename
-    fn = "f%04d.png" % n
+    fn = fmt % n
     stdout.write("\r"+fn)
     stdout.flush()
     # Wait until the file appears
@@ -39,3 +49,8 @@ for n in range(1,10000):
         img = G.image.load(lfn)
         scr.blit(img,(0,0))
         G.display.update()
+    else:
+        img = G.image.load(fn)
+        scr = G.display.set_mode([img.get_width(),img.get_height()])
+        G.display.flip()
+      
