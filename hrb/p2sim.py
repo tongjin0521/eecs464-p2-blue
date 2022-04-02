@@ -15,7 +15,7 @@ from arm import Arm, jacobian_cdas
 from motorsim import MotorModel,TH,BL
 from joy.plans import AnimatorPlan
 from joy import JoyApp
-from joy.decl import KEYDOWN, K_q, K_ESCAPE, progress
+from joy.decl import progress
 from vis3d import FourViewPlot, xyzCube, iCube, iFace, plotVE
 from joy.misc import requiresPyGame
 requiresPyGame()
@@ -175,6 +175,7 @@ class ArmAnimatorApp( JoyApp ):
       if 'cfg' not in kw:
         kw['cfg'] = {}
       kw['cfg'].update(windowSize = [1200, 800])
+      self._pfc = 0 # paper frame counter
       self.simTS = simTimeStep
       JoyApp.__init__(self,*arg,**kw)
       progress("Simulation time: %g sec = 0.1 sec simulated" % self.simTS)
@@ -302,7 +303,7 @@ class ArmAnimatorApp( JoyApp ):
         # Prepare output as integers:
         #  time, x, y, depth
         pout = c_[t,asarray(lp[:2]*100,int).T,asarray(qq[2]*100,int)]
-        with open("result-%s.csv" % self.TS,"w") as rf:
+        with open("%s-result.csv" % self.TS,"w") as rf:
           for pp in pout:
             rf.write(repr(list(pp))[1:-1]+"\n")
       # Draw on "paper"
@@ -326,7 +327,8 @@ class ArmAnimatorApp( JoyApp ):
       ax.plot(fr[0],fr[1],'b--',lw=2)
       ax.axis('equal')
       ax.grid(1)
-      savefig("result-%s.png" % self.TS,dpi=300)
+      savefig("%s-paper-%04d.png" % (self.TS,self._pfc),dpi=150)
+      self._pfc += 1
 
     def onStart(self):
       """
