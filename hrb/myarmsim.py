@@ -14,6 +14,9 @@ import time
 
 DEBUG = True
 
+num_points = 15.0
+zOffset = 1
+
 class MoveToPoint(Plan):
   def __init__(self,app):
     Plan.__init__(self,app)
@@ -146,6 +149,37 @@ class MyArmSim(ArmAnimatorApp):
           self.moveP.start()
           return 
       return ArmAnimatorApp.onEvent(self,evt)
+      
+    def discretize_square(self, x, y, s):
+      top_line = []
+      right_line = []
+      bottom_line = []
+      left_line = []
+
+      for i in range(0, int(num_points+1)):
+        top_line.append([x-s+i*2*s/num_points, y+s, zOffset, 1])
+        bottom_line.append([x+s-i*2*s/num_points, y-s, zOffset, 1])
+        left_line.append([x-s, y-s+i*2*s/num_points, zOffset, 1])
+        right_line.append([x+s, y+s-i*2*s/num_points, zOffset, 1])
+
+      top_line_t = []
+      bottom_line_t = []
+      left_line_t = []
+      right_line_t = []
+
+      for p in top_line:
+        top_line_t.append(np.dot(Tp2ws, p))
+      for p in bottom_line:
+        bottom_line_t.append(np.dot(Tp2ws, p))
+      for p in left_line:
+        left_line_t.append(np.dot(Tp2ws, p))
+      for p in right_line:
+        right_line_t.append(np.dot(Tp2ws, p))
+
+      self.target_square.append(top_line_t)
+      self.target_square.append(right_line_t)
+      self.target_square.append(bottom_line_t)
+      self.target_square.append(left_line_t)
 
 if __name__=="__main__":
   # Transform of paper coordinates to workspace
