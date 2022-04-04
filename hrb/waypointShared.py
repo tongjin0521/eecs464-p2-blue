@@ -131,6 +131,7 @@ def lineDist( c, a, b, scale=1.0, withZ = False ):
   """
   # Rigid transform and rescaling that
   # takes (a,b) to (0,1), applied to c
+  # print("linedist: "+ str(c) +" "+ str(a) + " "+ str(b) + " "+ str(scale))
   c = asarray(c)
   z = (c-a)/(b-a)
   far = (z.real<0) | (z.real>1)

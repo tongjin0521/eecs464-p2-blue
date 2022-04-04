@@ -164,7 +164,8 @@ class ArmSim(MassArm):
           ang0 = asarray([ yi[TH]+yi[BL] for yi in y]) # motor angles
           if not cont:
             break
-          tq = 3e-3*self.getGravityTorque(ang0).squeeze() # gravity torque on motors
+          # tq = 3e-3*self.getGravityTorque(ang0).squeeze() # gravity torque on motors
+          tq = 3e-6*self.getGravityTorque(ang0).squeeze() # gravity torque on motors
           for mi,tqi in zip(self.m,tq): # push into motor objects
             mi._ext = -tqi
         ang1 = ang0 - self.c*tq # sagged angles
@@ -184,10 +185,11 @@ class ArmAnimatorApp( JoyApp ):
       # World to paper
       self.Tw2p = inv(self.Tp2w)
       # Paper with origin at origin
-      self.paper_p = asarray([[8,11,-1,1]])*xyzCube
+      # self.paper_p = asarray([[8,11,-1,1]])*xyzCube
+      self.paper_p = asarray([[20.32,27.94,-1,1]])*xyzCube
       self.paper_w = self.paper_p @ self.Tp2w.T
       # Workspace box
-      L = 12 # Workspace in arm units
+      L = 33 # Workspace in arm units
       self.ws_w = (asarray([[L,L,L,1]])*xyzCube)@ Tws2w.T
       self.ws_p = self.ws_w @ self.Tw2p.T
       # Projection onto paper in world
@@ -303,9 +305,9 @@ class ArmAnimatorApp( JoyApp ):
         # Prepare output as integers:
         #  time, x, y, depth
         pout = c_[t,asarray(lp[:2]*100,int).T,asarray(qq[2]*100,int)]
-        with open("%s-result.csv" % self.TS,"w") as rf:
-          for pp in pout:
-            rf.write(repr(list(pp))[1:-1]+"\n")
+        # with open("%s-result.csv" % self.TS,"w") as rf:
+        #   for pp in pout:
+        #     rf.write(repr(list(pp))[1:-1]+"\n")
       # Draw on "paper"
       fig = figure(2)
       fig.clf()
@@ -327,7 +329,7 @@ class ArmAnimatorApp( JoyApp ):
       ax.plot(fr[0],fr[1],'b--',lw=2)
       ax.axis('equal')
       ax.grid(1)
-      savefig("%s-paper-%04d.png" % (self.TS,self._pfc),dpi=150)
+      # savefig("%s-paper-%04d.png" % (self.TS,self._pfc),dpi=150)
       self._pfc += 1
 
     def onStart(self):

@@ -25,6 +25,7 @@ class MotorModel( object ):
         self.blMag = .1 # [rad] Gear backlash magnitude (rad)
         self.mu = .05 # [amp/(rad/sec)] dynamic friction
         self.inertia = 1. # [amp/(rad/sec**2)] motor inertia
+        self.inertia = 1. # [amp/(rad/sec**2)] motor inertia
         self.thrm = 0.1 # [amp**2/sec] thermal sink rate
         self.nolo = 2. # [rad/sec] No-load speed of motor
         self.cmax = 10. # [amp] Maximal drive power system can produce
@@ -131,7 +132,8 @@ class MotorModel( object ):
         """
         Obtain current position
         """
-        return int((self.y[-1][TH]+self.y[-1][BL]) * 18000/3.14159) + randint(-200,200)
+        # return int((self.y[-1][TH]+self.y[-1][BL]) * 18000/3.14159) + randint(-200,200)
+        return int((self.y[-1][TH]+self.y[-1][BL]) * 18000/3.14159) + randint(-20,20)
       
     def get_temp(self):
         """

@@ -46,13 +46,15 @@ Z = asfarray([[0,0,1],[0,0,1],[0,1,1],[1,0,1],[1,1,0],[1,1,1]])
 # Pick random allowed rotation matrix
 R = z2R( Z[randint(len(Z))], [1,0,0] if rand()>0.5 else [0,1,0] ) 
 # Size of box
-L = 12
+L = 33
 # Workspace box
 wso = -L/2*asfarray([[1,1,1,0]])
 ws = asfarray([[L,L,L,1]])*xyzCube+wso
 # Paper in native coordinates
-Lx = 8
-Ly = 11
+# Lx = 8
+# Ly = 11
+Lx = 20.32
+Ly = 27.94
 paper_p = (asfarray([[Lx,Ly,-1/2.56,1]])*xyzCube)
 
 # Rotate paper points
