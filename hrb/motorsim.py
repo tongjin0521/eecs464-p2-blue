@@ -25,7 +25,6 @@ class MotorModel( object ):
         self.blMag = .1 # [rad] Gear backlash magnitude (rad)
         self.mu = .05 # [amp/(rad/sec)] dynamic friction
         self.inertia = 1. # [amp/(rad/sec**2)] motor inertia
-        self.inertia = 1. # [amp/(rad/sec**2)] motor inertia
         self.thrm = 0.1 # [amp**2/sec] thermal sink rate
         self.nolo = 2. # [rad/sec] No-load speed of motor
         self.cmax = 10. # [amp] Maximal drive power system can produce
