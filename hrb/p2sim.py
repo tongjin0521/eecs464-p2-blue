@@ -307,7 +307,7 @@ class ArmAnimatorApp( JoyApp ):
         #  time, x, y, depth
         pout = c_[t,asarray(lp[:2]*100,int).T,asarray(qq[2]*100,int)]
         # TODO:
-        with open("%s-result.csv" % self.TS,"w") as rf:
+        with open("results/%s-result.csv" % self.TS,"w") as rf:
           for pp in pout:
             rf.write(repr(list(pp))[1:-1]+"\n")
       # Draw on "paper"
@@ -332,7 +332,7 @@ class ArmAnimatorApp( JoyApp ):
       ax.axis('equal')
       ax.grid(1)
       # TODO:
-      savefig("%s-paper-%04d.png" % (self.TS,self._pfc),dpi=150)
+      savefig("results/%s-paper-%04d.png" % (self.TS,self._pfc),dpi=150)
       self._pfc += 1
 
     def onStart(self):

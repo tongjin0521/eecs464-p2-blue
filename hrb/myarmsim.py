@@ -231,18 +231,36 @@ if __name__=="__main__":
   # Transform of paper coordinates to workspace
 
   # rotating around x axis:
-  Tp2ws=asarray([[  1.  ,   0.  ,   0.  ,   0.16],
-       [  0.  ,   0.71,   0.71,   1.92],
-       [  0.  ,  -0.71,   0.71,  10.63],
-       [  0.  ,   0.  ,   0.  ,   1.  ]])
+  # Tp2ws=asarray([[  1.  ,   0.  ,   0.  ,   0.16],
+  #      [  0.  ,   0.71,   0.71,   1.92],
+  #      [  0.  ,  -0.71,   0.71,  10.63],
+  #      [  0.  ,   0.  ,   0.  ,   1.  ]])
 
-  # rotating around y axis:
+  # rotating around y axis 45 degrees:
+  # Tp2ws = asarray([
+  #      [0.7071,0,-0.7071,33/2-20.32/2],
+  #      [0,     1,      0,33/2-27.94/2],
+  #      [0.7071,0, 0.7071,2],
+  #      [0,     0,      0,1]
+  # ])
+
+  # No rotation:
+  # Tp2ws = asarray([
+  #      [1,0,0,33/2-20.32/2],
+  #      [0,     1,      0,33/2-27.94/2],
+  #      [0,0, 1,0],
+  #      [0,     0,      0,1]
+  # ])
+
+  # rotating around y axis 90 degrees:
   Tp2ws = asarray([
-       [0.7071,0,-0.7071,33/2-20.32/2],
+       [0,0,1,33/2-20.32/2],
        [0,     1,      0,33/2-27.94/2],
-       [0.7071,0, 0.7071,10],
+       [-1,0, 0,30],
        [0,     0,      0,1]
   ])
+
+
   app = MyArmSim(Tp2ws,
      ## Uncomment the next line (cfg=...) to save video frames;
      ## you can use the frameViewer.py program to view those
