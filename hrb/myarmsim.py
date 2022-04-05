@@ -131,8 +131,8 @@ class MyArmSim(ArmAnimatorApp):
       armSpec = asarray([
         [0,0.0001,1,0,0], #base with 0 length
         [0,1,0,self.l1,-1.57],  # fisrt joint with fixed orientation
-        [0,1,0,self.l2,0],
-        [0,1,0,self.l3,0.],
+        [0,1,0,self.l2,np.pi /6],
+        [0,1,0,self.l3,np.pi /6],
       ]).T
       ArmAnimatorApp.__init__(self,armSpec,Tws2w,Tp2ws,
         simTimeStep=0.1, # Real time that corresponds to simulation time of 0.1 sec
