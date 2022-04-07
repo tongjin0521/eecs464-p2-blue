@@ -114,17 +114,17 @@ class MyArmSim(ArmAnimatorApp):
       ### Student team selection -- transform from workspace coordinates to world
       ###
       Tws2w = asarray([
-           [1,0,0,  5],
+           [1,0,0,  10],
            [0,1,0, -33/2],
-           [0,0,1,0],
+           [0,0,1,8],
            [0,0,0,  1]
       ])
       ###
       ### Arm specification
       ###
-      self.l1 = 15
-      self.l2 = 17
-      self.l3 = 23
+      self.l1 = 24.5
+      self.l2 = 25
+      self.l3 = 25
       self.draw_num_points_per_line = 10.0
       self.draw_zOffset = 0
 
@@ -246,7 +246,7 @@ if __name__=="__main__":
 
   # No rotation:
   # Tp2ws = asarray([
-  #      [1,0,0,33/2-20.32/2],
+  #      [1,0,0,0],
   #      [0,     1,      0,33/2-27.94/2],
   #      [0,0, 1,0],
   #      [0,     0,      0,1]
@@ -254,7 +254,7 @@ if __name__=="__main__":
 
   # rotating around y axis 90 degrees:
   Tp2ws = asarray([
-       [0,0,1,33/2-20.32/2],
+       [0,0,1,33],
        [0,     1,      0,33/2-27.94/2],
        [-1,0, 0,30],
        [0,     0,      0,1]

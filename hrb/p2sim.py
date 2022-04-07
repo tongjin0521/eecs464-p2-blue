@@ -166,7 +166,7 @@ class ArmSim(MassArm):
             break
           # tq = 3e-3*self.getGravityTorque(ang0).squeeze() # gravity torque on motors
           # TODO:
-          tq = 3e-6*self.getGravityTorque(ang0).squeeze() # gravity torque on motors
+          tq = 3e-9*self.getGravityTorque(ang0).squeeze() # gravity torque on motors
           for mi,tqi in zip(self.m,tq): # push into motor objects
             mi._ext = -tqi
         ang1 = ang0 - self.c*tq # sagged angles
