@@ -143,6 +143,7 @@ class P2_Blue_App(JoyApp):
         self.drawP = DrawSquare(self)
         self.square_param = square
         self.cali_angles = []
+        self.rotating_base_fixed = False
         self.arm = [self.robot.at.shoulder, self.robot.at.elbow, self.robot.at.wrist, self.robot.at.rotating_base]
 
     def discretize_square(self, x, y, s):
@@ -199,16 +200,22 @@ class P2_Blue_App(JoyApp):
                 self.arm[p].set_pos(self.arm[p].get_pos() - 500)
                 return
             if evt.key == K_r:
+                if not self.rotating_base_fixed:
+                    return progress(pre + "Pls fix the base first")
                 progress(pre + "Recording point~")
                 # progress(pre + str(self.app.arm[0].get_pos() / 18000) + " "+ str(self.app.arm[1].get_pos() / 18000) + " "+ str(self.app.arm[2].get_pos() / 18000))
                 self.cali_angles.append(np.array([[self.app.arm[0].get_pos() / 18000 * np.pi],[self.app.arm[1].get_pos() / 18000 * np.pi],[self.app.arm[2].get_pos() / 18000 * np.pi]]))
                 return progress(self.cali_angles[-1])
+            if evt.key == K_s:
+                # set rotating base angle
+                self.arm[3].set_pos(self.arm[3].get_pos())
+                self.rotating_base_fixed = True
             if evt.key == K_d:
                 self.Tp2ws = self.calculate_Tp2ws()
                 self.Tp2w = self.Tws2w @ self.Tp2ws
                 input(pre + "Press Enter when you put the robotic arm in ready pose and ready to draw")
-                for motor_i in self.arm:
-                    motor_i.set_pos(motor_i.get_pos())
+                for i in range(3):
+                    self.arm[i].set_pos(self.arm[i].get_pos())
                 progress(pre + "Drawing a square~")
                 square_x = self.square_param['x']
                 square_y = self.square_param['y']
