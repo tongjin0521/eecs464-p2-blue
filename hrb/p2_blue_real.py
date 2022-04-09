@@ -210,6 +210,7 @@ class P2_Blue_App(JoyApp):
                 # set rotating base angle
                 self.arm[3].set_pos(self.arm[3].get_pos())
                 self.rotating_base_fixed = True
+                return
             if evt.key == K_d:
                 self.Tp2ws = self.calculate_Tp2ws()
                 self.Tp2w = self.Tws2w @ self.Tp2ws
