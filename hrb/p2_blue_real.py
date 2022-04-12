@@ -123,6 +123,7 @@ class P2_Blue_App(JoyApp):
         self.l1 = 24.5
         self.l2 = 25
         self.l3 = 25
+        self.s = 26.5
 
         self.cali_num_points_per_line = 4
         self.draw_num_points_per_line = 10.0
@@ -178,8 +179,36 @@ class P2_Blue_App(JoyApp):
 
     def calculate_Tp2ws(self):
         assert(len(self.cali_angles) == 4 * self.cali_num_points_per_line) 
-        pass
+        # pass
         # TODO: Use the pos we get to get the paper setting -> calculate & return Tp2Ws
+        motor_0_polarity = 1 # assume CCW is positive
+        motor_1_polarity = 1 # assume up is positive
+        motor_2_polarity = 1 # assume up is positive
+        angle_rotate_about_z = self.cali_angles[0] * motor_0_polarity
+        angle_rotate_about_y = self.cali_angles[1] * motor_1_polarity - self.cali_angles[2] * motor_2_polarity
+        Tp2ws_z = asarray([
+            [np.cos(angle_rotate_about_z), -np.sin(angle_rotate_about_z), 1, 0],
+            [np.sin(angle_rotate_about_z),  np.cos(angle_rotate_about_z), 0, 0],
+            [0, 0, 1, 0],
+            [0,     0,      0,1]
+        ])
+        Tp2ws_y = asarray([
+            [np.cos(angle_rotate_about_y),  0, np.sin(angle_rotate_about_y), 0],
+            [0, 1, 0, 0],
+            [-np.sin(angle_rotate_about_y), 0, np.cos(angle_rotate_about_y), 0],
+            [0,     0,      0,1]
+        ])
+        Tp2ws = Tp2ws_y @ Tp2ws_z    # change in orientation
+        # change in position
+        Tp2ws[2,3] = 33/2*np.cos(angle_rotate_about_y) # move in z direction
+        arm_proj = self.l2 * np.cos(self.cali_angles[1] * motor_1_polarity) + self.l3 * np.cos(-angle_rotate_about_y)
+        Tp2ws[1,3] = 33/2 + arm_proj * np.sin(angle_rotate_about_z) # move in y direction
+        Tp2ws[0,3] = arm_proj * np.cos(angle_rotate_about_z) - self.s # move in x direction
+
+        return Tp2ws
+
+
+
 
     def onStart(self):
         pass
