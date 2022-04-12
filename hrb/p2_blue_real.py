@@ -13,8 +13,6 @@ from joy.misc import *
 from numpy import asarray
 import numpy as np
 
-
-DEBUG = False
 pre = "P2 BLUE - "
 
 class MoveToPoint(Plan):
@@ -64,11 +62,10 @@ class MoveToPoint(Plan):
         while (True):
             d_point = self.goal_point - self.curr_tool_pos()
             if (np.linalg.norm(d_point) < err_ending):
-                if DEBUG:
-                    # print_d_angles = d_angles/ np.pi * 180
-                    print_curr_angles = self.curr_angles / np.pi * 180
-                    # progress("d_angles: " + str(print_d_angles[0,0]) +", "+ str(print_d_angles[1,0]) +", "+ str(print_d_angles[2,0]))
-                    progress("curr_angles: " + str(print_curr_angles[0,0]) +", "+ str(print_curr_angles[1,0]) +", "+ str(print_curr_angles[2,0]))
+                # # print_d_angles = d_angles/ np.pi * 180
+                # print_curr_angles = self.curr_angles / np.pi * 180
+                # # progress("d_angles: " + str(print_d_angles[0,0]) +", "+ str(print_d_angles[1,0]) +", "+ str(print_d_angles[2,0]))
+                # progress("curr_angles: " + str(print_curr_angles[0,0]) +", "+ str(print_curr_angles[1,0]) +", "+ str(print_curr_angles[2,0]))
                 yield self.set_motor_pos()
                 break
             jacobian = self.get_jacobian()
@@ -78,14 +75,13 @@ class MoveToPoint(Plan):
             d_angles[np.abs(d_angles) < 5e-4] = 0
             self.curr_angles += d_angles
             if it_num % self.num_its_per_step == 0:
-                if DEBUG:
-                    print(it_num)
-                    progress("----------------")
-                    progress("current pos: " + str(self.curr_tool_pos()[0,0]) +", "+ str(self.curr_tool_pos()[1,0]) +", "+ str(self.curr_tool_pos()[2,0]))
-                    print_d_angles = d_angles/ np.pi * 180
-                    print_curr_angles = self.curr_angles / np.pi * 180
-                    progress("d_angles: " + str(print_d_angles[0,0]) +", "+ str(print_d_angles[1,0]) +", "+ str(print_d_angles[2,0]))
-                    progress("curr_angles: " + str(print_curr_angles[0,0]) +", "+ str(print_curr_angles[1,0]) +", "+ str(print_curr_angles[2,0]))
+                # print(it_num)
+                # progress("----------------")
+                # progress("current pos: " + str(self.curr_tool_pos()[0,0]) +", "+ str(self.curr_tool_pos()[1,0]) +", "+ str(self.curr_tool_pos()[2,0]))
+                # print_d_angles = d_angles/ np.pi * 180
+                # print_curr_angles = self.curr_angles / np.pi * 180
+                # progress("d_angles: " + str(print_d_angles[0,0]) +", "+ str(print_d_angles[1,0]) +", "+ str(print_d_angles[2,0]))
+                # progress("curr_angles: " + str(print_curr_angles[0,0]) +", "+ str(print_curr_angles[1,0]) +", "+ str(print_curr_angles[2,0]))
                 yield self.set_motor_pos()
             it_num +=1
         self.goal_point = "WHERE AM I GOING?"
@@ -236,10 +232,10 @@ class P2_Blue_App(JoyApp):
     
 if __name__=="__main__":
     motors_name = {
-        0x08:'shoulder',
-        0x3C:'elbow',
-        0x42:'wrist',
-        0x3D:'rotating_base'
+        0x0C:'shoulder',
+        0x28:'elbow',
+        0x04:'wrist',
+        0x63:'rotating_base'
     }
     robot = {'count':4,'names':motors_name}
     cfg = {'windowSize':[160,120]}
