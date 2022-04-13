@@ -23,6 +23,7 @@ class MoveToPoint(Plan):
         self.l1 = self.app.l1
         self.l2 = self.app.l2
         self.l3 = self.app.l3
+        self.l4 = self.app.l4
         self.curr_angles = None
         self.num_its_per_step = 20
 
@@ -30,8 +31,8 @@ class MoveToPoint(Plan):
         theta_0 = self.curr_angles[0,0]
         theta_2 = self.curr_angles[1,0]
         theta_t = self.curr_angles[2,0] - np.pi/2 + theta_2
-        p_x = (self.l2 * np.sin(theta_2) + self.l3 * np.cos(theta_t)) * np.cos(theta_0)
-        p_y = (self.l2 * np.sin(theta_2) + self.l3 * np.cos(theta_t)) * np.sin(theta_0)
+        p_x = (self.l2 * np.sin(theta_2) + self.l3 * np.cos(theta_t)) * np.cos(theta_0) - self.l4 * np.sin(theta_0)
+        p_y = (self.l2 * np.sin(theta_2) + self.l3 * np.cos(theta_t)) * np.sin(theta_0) + self.l4 * np.cos(theta_0)
         p_z = self.l1 + self.l2 * np.cos(theta_2) - self.l3 * np.sin(theta_t)
         return np.array([[p_x],[p_y],[p_z]])
 
@@ -41,16 +42,14 @@ class MoveToPoint(Plan):
         theta_2 = self.curr_angles[1,0]
         theta_t = self.curr_angles[2,0] - np.pi/2 + theta_2
         M = self.l2 * np.sin(theta_2) + self.l3 * np.cos(theta_t)
-        jacobian[0,:] = np.array([-M* np.sin(theta_0),np.cos(theta_0) *(self.l2 * np.cos(theta_2) - self.l3 * np.sin(theta_t)), - self.l3 *np.cos(theta_0) * np.sin(theta_t) ])
-        jacobian[1,:] = np.array([M* np.cos(theta_0),np.sin(theta_0) *(self.l2 * np.cos(theta_2) - self.l3 * np.sin(theta_t)), - self.l3 *np.sin(theta_0) * np.sin(theta_t) ])
+        jacobian[0,:] = np.array([-M* np.sin(theta_0) - self.l4 * np.cos(theta_0),np.cos(theta_0) *(self.l2 * np.cos(theta_2) - self.l3 * np.sin(theta_t)), - self.l3 *np.cos(theta_0) * np.sin(theta_t) ])
+        jacobian[1,:] = np.array([M* np.cos(theta_0) - self.l4 * np.sin(theta_0),np.sin(theta_0) *(self.l2 * np.cos(theta_2) - self.l3 * np.sin(theta_t)), - self.l3 *np.sin(theta_0) * np.sin(theta_t) ])
         jacobian[2,:] = np.array([0,-self.l2 * np.sin(theta_2) - self.l3* np.cos(theta_t), - self.l3 * np.cos(theta_t)])
         return jacobian
 
     def set_motor_pos(self):
         for i in range(3):
-            self.app.arm[0].set_pos( int(self.curr_angles[0] / np.pi * 180 * 100))
-            self.app.arm[1].set_pos( int(self.curr_angles[1] / np.pi * 180 * 100))
-            self.app.arm[2].set_pos( int(self.curr_angles[2] / np.pi * 180 * 100))
+            self.app.arm[i].set_pos( int(self.curr_angles[i] / np.pi * 180 * 100))
         yield self.forDuration(1)
 
     def behavior(self):
@@ -105,10 +104,11 @@ class DrawSquare(Plan):
 
 
 class P2_Blue_App(JoyApp):
-    def __init__(self,square,**kw):
+    def __init__(self,robot,cfg,square,*arg,**kw):
         ###
         ### Student team selection -- transform from workspace coordinates to world
         ###
+        JoyApp.__init__(self,robot=robot, cfg = cfg,*arg, **kw)
         self.Tws2w = asarray([
             [1,0,0,  10],
             [0,1,0, -33/2],
@@ -120,9 +120,10 @@ class P2_Blue_App(JoyApp):
         ###
         ### Arm specification
         ###
-        self.l1 = 24.5
-        self.l2 = 25
-        self.l3 = 25
+        self.l1 = 26.5 - 10
+        self.l2 = 25.3
+        self.l3 = 28
+        self.l4 = 8.5
         self.s = 26.5
 
         self.cali_num_points_per_line = 4
@@ -142,6 +143,8 @@ class P2_Blue_App(JoyApp):
         self.cali_angles = []
         self.rotating_base_fixed = False
         self.arm = [self.robot.at.shoulder, self.robot.at.elbow, self.robot.at.wrist, self.robot.at.rotating_base]
+        for motor_i in self.arm:
+            motor_i.set_speed(3)
 
     def discretize_square(self, x, y, s):
         self.target_square = []
@@ -179,8 +182,6 @@ class P2_Blue_App(JoyApp):
 
     def calculate_Tp2ws(self):
         assert(len(self.cali_angles) == 4 * self.cali_num_points_per_line) 
-        # pass
-        # TODO: Use the pos we get to get the paper setting -> calculate & return Tp2Ws
         motor_0_polarity = 1 # assume CCW is positive
         motor_1_polarity = 1 # assume up is positive
         motor_2_polarity = 1 # assume up is positive
@@ -216,11 +217,11 @@ class P2_Blue_App(JoyApp):
     def onEvent(self,evt):
         ## disable this block (change to 0) to use on_K for these keys
         if evt.type == KEYDOWN: 
-            p = "ghjkl".find(evt.unicode)
+            p = "ghjk".find(evt.unicode)
             if p>=0:
                 self.arm[p].set_pos(self.arm[p].get_pos() + 500)
                 return
-            p = "vbnm,".find(evt.unicode)
+            p = "vbnm".find(evt.unicode)
             if p>=0:
                 self.arm[p].set_pos(self.arm[p].get_pos() - 500)
                 return
@@ -264,7 +265,7 @@ if __name__=="__main__":
         0x0C:'shoulder',
         0x28:'elbow',
         0x04:'wrist',
-        0x63:'rotating_base'
+        0x97:'rotating_base',
     }
     robot = {'count':4,'names':motors_name}
     cfg = {'windowSize':[160,120]}
