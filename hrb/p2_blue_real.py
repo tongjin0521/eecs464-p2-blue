@@ -31,8 +31,8 @@ class MoveToPoint(Plan):
         theta_0 = self.curr_angles[0,0]
         theta_2 = self.curr_angles[1,0]
         theta_t = self.curr_angles[2,0] - np.pi/2 + theta_2
-        p_x = (self.l2 * np.sin(theta_2) + self.l3 * np.cos(theta_t)) * np.cos(theta_0) - self.l4 * np.sin(theta_0)
-        p_y = (self.l2 * np.sin(theta_2) + self.l3 * np.cos(theta_t)) * np.sin(theta_0) + self.l4 * np.cos(theta_0)
+        p_x = (self.l2 * np.sin(theta_2) + self.l3 * np.cos(theta_t)) * np.cos(theta_0) + self.l4 * np.sin(theta_0)
+        p_y = (self.l2 * np.sin(theta_2) + self.l3 * np.cos(theta_t)) * np.sin(theta_0) - self.l4 * np.cos(theta_0)
         p_z = self.l1 + self.l2 * np.cos(theta_2) - self.l3 * np.sin(theta_t)
         return np.array([[p_x],[p_y],[p_z]])
 
@@ -42,38 +42,46 @@ class MoveToPoint(Plan):
         theta_2 = self.curr_angles[1,0]
         theta_t = self.curr_angles[2,0] - np.pi/2 + theta_2
         M = self.l2 * np.sin(theta_2) + self.l3 * np.cos(theta_t)
-        jacobian[0,:] = np.array([-M* np.sin(theta_0) - self.l4 * np.cos(theta_0),np.cos(theta_0) *(self.l2 * np.cos(theta_2) - self.l3 * np.sin(theta_t)), - self.l3 *np.cos(theta_0) * np.sin(theta_t) ])
-        jacobian[1,:] = np.array([M* np.cos(theta_0) - self.l4 * np.sin(theta_0),np.sin(theta_0) *(self.l2 * np.cos(theta_2) - self.l3 * np.sin(theta_t)), - self.l3 *np.sin(theta_0) * np.sin(theta_t) ])
+        jacobian[0,:] = np.array([-M* np.sin(theta_0) + self.l4 * np.cos(theta_0),np.cos(theta_0) *(self.l2 * np.cos(theta_2) - self.l3 * np.sin(theta_t)), - self.l3 *np.cos(theta_0) * np.sin(theta_t) ])
+        jacobian[1,:] = np.array([M* np.cos(theta_0) + self.l4 * np.sin(theta_0),np.sin(theta_0) *(self.l2 * np.cos(theta_2) - self.l3 * np.sin(theta_t)), - self.l3 *np.sin(theta_0) * np.sin(theta_t) ])
         jacobian[2,:] = np.array([0,-self.l2 * np.sin(theta_2) - self.l3* np.cos(theta_t), - self.l3 * np.cos(theta_t)])
         return jacobian
 
     def set_motor_pos(self):
-        for i in range(3):
-            self.app.arm[i].set_pos( int(self.curr_angles[i] / np.pi * 180 * 100))
-        yield self.forDuration(1)
+        # progress("--------")
+        # progress(self.curr_angles /np.pi * 180)
+        self.app.arm[0].set_pos( int(self.curr_angles[0] / np.pi * 180 * 100) -3500)
+        self.app.arm[1].set_pos( -int(self.curr_angles[1] / np.pi * 180 * 100) + 4500)
+        self.app.arm[2].set_pos( -int(self.curr_angles[2] / np.pi * 180 * 100) )
 
     def behavior(self):
-        assert(self.goal_point.any() is not None)
-        self.curr_angles = np.array([[self.app.arm[0].get_pos() / 18000 * np.pi],[self.app.arm[1].get_pos() / 18000 * np.pi],[self.app.arm[2].get_pos() / 18000 * np.pi]])
+        self.curr_angles = np.array([[(self.app.arm[0].get_pos() +3500) % 36000 / 18000 * np.pi],[-(self.app.arm[1].get_pos()- 4500) % 36000 / 18000 * np.pi],[-self.app.arm[2].get_pos() / 18000 * np.pi]])
+        # progress("----behaviour----")
+        # progress(self.curr_angles /np.pi * 180)
         err_ending = 1
         step_size = 0.01
         it_num = 0
         while (True):
+            # progress(str(it_num))
             d_point = self.goal_point - self.curr_tool_pos()
             if (np.linalg.norm(d_point) < err_ending):
                 # # print_d_angles = d_angles/ np.pi * 180
                 # print_curr_angles = self.curr_angles / np.pi * 180
                 # # progress("d_angles: " + str(print_d_angles[0,0]) +", "+ str(print_d_angles[1,0]) +", "+ str(print_d_angles[2,0]))
                 # progress("curr_angles: " + str(print_curr_angles[0,0]) +", "+ str(print_curr_angles[1,0]) +", "+ str(print_curr_angles[2,0]))
-                yield self.set_motor_pos()
+                self.set_motor_pos()
                 break
             jacobian = self.get_jacobian()
             d_angles = np.linalg.pinv(jacobian) @ d_point
+            # if ((self.curr_angles[2,0] >= 100 /180 * np.pi and d_angles[2,0] >0 ) or (self.curr_angles[2,0] <= -100 /180 * np.pi and d_angles[2,0] <0 )):
+            #     d_angles[2,0] = 0
+            #     progress("WARNING: ANGLE LIMIT FOR MOTOR 2")
             if (np.linalg.norm(d_angles) > step_size):
                 d_angles = d_angles / np.linalg.norm(d_angles) * step_size
             d_angles[np.abs(d_angles) < 5e-4] = 0
             self.curr_angles += d_angles
             if it_num % self.num_its_per_step == 0:
+                # progress("setting")
                 # print(it_num)
                 # progress("----------------")
                 # progress("current pos: " + str(self.curr_tool_pos()[0,0]) +", "+ str(self.curr_tool_pos()[1,0]) +", "+ str(self.curr_tool_pos()[2,0]))
@@ -81,8 +89,9 @@ class MoveToPoint(Plan):
                 # print_curr_angles = self.curr_angles / np.pi * 180
                 # progress("d_angles: " + str(print_d_angles[0,0]) +", "+ str(print_d_angles[1,0]) +", "+ str(print_d_angles[2,0]))
                 # progress("curr_angles: " + str(print_curr_angles[0,0]) +", "+ str(print_curr_angles[1,0]) +", "+ str(print_curr_angles[2,0]))
-                yield self.set_motor_pos()
+                self.set_motor_pos()
             it_num +=1
+            yield self.forDuration(0.1)
         self.goal_point = "WHERE AM I GOING?"
 
 class DrawSquare(Plan):
@@ -94,12 +103,13 @@ class DrawSquare(Plan):
         line_num = 0
         for line_i in self.app.target_square:
             progress(pre + "drawing line" + str(line_num))
-        line_num +=1
-        for point_i in line_i:
-            self.app.moveP.goal_point = point_i
-            self.app.moveP.start()
-            while (type(self.app.moveP.goal_point).__name__ != 'str'):
-                yield self.forDuration(0.5)
+            line_num +=1
+            for point_i in line_i:
+                progress(point_i)
+                self.app.moveP.goal_point = point_i
+                self.app.moveP.start()
+                while (type(self.app.moveP.goal_point).__name__ != 'str'):
+                    yield self.forDuration(0.5)
         progress(pre + "finished")
 
 
@@ -110,9 +120,9 @@ class P2_Blue_App(JoyApp):
         ###
         JoyApp.__init__(self,robot=robot, cfg = cfg,*arg, **kw)
         self.Tws2w = asarray([
-            [1,0,0,  10],
+            [1,0,0,  25],
             [0,1,0, -33/2],
-            [0,0,1,8],
+            [0,0,1,10 ],
             [0,0,0,  1]
         ])
         self.Tp2ws = NONE
@@ -120,22 +130,15 @@ class P2_Blue_App(JoyApp):
         ###
         ### Arm specification
         ###
-        self.l1 = 26.5 - 10
+        self.l1 = 26.5
         self.l2 = 25.3
-        self.l3 = 28
-        self.l4 = 8.5
+        self.l3 = 30
+        self.l4 = 8.5   
         self.s = 26.5
 
         self.cali_num_points_per_line = 4
         self.draw_num_points_per_line = 10.0
         self.draw_zOffset = 0
-
-        armSpec = asarray([
-            [0,0.0001,1,0,0], #base with 0 length
-            [0,1,0,self.l1,-1.57],  # fisrt joint with fixed orientation
-            [0,1,0,self.l2,np.pi /6],
-            [0,1,0,self.l3,np.pi /6],
-        ]).T
 
         self.moveP = MoveToPoint(self)
         self.drawP = DrawSquare(self)
@@ -144,7 +147,7 @@ class P2_Blue_App(JoyApp):
         self.rotating_base_fixed = False
         self.arm = [self.robot.at.shoulder, self.robot.at.elbow, self.robot.at.wrist, self.robot.at.rotating_base]
         for motor_i in self.arm:
-            motor_i.set_speed(3)
+            motor_i.set_speed(2)
 
     def discretize_square(self, x, y, s):
         self.target_square = []
@@ -181,6 +184,29 @@ class P2_Blue_App(JoyApp):
         self.target_square.append(left_line_t)
 
     def calculate_Tp2ws(self):
+        # 45
+        # return asarray([
+        #     [0.7071,0,-0.7071,33/2-20.32/2],
+        #     [0,     1,      0,33/2-27.94/2],
+        #     [0.7071,0, 0.7071,10],
+        #     [0,     0,      0,1]
+        # ])
+
+        # No rotation
+        # return asarray([
+        #     [1,0,0,33/2-20.32/2],
+        #     [0,     1,      0,33/2-27.94/2],
+        #     [0,0, 1,10],
+        #     [0,     0,      0,1]
+        # ])
+
+        # 90
+        return asarray([
+            [0,0,1,20],
+            [0,     1,      0,33/2-27.94/2],
+            [-1,0, 0,30],
+            [0,     0,      0,1]
+        ])
         assert(len(self.cali_angles) == 4 * self.cali_num_points_per_line) 
         motor_0_polarity = 1 # assume CCW is positive
         motor_1_polarity = 1 # assume up is positive
@@ -208,8 +234,13 @@ class P2_Blue_App(JoyApp):
 
         return Tp2ws
 
-
-
+    def reset_motors(self, no_rotating_base = False):
+        self.arm[0].set_pos(-3500)
+        self.arm[1].set_pos(1000)
+        self.arm[2].set_pos(-3000)
+        if no_rotating_base:
+            self.arm[3].set_pos(0)
+        return
 
     def onStart(self):
         pass
@@ -217,6 +248,9 @@ class P2_Blue_App(JoyApp):
     def onEvent(self,evt):
         ## disable this block (change to 0) to use on_K for these keys
         if evt.type == KEYDOWN: 
+            # progress("------")
+            # for motor_i in self.arm:
+            #     progress(str(motor_i.get_pos()))
             p = "ghjk".find(evt.unicode)
             if p>=0:
                 self.arm[p].set_pos(self.arm[p].get_pos() + 500)
@@ -240,9 +274,9 @@ class P2_Blue_App(JoyApp):
             if evt.key == K_d:
                 self.Tp2ws = self.calculate_Tp2ws()
                 self.Tp2w = self.Tws2w @ self.Tp2ws
-                input(pre + "Press Enter when you put the robotic arm in ready pose and ready to draw")
-                for i in range(3):
-                    self.arm[i].set_pos(self.arm[i].get_pos())
+                # input(pre + "Press Enter when you put the robotic arm in ready pose and ready to draw")
+                self.reset_motors(no_rotating_base=True)
+                self.arm[3].set_pos(self.arm[3].get_pos())
                 progress(pre + "Drawing a square~")
                 square_x = self.square_param['x']
                 square_y = self.square_param['y']
@@ -252,11 +286,13 @@ class P2_Blue_App(JoyApp):
                 self.drawP.start()
                 return 
             if evt.key == K_p:
-                goal_point = np.array([[20],[0],[5]])
+                goal_point = np.array([[40],[-8.5],[30]])
                 progress(pre + "Going to point: " + "x: "+str(goal_point[0,0])+" y: "+str(goal_point[1,0])+ " z: "+ str(goal_point[2,0]))
                 self.moveP.goal_point = goal_point
                 self.moveP.start()
                 return
+            if evt.key == K_o:
+                self.reset_motors()
             return JoyApp.onEvent(self,evt)
         return
     
