@@ -185,12 +185,12 @@ class P2_Blue_App(JoyApp):
 
     def calculate_Tp2ws(self):
         # 45
-        # return asarray([
-        #     [0.7071,0,-0.7071,33/2-20.32/2],
-        #     [0,     1,      0,33/2-27.94/2],
-        #     [0.7071,0, 0.7071,10],
-        #     [0,     0,      0,1]
-        # ])
+        return asarray([
+            [0.7071,0,-0.7071,33/2-20.32/2],
+            [0,     1,      0,33/2-27.94/2],
+            [0.7071,0, 0.7071,10],
+            [0,     0,      0,1]
+        ])
 
         # No rotation
         # return asarray([
@@ -201,12 +201,12 @@ class P2_Blue_App(JoyApp):
         # ])
 
         # 90
-        return asarray([
-            [0,0,1,20],
-            [0,     1,      0,33/2-27.94/2],
-            [-1,0, 0,30],
-            [0,     0,      0,1]
-        ])
+        # return asarray([
+        #     [0,0,1,20],
+        #     [0,     1,      0,33/2-27.94/2],
+        #     [-1,0, 0,30],
+        #     [0,     0,      0,1]
+        # ])
         assert(len(self.cali_angles) == 4 * self.cali_num_points_per_line) 
         motor_0_polarity = 1 # assume CCW is positive
         motor_1_polarity = 1 # assume up is positive
