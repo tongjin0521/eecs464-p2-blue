@@ -12,6 +12,7 @@ from joy.decl import *
 from joy.misc import *
 from numpy import asarray
 import numpy as np
+import math
 
 
 DEBUG = False
@@ -144,6 +145,13 @@ class P2_Blue_App(JoyApp):
         self.drawP = DrawSquare(self)
         self.square_param = square
         self.cali_angles = []
+        self.cali_pos = []
+        self.min_x = 1000
+        self.max_x = -1000
+        self.min_y = 1000
+        self.max_y = -1000
+        self.min_z = 1000
+        self.max_z = -1000
         self.rotating_base_fixed = False
         self.arm = [self.robot.at.shoulder, self.robot.at.elbow, self.robot.at.wrist, self.robot.at.rotating_base]
 
@@ -181,15 +189,44 @@ class P2_Blue_App(JoyApp):
         self.target_square.append(bottom_line_t)
         self.target_square.append(left_line_t)
 
+    def cali_pos_cal(self):
+        theta_0 = self.cali_angles[-1][0]
+        theta_2 = self.cali_angles[-1][1]
+        theta_t = self.cali_angles[-1][2] - np.pi/2 + theta_2
+        p_x = (self.l2 * np.sin(theta_2) + self.l3 * np.cos(theta_t)) * np.cos(theta_0)
+        p_y = (self.l2 * np.sin(theta_2) + self.l3 * np.cos(theta_t)) * np.sin(theta_0)
+        p_z = self.l1 + self.l2 * np.cos(theta_2) - self.l3 * np.sin(theta_t)
+        if p_x < self.min_x:
+            self.min_x = p_x
+        if p_x > self.max_x:
+            self.max_x = p_x
+        if p_y < self.min_y:
+            self.min_y = p_y
+        if p_y > self.max_y:
+            self.max_y = p_y
+        if p_z < self.min_z:
+            self.min_z = p_z
+        if p_z > self.max_z:
+            self.max_z = p_z
+        self.cali_pos.append(np.array([[p_x],[p_y],[p_z]]))
+
     def calculate_Tp2ws(self):
         assert(len(self.cali_angles) == 4 * self.cali_num_points_per_line) 
-        # pass
-        # TODO: Use the pos we get to get the paper setting -> calculate & return Tp2Ws
-        motor_0_polarity = 1 # assume CCW is positive
-        motor_1_polarity = 1 # assume up is positive
-        motor_2_polarity = 1 # assume up is positive
-        angle_rotate_about_z = self.cali_angles[0] * motor_0_polarity
-        angle_rotate_about_y = self.cali_angles[1] * motor_1_polarity - self.cali_angles[2] * motor_2_polarity
+        # do fit
+        tmp_A = []
+        tmp_b = []
+        for i in range(len(self.cali_pos)):
+            tmp_A.append([self.cali_pos[i][0], self.cali_pos[i][1], 1])
+            tmp_b.append(self.cali_pos[i][2])
+        b = np.matrix(tmp_b).T
+        A = np.matrix(tmp_A)
+        fit = (A.T * A).I * A.T * b # fit[0] x + fit[1] y + fit[2] = z
+        normal_x = -fit[0]
+        normal_y = -fit[1]
+        normal_z = 1
+        angle_rotate_about_y = np.arctan(normal_z/math.sqrt(normal_x**2 + normal_y**2))
+        angle_rotate_about_z = np.arctan(normal_y/normal_x)
+
         Tp2ws_z = asarray([
             [np.cos(angle_rotate_about_z), -np.sin(angle_rotate_about_z), 1, 0],
             [np.sin(angle_rotate_about_z),  np.cos(angle_rotate_about_z), 0, 0],
@@ -202,12 +239,22 @@ class P2_Blue_App(JoyApp):
             [-np.sin(angle_rotate_about_y), 0, np.cos(angle_rotate_about_y), 0],
             [0,     0,      0,1]
         ])
-        Tp2ws = Tp2ws_y @ Tp2ws_z    # change in orientation
         # change in position
-        Tp2ws[2,3] = 33/2*np.cos(angle_rotate_about_y) # move in z direction
-        arm_proj = self.l2 * np.cos(self.cali_angles[1] * motor_1_polarity) + self.l3 * np.cos(-angle_rotate_about_y)
-        Tp2ws[1,3] = 33/2 + arm_proj * np.sin(angle_rotate_about_z) # move in y direction
-        Tp2ws[0,3] = arm_proj * np.cos(angle_rotate_about_z) - self.s # move in x direction
+        # Tp2ws[2,3] = 33/2*np.cos(angle_rotate_about_y) # move in z direction
+        # arm_proj = self.l2 * np.cos(self.cali_angles[1] * motor_1_polarity) + self.l3 * np.cos(-angle_rotate_about_y)
+        # Tp2ws[1,3] = 33/2 + arm_proj * np.sin(angle_rotate_about_z) # move in y direction
+        # Tp2ws[0,3] = arm_proj * np.cos(angle_rotate_about_z) - self.s # move in x direction
+        base_x = (self.min_x + self.max_x)*0.5
+        base_y = (self.min_y + self.max_y)*0.5
+        base_z = (self.min_z + self.max_z)*0.5
+        Tp2ws_trans = asarray([
+            [1, 0, 0, base_x],
+            [0, 1, 0, base_y],
+            [0, 0, 1, base_z],
+            [0, 0, 0, 1]
+        ])
+
+        Tp2ws = Tp2ws_trans @ Tp2ws_y @ Tp2ws_z
 
         return Tp2ws
 
