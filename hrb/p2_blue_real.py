@@ -26,7 +26,7 @@ class MoveToPoint(Plan):
         self.l3 = self.app.l3
         self.l4 = self.app.l4
         self.curr_angles = None
-        self.num_its_per_step = 10
+        self.num_its_per_step = 7
 
     def curr_tool_pos(self):
         theta_0 = self.curr_angles[0,0]
@@ -127,7 +127,7 @@ class P2_Blue_App(JoyApp):
         ###
         self.l1 = 27.5
         self.l2 = 24.7
-        self.l3 = 40.5
+        self.l3 = 41.5
         self.l4 = 8  
         self.s = 26.5
 
@@ -153,42 +153,39 @@ class P2_Blue_App(JoyApp):
             motor_i.set_mode(2)
         # self.reset_motors()
 
-    def discretize_square(self, x, y, s):
+    def discretize_square(self,x, y, s, recorded_pts):
+        left_upper_p,right_lower_p = self.cal_corner_pts(recorded_pts)
         self.target_square = []
         top_line = []
         right_line = []
         bottom_line = []
         left_line = []
-        num_points = self.draw_num_points_per_line
-        zOffset = self.draw_zOffset
+        num_points = 10
+
+        total_x = 21.5
+        total_y = 28.0
+        total_z = total_x
+
+        delta_x = (left_upper_p[0,0]-right_lower_p[0,0])/total_x
+        delta_y = (left_upper_p[1,0]-right_lower_p[1,0])/total_y
+        delta_z = (left_upper_p[2,0]-right_lower_p[2,0])/total_z
+
+        center_x = (left_upper_p[0,0] + right_lower_p[0,0])/2
+        center_y = (left_upper_p[1,0] + right_lower_p[1,0])/2
+        center_z = (left_upper_p[2,0] + right_lower_p[2,0])/2
 
         for i in range(0, int(num_points+1)):
-            top_line.append([x-s+i*2*s/num_points, y+s, zOffset, 1])
-            bottom_line.append([x+s-i*2*s/num_points, y-s, zOffset, 1])
-            left_line.append([x-s, y-s+i*2*s/num_points, zOffset, 1])
-            right_line.append([x+s, y+s-i*2*s/num_points, zOffset, 1])
-    
-        top_line_t = []
-        bottom_line_t = []
-        left_line_t = []
-        right_line_t = []
+            top_line.append(np.array([[center_x+(s+y)*delta_x], [center_y+(s-x)*delta_y-i*2*s*delta_y/num_points], [center_z + (s+y)*delta_z]]))
+            right_line.append(np.array([[center_x+(s+y)*delta_x-i*2*s*delta_x/num_points], [center_y+(-s-x)*delta_y],  [center_z + (s+y)*delta_z - i*2*s*delta_z/num_points]]))
+            bottom_line.append(np.array([[center_x+(-s+y)*delta_x], [center_y+(-s-x)*delta_y+i*2*s*delta_y/num_points],  [center_z + (-s+y)*delta_z]]))
+            left_line.append(np.array([[center_x+(-s+y)*delta_x+i*2*s*delta_x/num_points], [center_y+(s-x)*delta_y], [center_z + (-s+y)*delta_z + i*2*s*delta_z/num_points]]))
 
-        for p in top_line:
-            top_line_t.append(np.array([[(p @ self.Tp2w.T)[0]],[(p @ self.Tp2w.T)[1]],[(p @ self.Tp2w.T)[2]]]).reshape(3,1))
-        for p in bottom_line:
-            bottom_line_t.append(np.array([[(p @ self.Tp2w.T)[0]],[(p @ self.Tp2w.T)[1]],[(p @ self.Tp2w.T)[2]]]).reshape(3,1))
-        for p in left_line:
-            left_line_t.append(np.array([[(p @ self.Tp2w.T)[0]],[(p @ self.Tp2w.T)[1]],[(p @ self.Tp2w.T)[2]]]).reshape(3,1))
-        for p in right_line:
-            right_line_t.append(np.array([[(p @ self.Tp2w.T)[0]],[(p @ self.Tp2w.T)[1]],[(p @ self.Tp2w.T)[2]]]).reshape(3,1))
-
-        zOffset = 3
-        z_offset_p = [x-s, y+s, zOffset, 1]
-        self.target_square.append([np.array([[(z_offset_p @ self.Tp2w.T)[0]],[(z_offset_p @ self.Tp2w.T)[1]],[(z_offset_p @ self.Tp2w.T)[2]]]).reshape(3,1)])
-        self.target_square.append(top_line_t)
-        self.target_square.append(right_line_t)
-        self.target_square.append(bottom_line_t)
-        self.target_square.append(left_line_t)
+        self.target_square.append([np.array([[center_x+s*delta_x -4 ], [center_y+s*delta_y-i*2*s*delta_y/num_points], [center_z + s*delta_z]])])
+        self.target_square.append(top_line)
+        self.target_square.append(right_line)
+        self.target_square.append(bottom_line)
+        self.target_square.append(left_line)
+        progress(self.target_square)
 
     def cali_pos_cal(self):
         theta_0 = self.cali_angles[-1][0]
@@ -212,53 +209,19 @@ class P2_Blue_App(JoyApp):
             self.max_z = p_z
         self.cali_pos.append(np.array([[p_x],[p_y],[p_z]]))
 
-    def calculate_Tp2w(self):
-        # do fit
-        tmp_A = []
-        tmp_b = []
-        for i in range(len(self.cali_pos)):
-            tmp_A.append([self.cali_pos[i][0], self.cali_pos[i][1], 1])
-            tmp_b.append(self.cali_pos[i][2])
-        b = np.matrix(tmp_b,dtype='float')
-        A = np.matrix(tmp_A,dtype='float')
-        # progress(A.shape)
-        # progress(b.shape)
-        fit = (A.T * A).I * A.T * b # fit[0] x + fit[1] y + fit[2] = z
-        normal_x = -fit[0]
-        normal_y = -fit[1]
-        normal_z = 1
-        angle_rotate_about_y = np.arctan(normal_z/math.sqrt(normal_x**2 + normal_y**2))
-        angle_rotate_about_z = np.arctan(normal_y/normal_x)
-
-        Tp2ws_z = asarray([
-            [np.cos(angle_rotate_about_z), -np.sin(angle_rotate_about_z), 0, 0],
-            [np.sin(angle_rotate_about_z),  np.cos(angle_rotate_about_z), 0, 0],
-            [0, 0, 1, 0],
-            [0,     0,      0,1]
-        ])
-        Tp2ws_y = asarray([
-            [np.cos(angle_rotate_about_y),  0, np.sin(angle_rotate_about_y), 0],
-            [0, 1, 0, 0],
-            [-np.sin(angle_rotate_about_y), 0, np.cos(angle_rotate_about_y), 0],
-            [0,     0,      0,1]
-        ])
-        # change in position
-        # Tp2ws[2,3] = 33/2*np.cos(angle_rotate_about_y) # move in z direction
-        # arm_proj = self.l2 * np.cos(self.cali_angles[1] * motor_1_polarity) + self.l3 * np.cos(-angle_rotate_about_y)
-        # Tp2ws[1,3] = 33/2 + arm_proj * np.sin(angle_rotate_about_z) # move in y direction
-        # Tp2ws[0,3] = arm_proj * np.cos(angle_rotate_about_z) - self.s # move in x direction
-        base_x = (self.min_x + self.max_x)*0.5
-        base_y = (self.min_y + self.max_y)*0.5
-        base_z = (self.min_z + self.max_z)*0.5
-        Tp2ws_trans = asarray([
-            [1, 0, 0, base_x],
-            [0, 1, 0, base_y],
-            [0, 0, 1, base_z],
-            [0, 0, 0, 1]
-        ])
-
-        Tp2ws = Tp2ws_trans @ Tp2ws_y @ Tp2ws_z
-        return Tp2ws
+    def cal_corner_pts(self,recorded_pts):
+        recorded_pts = np.array(recorded_pts).reshape(8,3)
+        left_upper_p = np.array([[-1.],[-1.],[-1.]])
+        right_lower_p =  np.array([[-1.],[-1.],[-1.]])
+        left_upper_p[0,0] = np.mean(recorded_pts[:3,0])
+        left_upper_p[1,0] = (np.mean(recorded_pts[-2,1]) * 2 + recorded_pts[0,1])/3
+        left_upper_p[2,0] = np.mean(recorded_pts[:3,2])
+        right_lower_p[0,0] = np.mean(recorded_pts[4:7,0])
+        right_lower_p[1,0] = np.mean(recorded_pts[2:5,1])
+        right_lower_p[2,0] = np.mean(recorded_pts[4:7,2])
+        print(left_upper_p)
+        print(right_lower_p)
+        return left_upper_p,right_lower_p
 
     def reset_motors(self, no_rotating_base = False):
         self.arm[0].set_pos(-3500)
@@ -300,14 +263,13 @@ class P2_Blue_App(JoyApp):
                 self.rotating_base_fixed = True
                 return
             if evt.key == K_d:
-                self.Tp2w = self.calculate_Tp2w() 
                 # input(pre + "Press Enter when you put the robotic arm in ready pose and ready to draw")
                 progress(pre + "Drawing a square~")
                 square_x = self.square_param['x']
                 square_y = self.square_param['y']
                 square_s = self.square_param['s']
                 # progress("x: "+str(square_x)+" y: "+str(square_y)+ " z: "+ str(square_s))
-                self.discretize_square(square_x,square_y,square_s) # set self.target_square
+                self.discretize_square(square_x,square_y,square_s,self.cali_pos) # set self.target_square
                 self.drawP.start()
                 return 
             if evt.key == K_p:
@@ -330,6 +292,6 @@ if __name__=="__main__":
     }
     robot = {'count':4,'names':motors_name}
     cfg = {'windowSize':[160,120]}
-    square = {"x":20.32 /2 , "y":27.94 / 2, "s":6}
+    square = {"x":0 , "y":0, "s":6}
     app = P2_Blue_App(robot = robot,cfg=cfg,square = square)
     app.run()
