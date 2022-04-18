@@ -4,7 +4,54 @@ import math
 
 
 def discretize_square(x, y, s, left_upper_p, right_lower_p):
-    pass
+    target_square = []
+    top_line = []
+    right_line = []
+    bottom_line = []
+    left_line = []
+    num_points = 10
+    zOffset = 0
+
+    angle = np.arccos((left_upper_p[0,0] - right_lower_p[0,0])/21.9)
+
+    total_x = 29.7
+    total_y = 21.0
+    total_z = 29.7*np.sin(angle)
+
+    delta_x = total_x/(left_upper_p[0,0]-right_lower_p[0,0])
+    delta_y = total_y/(left_upper_p[1,0]-right_lower_p[1,0])
+    delta_z = total_z/(left_upper_p[2,0]-right_lower_p[2,0])
+
+    center_z = (left_upper_p[2,0] + right_lower_p[2,0])/2
+
+    for i in range(0, int(num_points+1)):
+        top_line.append([x+s*delta_x, y+s*delta_y+i*2*s*delta_y/num_points, zOffset + center_z + s*delta_z, 1])
+        right_line.append([x+s*delta_x-i*2*s*delta_x/num_points, y-s*delta_y, zOffset + center_z + s*delta_z - i*2*s*delta_z/num_points, 1])
+        bottom_line.append([x-s*delta_x, y-s*delta_y-i*2*s*delta_y/num_points, zOffset + center_z - s*delta_z, 1])
+        left_line.append([x-s*delta_x+i*2*s*delta_x/num_points, y+s*delta_y, zOffset + center_z - s*delta_z + i*2*s*delta_z/num_points, 1])
+
+    top_line_t = []
+    bottom_line_t = []
+    left_line_t = []
+    right_line_t = []
+
+    for p in top_line:
+        top_line_t.append(np.array([[(p @ Tp2w.T)[0]],[(p @ Tp2w.T)[1]],[(p @ Tp2w.T)[2]]]).reshape(3,1))
+    for p in bottom_line:
+        bottom_line_t.append(np.array([[(p @ Tp2w.T)[0]],[(p @ Tp2w.T)[1]],[(p @ Tp2w.T)[2]]]).reshape(3,1))
+    for p in left_line:
+        left_line_t.append(np.array([[(p @ Tp2w.T)[0]],[(p @ Tp2w.T)[1]],[(p @ Tp2w.T)[2]]]).reshape(3,1))
+    for p in right_line:
+        right_line_t.append(np.array([[(p @ Tp2w.T)[0]],[(p @ Tp2w.T)[1]],[(p @ Tp2w.T)[2]]]).reshape(3,1))
+
+    zOffset = 3
+    z_offset_p = [x-s, y+s, zOffset, 1]
+    # target_square.append([np.array([[(z_offset_p @ Tp2w.T)[0]],[(z_offset_p @ Tp2w.T)[1]],[(z_offset_p @ Tp2w.T)[2]]]).reshape(3,1)])
+    target_square.append(top_line_t)
+    target_square.append(right_line_t)
+    target_square.append(bottom_line_t)
+    target_square.append(left_line_t)
+    return target_square
 
 def cal_corner_pts(recorded_pts):
     recorded_pts = np.array(recorded_pts).reshape(8,3)
