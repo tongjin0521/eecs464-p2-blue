@@ -268,9 +268,9 @@ class P2_Blue_App(JoyApp):
     def onEvent(self,evt):
         ## disable this block (change to 0) to use on_K for these keys
         if evt.type == KEYDOWN: 
-            progress("------")
-            for motor_i in self.arm:
-                progress(str(motor_i.get_pos()))
+            # progress("------")
+            # for motor_i in self.arm:
+            #     progress(str(motor_i.get_pos()))
             p = "ghjk".find(evt.unicode)
             if p>=0:
                 self.arm[p].set_pos(self.arm[p].get_pos() + 500)
