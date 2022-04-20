@@ -162,6 +162,15 @@ class P2_Blue_App(JoyApp):
         left_line = []
         num_points = 10
 
+
+        # TODO: x,y,z offest for different paper orientations & waypoint
+        x_offset = 0
+        y_offset = 0
+        z_offset = 0
+        waypt_x_offset = -5
+        waypt_y_offset = 0
+        waypt_z_offset = 0
+
         total_x = 21.5
         total_y = 28.0
         total_z = total_x
@@ -175,12 +184,12 @@ class P2_Blue_App(JoyApp):
         center_z = (left_upper_p[2,0] + right_lower_p[2,0])/2
 
         for i in range(0, int(num_points+1)):
-            top_line.append(np.array([[center_x+(s+y)*delta_x], [center_y+(s-x)*delta_y-i*2*s*delta_y/num_points], [center_z + (s+y)*delta_z]]))
-            right_line.append(np.array([[center_x+(s+y)*delta_x-i*2*s*delta_x/num_points], [center_y+(-s-x)*delta_y],  [center_z + (s+y)*delta_z - i*2*s*delta_z/num_points]]))
-            bottom_line.append(np.array([[center_x+(-s+y)*delta_x], [center_y+(-s-x)*delta_y+i*2*s*delta_y/num_points],  [center_z + (-s+y)*delta_z]]))
-            left_line.append(np.array([[center_x+(-s+y)*delta_x+i*2*s*delta_x/num_points], [center_y+(s-x)*delta_y], [center_z + (-s+y)*delta_z + i*2*s*delta_z/num_points]]))
+            top_line.append(np.array([[center_x+(s+y)*delta_x + x_offset], [center_y+(s-x)*delta_y-i*2*s*delta_y/num_points+y_offset], [center_z + (s+y)*delta_z+z_offset]]))
+            right_line.append(np.array([[center_x+(s+y)*delta_x-i*2*s*delta_x/num_points+ x_offset], [center_y+(-s-x)*delta_y+y_offset],  [center_z + (s+y)*delta_z - i*2*s*delta_z/num_points+z_offset]]))
+            bottom_line.append(np.array([[center_x+(-s+y)*delta_x+ x_offset], [center_y+(-s-x)*delta_y+i*2*s*delta_y/num_points+y_offset],  [center_z + (-s+y)*delta_z+z_offset]]))
+            left_line.append(np.array([[center_x+(-s+y)*delta_x+i*2*s*delta_x/num_points+ x_offset], [center_y+(s-x)*delta_y+y_offset], [center_z + (-s+y)*delta_z + i*2*s*delta_z/num_points+z_offset]]))
 
-        self.target_square.append([np.array([[center_x+s*delta_x -4 ], [center_y+s*delta_y-i*2*s*delta_y/num_points], [center_z + s*delta_z]])])
+        self.target_square.append([np.array([[center_x+s*delta_x +waypt_x_offset  + x_offset ], [center_y+s*delta_y-i*2*s*delta_y/num_points+waypt_y_offset  + y_offset], [center_z + s*delta_z+waypt_z_offset  + z_offset]])])
         self.target_square.append(top_line)
         self.target_square.append(right_line)
         self.target_square.append(bottom_line)
@@ -210,15 +219,16 @@ class P2_Blue_App(JoyApp):
         self.cali_pos.append(np.array([[p_x],[p_y],[p_z]]))
 
     def cal_corner_pts(self,recorded_pts):
-        recorded_pts = np.array(recorded_pts).reshape(8,3)
+        num_cali_pts_per_line = 4
+        recorded_pts = np.array(recorded_pts).reshape(num_cali_pts_per_line * 4,3)
         left_upper_p = np.array([[-1.],[-1.],[-1.]])
         right_lower_p =  np.array([[-1.],[-1.],[-1.]])
-        left_upper_p[0,0] = np.mean(recorded_pts[:3,0])
-        left_upper_p[1,0] = (np.mean(recorded_pts[-2,1]) * 2 + recorded_pts[0,1])/3
-        left_upper_p[2,0] = np.mean(recorded_pts[:3,2])
-        right_lower_p[0,0] = np.mean(recorded_pts[4:7,0])
-        right_lower_p[1,0] = np.mean(recorded_pts[2:5,1])
-        right_lower_p[2,0] = np.mean(recorded_pts[4:7,2])
+        left_upper_p[0,0] = np.mean(recorded_pts[:num_cali_pts_per_line+1,0])
+        left_upper_p[1,0] = (np.mean(recorded_pts[-num_cali_pts_per_line:,1]) * num_cali_pts_per_line + recorded_pts[0,1])/(num_cali_pts_per_line +1)
+        left_upper_p[2,0] = np.mean(recorded_pts[:num_cali_pts_per_line+1,2])
+        right_lower_p[0,0] = np.mean(recorded_pts[2*num_cali_pts_per_line:3*num_cali_pts_per_line+1,0])
+        right_lower_p[1,0] = np.mean(recorded_pts[num_cali_pts_per_line:2*num_cali_pts_per_line+1,1])
+        right_lower_p[2,0] = np.mean(recorded_pts[2*num_cali_pts_per_line:3*num_cali_pts_per_line+1,2])
         print(left_upper_p)
         print(right_lower_p)
         return left_upper_p,right_lower_p
