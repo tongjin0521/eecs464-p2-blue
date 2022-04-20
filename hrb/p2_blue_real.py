@@ -161,6 +161,7 @@ class P2_Blue_App(JoyApp):
         bottom_line = []
         left_line = []
         num_points = 10
+        num_corner_points = 2
 
         total_x = 21.5
         total_y = 28.0
@@ -174,11 +175,11 @@ class P2_Blue_App(JoyApp):
         center_y = (left_upper_p[1,0] + right_lower_p[1,0])/2
         center_z = (left_upper_p[2,0] + right_lower_p[2,0])/2
 
-        for i in range(0, int(num_points+1)):
-            top_line.append(np.array([[center_x+(s+y)*delta_x], [center_y+(s-x)*delta_y-i*2*s*delta_y/num_points], [center_z + (s+y)*delta_z]]))
-            right_line.append(np.array([[center_x+(s+y)*delta_x-i*2*s*delta_x/num_points], [center_y+(-s-x)*delta_y],  [center_z + (s+y)*delta_z - i*2*s*delta_z/num_points]]))
-            bottom_line.append(np.array([[center_x+(-s+y)*delta_x], [center_y+(-s-x)*delta_y+i*2*s*delta_y/num_points],  [center_z + (-s+y)*delta_z]]))
-            left_line.append(np.array([[center_x+(-s+y)*delta_x+i*2*s*delta_x/num_points], [center_y+(s-x)*delta_y], [center_z + (-s+y)*delta_z + i*2*s*delta_z/num_points]]))
+        for i in range(0, int(num_points+1+num_corner_points*2)):
+            top_line.append(np.array([[center_x+(s+y)*delta_x], [center_y+(s-x)*delta_y-(i-num_corner_points)*2*s*delta_y/num_points], [center_z + (s+y)*delta_z]]))
+            right_line.append(np.array([[center_x+(s+y)*delta_x-(i-num_corner_points)*2*s*delta_x/num_points], [center_y+(-s-x)*delta_y],  [center_z + (s+y)*delta_z - (i-num_corner_points)*2*s*delta_z/num_points]]))
+            bottom_line.append(np.array([[center_x+(-s+y)*delta_x], [center_y+(-s-x)*delta_y+(i-num_corner_points)*2*s*delta_y/num_points],  [center_z + (-s+y)*delta_z]]))
+            left_line.append(np.array([[center_x+(-s+y)*delta_x+(i-num_corner_points)*2*s*delta_x/num_points], [center_y+(s-x)*delta_y], [center_z + (-s+y)*delta_z + (i-num_corner_points)*2*s*delta_z/num_points]]))
 
         self.target_square.append([np.array([[center_x+s*delta_x -4 ], [center_y+s*delta_y-i*2*s*delta_y/num_points], [center_z + s*delta_z]])])
         self.target_square.append(top_line)
