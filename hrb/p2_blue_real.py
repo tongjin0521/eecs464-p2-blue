@@ -161,6 +161,7 @@ class P2_Blue_App(JoyApp):
         bottom_line = []
         left_line = []
         num_points = 10
+        num_corner_points = 2
 
 
         # TODO: x,y,z offest for different paper orientations & waypoint
@@ -183,11 +184,11 @@ class P2_Blue_App(JoyApp):
         center_y = (left_upper_p[1,0] + right_lower_p[1,0])/2
         center_z = (left_upper_p[2,0] + right_lower_p[2,0])/2
 
-        for i in range(0, int(num_points+1)):
-            top_line.append(np.array([[center_x+(s+y)*delta_x + x_offset], [center_y+(s-x)*delta_y-i*2*s*delta_y/num_points+y_offset], [center_z + (s+y)*delta_z+z_offset]]))
-            right_line.append(np.array([[center_x+(s+y)*delta_x-i*2*s*delta_x/num_points+ x_offset], [center_y+(-s-x)*delta_y+y_offset],  [center_z + (s+y)*delta_z - i*2*s*delta_z/num_points+z_offset]]))
-            bottom_line.append(np.array([[center_x+(-s+y)*delta_x+ x_offset], [center_y+(-s-x)*delta_y+i*2*s*delta_y/num_points+y_offset],  [center_z + (-s+y)*delta_z+z_offset]]))
-            left_line.append(np.array([[center_x+(-s+y)*delta_x+i*2*s*delta_x/num_points+ x_offset], [center_y+(s-x)*delta_y+y_offset], [center_z + (-s+y)*delta_z + i*2*s*delta_z/num_points+z_offset]]))
+        for i in range(0, int(num_points+1+num_corner_points*2)):
+            top_line.append(np.array([[center_x+(s+y)*delta_x + x_offset], [center_y+(s-x)*delta_y-(i-num_corner_points)*2*s*delta_y/num_points + y_offset], [center_z + (s+y)*delta_z + z_offset]]))
+            right_line.append(np.array([[center_x+(s+y)*delta_x-(i-num_corner_points)*2*s*delta_x/num_points+ x_offset], [center_y+(-s-x)*delta_y+ y_offset],  [center_z + (s+y)*delta_z - (i-num_corner_points)*2*s*delta_z/num_points+ z_offset]]))
+            bottom_line.append(np.array([[center_x+(-s+y)*delta_x+ x_offset], [center_y+(-s-x)*delta_y+(i-num_corner_points)*2*s*delta_y/num_points+ y_offset],  [center_z + (-s+y)*delta_z]]))
+            left_line.append(np.array([[center_x+(-s+y)*delta_x+(i-num_corner_points)*2*s*delta_x/num_points+ x_offset], [center_y+(s-x)*delta_y+ y_offset], [center_z + (-s+y)*delta_z + (i-num_corner_points)*2*s*delta_z/num_points+ z_offset]]))
 
         self.target_square.append([np.array([[center_x+s*delta_x +waypt_x_offset  + x_offset ], [center_y+s*delta_y-i*2*s*delta_y/num_points+waypt_y_offset  + y_offset], [center_z + s*delta_z+waypt_z_offset  + z_offset]])])
         self.target_square.append(top_line)
