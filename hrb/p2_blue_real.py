@@ -268,9 +268,9 @@ class P2_Blue_App(JoyApp):
     def onEvent(self,evt):
         ## disable this block (change to 0) to use on_K for these keys
         if evt.type == KEYDOWN: 
-            # progress("------")
-            # for motor_i in self.arm:
-            #     progress(str(motor_i.get_pos()))
+            progress("------")
+            for motor_i in self.arm:
+                progress(str(motor_i.get_pos()))
             p = "ghjk".find(evt.unicode)
             if p>=0:
                 self.arm[p].set_pos(self.arm[p].get_pos() + 500)
@@ -304,7 +304,7 @@ class P2_Blue_App(JoyApp):
                 self.drawP.start()
                 return 
             if evt.key == K_p:
-                goal_point = np.array([[45],[8],[40]])
+                goal_point = np.array([[45],[-6.8],[40]])
                 progress(pre + "Going to point: " + "x: "+str(goal_point[0,0])+" y: "+str(goal_point[1,0])+ " z: "+ str(goal_point[2,0]))
                 self.moveP.goal_point = goal_point
                 self.moveP.start()
