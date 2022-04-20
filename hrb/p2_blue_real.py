@@ -32,8 +32,8 @@ class MoveToPoint(Plan):
         theta_0 = self.curr_angles[0,0]
         theta_2 = self.curr_angles[1,0]
         theta_t = self.curr_angles[2,0] - np.pi/2 + theta_2
-        p_x = (self.l2 * np.sin(theta_2) + self.l3 * np.cos(theta_t)) * np.cos(theta_0) - self.l4 * np.sin(theta_0)
-        p_y = (self.l2 * np.sin(theta_2) + self.l3 * np.cos(theta_t)) * np.sin(theta_0) + self.l4 * np.cos(theta_0)
+        p_x = (self.l2 * np.sin(theta_2) + self.l3 * np.cos(theta_t)) * np.cos(theta_0) + self.l4 * np.sin(theta_0)
+        p_y = (self.l2 * np.sin(theta_2) + self.l3 * np.cos(theta_t)) * np.sin(theta_0)- self.l4 * np.cos(theta_0)
         p_z = self.l1 + self.l2 * np.cos(theta_2) - self.l3 * np.sin(theta_t)
         # progress(np.array([[p_x],[p_y],[p_z]]))
         return np.array([[p_x],[p_y],[p_z]])
@@ -44,20 +44,20 @@ class MoveToPoint(Plan):
         theta_2 = self.curr_angles[1,0]
         theta_t = self.curr_angles[2,0] - np.pi/2 + theta_2
         M = self.l2 * np.sin(theta_2) + self.l3 * np.cos(theta_t)
-        jacobian[0,:] = np.array([-M* np.sin(theta_0) - self.l4 * np.cos(theta_0),np.cos(theta_0) *(self.l2 * np.cos(theta_2) - self.l3 * np.sin(theta_t)), - self.l3 *np.cos(theta_0) * np.sin(theta_t) ])
-        jacobian[1,:] = np.array([M* np.cos(theta_0) - self.l4 * np.sin(theta_0),np.sin(theta_0) *(self.l2 * np.cos(theta_2) - self.l3 * np.sin(theta_t)), - self.l3 *np.sin(theta_0) * np.sin(theta_t) ])
+        jacobian[0,:] = np.array([-M* np.sin(theta_0) + self.l4 * np.cos(theta_0),np.cos(theta_0) *(self.l2 * np.cos(theta_2) - self.l3 * np.sin(theta_t)), - self.l3 *np.cos(theta_0) * np.sin(theta_t) ])
+        jacobian[1,:] = np.array([M* np.cos(theta_0) + self.l4 * np.sin(theta_0),np.sin(theta_0) *(self.l2 * np.cos(theta_2) - self.l3 * np.sin(theta_t)), - self.l3 *np.sin(theta_0) * np.sin(theta_t) ])
         jacobian[2,:] = np.array([0,-self.l2 * np.sin(theta_2) - self.l3* np.cos(theta_t), - self.l3 * np.cos(theta_t)])
         return jacobian
 
     def set_motor_pos(self):
         # progress("--------")
         # progress(self.curr_angles /np.pi * 180)
-        self.app.arm[0].set_pos( int(self.curr_angles[0] / np.pi * 180 * 100) -3500)
-        self.app.arm[1].set_pos( -int(self.curr_angles[1] / np.pi * 180 * 100) - 4500)
-        self.app.arm[2].set_pos( int(self.curr_angles[2] / np.pi * 180 * 100) )
+        self.app.arm[0].set_pos( int(self.curr_angles[0] / np.pi * 180 * 100) -12800)
+        self.app.arm[1].set_pos( int(self.curr_angles[1] / np.pi * 180 * 100) - 14200)
+        self.app.arm[2].set_pos( -int(self.curr_angles[2] / np.pi * 180 * 100) -9100 )
 
     def behavior(self):
-        self.curr_angles = np.array([[(self.app.arm[0].get_pos() +3500) % 36000 / 18000 * np.pi],[-(self.app.arm[1].get_pos()+ 4500) % 36000 / 18000 * np.pi],[self.app.arm[2].get_pos() % 36000 / 18000 * np.pi]])
+        self.curr_angles = np.array([[(self.app.arm[0].get_pos() +12800) % 36000 / 18000 * np.pi],[(self.app.arm[1].get_pos()+ 14200) % 36000 / 18000 * np.pi],[-(self.app.arm[2].get_pos()+9100 ) % 36000 / 18000 * np.pi]])
         # progress("----behaviour----")
         # progress(self.curr_angles /np.pi * 180)
         err_ending = 1
@@ -127,8 +127,8 @@ class P2_Blue_App(JoyApp):
         ###
         self.l1 = 27.5
         self.l2 = 24.7
-        self.l3 = 41.5
-        self.l4 = 8  
+        self.l3 = 40
+        self.l4 = 6.8  
         self.s = 26.5
 
         self.cali_num_points_per_line = 4
@@ -168,12 +168,12 @@ class P2_Blue_App(JoyApp):
         x_offset = 0
         y_offset = 0
         z_offset = 0
-        waypt_x_offset = -5
+        waypt_x_offset = -3
         waypt_y_offset = 0
         waypt_z_offset = 0
 
-        total_x = 21.5
-        total_y = 28.0
+        total_x = 27.9
+        total_y = 21.5
         total_z = total_x
 
         delta_x = (left_upper_p[0,0]-right_lower_p[0,0])/total_x
@@ -183,40 +183,60 @@ class P2_Blue_App(JoyApp):
         center_x = (left_upper_p[0,0] + right_lower_p[0,0])/2
         center_y = (left_upper_p[1,0] + right_lower_p[1,0])/2
         center_z = (left_upper_p[2,0] + right_lower_p[2,0])/2
+        
+        # num_first_last_extra_lines = 0
+        # for i in range(num_first_last_extra_lines):
+        #     top_line.append(np.array([[center_x+(s+y)*delta_x + x_offset], [center_y+(s-x)*delta_y-(i-num_first_last_extra_lines)*2*s*delta_y/num_points + y_offset], [center_z + (s+y)*delta_z + z_offset]]))
 
         for i in range(0, int(num_points+1+num_corner_points*2)):
             top_line.append(np.array([[center_x+(s+y)*delta_x + x_offset], [center_y+(s-x)*delta_y-(i-num_corner_points)*2*s*delta_y/num_points + y_offset], [center_z + (s+y)*delta_z + z_offset]]))
             right_line.append(np.array([[center_x+(s+y)*delta_x-(i-num_corner_points)*2*s*delta_x/num_points+ x_offset], [center_y+(-s-x)*delta_y+ y_offset],  [center_z + (s+y)*delta_z - (i-num_corner_points)*2*s*delta_z/num_points+ z_offset]]))
-            bottom_line.append(np.array([[center_x+(-s+y)*delta_x+ x_offset], [center_y+(-s-x)*delta_y+(i-num_corner_points)*2*s*delta_y/num_points+ y_offset],  [center_z + (-s+y)*delta_z]]))
+            bottom_line.append(np.array([[center_x+(-s+y)*delta_x+ x_offset], [center_y+(-s-x)*delta_y+(i-num_corner_points)*2*s*delta_y/num_points+ y_offset],  [center_z + (-s+y)*delta_z + z_offset]]))
+            left_line.append(np.array([[center_x+(-s+y)*delta_x+(i-num_corner_points)*2*s*delta_x/num_points+ x_offset], [center_y+(s-x)*delta_y+ y_offset], [center_z + (-s+y)*delta_z + (i-num_corner_points)*2*s*delta_z/num_points+ z_offset]]))
+        
+        num_first_last_extra_lines = 3
+        for i in range(int(num_points+1+num_corner_points*2), int(num_points+1+num_corner_points*2 + num_first_last_extra_lines)):
             left_line.append(np.array([[center_x+(-s+y)*delta_x+(i-num_corner_points)*2*s*delta_x/num_points+ x_offset], [center_y+(s-x)*delta_y+ y_offset], [center_z + (-s+y)*delta_z + (i-num_corner_points)*2*s*delta_z/num_points+ z_offset]]))
 
-        self.target_square.append([np.array([[center_x+s*delta_x +waypt_x_offset  + x_offset ], [center_y+s*delta_y-i*2*s*delta_y/num_points+waypt_y_offset  + y_offset], [center_z + s*delta_z+waypt_z_offset  + z_offset]])])
+        # for i in range(num_corner_points):
+        #     top_line.pop()
+        #     right_line.pop()
+        #     bottom_line.pop()
+        # num_first_last_extra_lines = 0
+        # for i in range(num_points+1,num_points+1 + num_first_last_extra_lines ):
+        #      left_line.append(np.array([[center_x+(-s+y)*delta_x+(i-num_corner_points)*2*s*delta_x/num_points+ x_offset], [center_y+(s-x)*delta_y+ y_offset], [center_z + (-s+y)*delta_z + (i-num_corner_points)*2*s*delta_z/num_points+ z_offset]]))
+        # top_line.append(np.array([[center_x+(s+y)*delta_x-(-num_corner_points)*2*s*delta_x/num_points+ x_offset], [center_y+(s-x)*delta_y-(num_points+num_corner_points)*2*s*delta_y/num_points + y_offset], [center_z + (s+y)*delta_z - (-num_corner_points)*2*s*delta_z/num_points+ z_offset]]))
+        # right_line.append(np.array([[center_x+(s+y)*delta_x-(num_points+num_corner_points)*2*s*delta_x/num_points+ x_offset], [center_y+(-s-x)*delta_y+(-num_corner_points)*2*s*delta_y/num_points+ y_offset],  [center_z + (s+y)*delta_z - (num_points +num_corner_points)*2*s*delta_z/num_points+ z_offset]]))
+        # bottom_line.append(np.array([[center_x+(-s+y)*delta_x+(-num_corner_points)*2*s*delta_x/num_points+ x_offset], [center_y+(-s-x)*delta_y+(num_points+num_corner_points)*2*s*delta_y/num_points+ y_offset],  [center_z + (-s+y)*delta_z + (-num_corner_points)*2*s*delta_z/num_points+ z_offset]]))
+
+        
+        # self.target_square.append([np.array([[center_x+s*delta_x +waypt_x_offset  + x_offset ], [center_y+s*delta_y-i*2*s*delta_y/num_points+waypt_y_offset  + y_offset], [center_z + s*delta_z+waypt_z_offset  + z_offset]])])
         self.target_square.append(top_line)
         self.target_square.append(right_line)
         self.target_square.append(bottom_line)
         self.target_square.append(left_line)
-        progress(self.target_square)
+        # progress(self.target_square)
 
     def cali_pos_cal(self):
         theta_0 = self.cali_angles[-1][0]
         theta_2 = self.cali_angles[-1][1]
         theta_t = self.cali_angles[-1][2] - np.pi/2 + theta_2
-        p_x = (self.l2 * np.sin(theta_2) + self.l3 * np.cos(theta_t)) * np.cos(theta_0) - self.l4 * np.sin(theta_0)
-        p_y = (self.l2 * np.sin(theta_2) + self.l3 * np.cos(theta_t)) * np.sin(theta_0) + self.l4 * np.cos(theta_0)
+        p_x = (self.l2 * np.sin(theta_2) + self.l3 * np.cos(theta_t)) * np.cos(theta_0) + self.l4 * np.sin(theta_0)
+        p_y = (self.l2 * np.sin(theta_2) + self.l3 * np.cos(theta_t)) * np.sin(theta_0) - self.l4 * np.cos(theta_0)
         p_z = self.l1 + self.l2 * np.cos(theta_2) - self.l3 * np.sin(theta_t)
 
-        if p_x < self.min_x:
-            self.min_x = p_x
-        if p_x > self.max_x:
-            self.max_x = p_x
-        if p_y < self.min_y:
-            self.min_y = p_y
-        if p_y > self.max_y:
-            self.max_y = p_y
-        if p_z < self.min_z:
-            self.min_z = p_z
-        if p_z > self.max_z:
-            self.max_z = p_z
+        # if p_x < self.min_x:
+        #     self.min_x = p_x
+        # if p_x > self.max_x:
+        #     self.max_x = p_x
+        # if p_y < self.min_y:
+        #     self.min_y = p_y
+        # if p_y > self.max_y:
+        #     self.max_y = p_y
+        # if p_z < self.min_z:
+        #     self.min_z = p_z
+        # if p_z > self.max_z:
+        #     self.max_z = p_z
         self.cali_pos.append(np.array([[p_x],[p_y],[p_z]]))
 
     def cal_corner_pts(self,recorded_pts):
@@ -235,9 +255,9 @@ class P2_Blue_App(JoyApp):
         return left_upper_p,right_lower_p
 
     def reset_motors(self, no_rotating_base = False):
-        self.arm[0].set_pos(-3500)
-        self.arm[1].set_pos(-4500 - 3000)
-        self.arm[2].set_pos(3000)
+        self.arm[0].set_pos(-12800)
+        self.arm[1].set_pos(-14200 + 1500)
+        self.arm[2].set_pos(-9100 - 3000)
         if not no_rotating_base:
             self.arm[3].set_pos(0)
         return
@@ -263,7 +283,7 @@ class P2_Blue_App(JoyApp):
                 if not self.rotating_base_fixed:
                     return progress(pre + "Pls fix the base first")
                 # progress(pre + str(self.app.arm[0].get_pos() / 18000) + " "+ str(self.app.arm[1].get_pos() / 18000) + " "+ str(self.app.arm[2].get_pos() / 18000))
-                self.cali_angles.append(np.array([(self.arm[0].get_pos() +3500) % 36000 / 18000 * np.pi,-(self.arm[1].get_pos()+ 4500) % 36000 / 18000 * np.pi,self.arm[2].get_pos() % 36000 / 18000 * np.pi]))
+                self.cali_angles.append(np.array([(self.arm[0].get_pos() + 12800) % 36000 / 18000 * np.pi,(self.arm[1].get_pos()+ 14200) % 36000 / 18000 * np.pi,-(self.arm[2].get_pos()+9100 )% 36000 / 18000 * np.pi]))
                 self.cali_pos_cal()
                 progress(pre + "Recording point: " + str(self.cali_pos[-1][0]) +" " +str(self.cali_pos[-1][1]) +" " + str(self.cali_pos[-1][2]) +" ")
                 return
@@ -303,6 +323,6 @@ if __name__=="__main__":
     }
     robot = {'count':4,'names':motors_name}
     cfg = {'windowSize':[160,120]}
-    square = {"x":0 , "y":0, "s":6}
+    square = {"x":2 , "y":-2, "s":5}
     app = P2_Blue_App(robot = robot,cfg=cfg,square = square)
     app.run()
