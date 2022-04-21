@@ -173,7 +173,7 @@ class P2_Blue_App(JoyApp):
         waypt_z_offset = 0
 
         total_x = 27.9
-        total_y = 21.5
+        total_y = 21.7
         total_z = total_x
 
         delta_x = (left_upper_p[0,0]-right_lower_p[0,0])/total_x
@@ -209,8 +209,9 @@ class P2_Blue_App(JoyApp):
         # right_line.append(np.array([[center_x+(s+y)*delta_x-(num_points+num_corner_points)*2*s*delta_x/num_points+ x_offset], [center_y+(-s-x)*delta_y+(-num_corner_points)*2*s*delta_y/num_points+ y_offset],  [center_z + (s+y)*delta_z - (num_points +num_corner_points)*2*s*delta_z/num_points+ z_offset]]))
         # bottom_line.append(np.array([[center_x+(-s+y)*delta_x+(-num_corner_points)*2*s*delta_x/num_points+ x_offset], [center_y+(-s-x)*delta_y+(num_points+num_corner_points)*2*s*delta_y/num_points+ y_offset],  [center_z + (-s+y)*delta_z + (-num_corner_points)*2*s*delta_z/num_points+ z_offset]]))
 
-        
-        # self.target_square.append([np.array([[center_x+s*delta_x +waypt_x_offset  + x_offset ], [center_y+s*delta_y-i*2*s*delta_y/num_points+waypt_y_offset  + y_offset], [center_z + s*delta_z+waypt_z_offset  + z_offset]])])
+        i = 0
+        z_offset = 3
+        self.target_square.append([np.array([[center_x+(s+y)*delta_x + x_offset], [center_y+(s-x)*delta_y-(i-num_corner_points)*2*s*delta_y/num_points + y_offset], [center_z + (s+y)*delta_z + z_offset]])])
         self.target_square.append(top_line)
         self.target_square.append(right_line)
         self.target_square.append(bottom_line)
@@ -295,10 +296,13 @@ class P2_Blue_App(JoyApp):
                 return
             if evt.key == K_d:
                 # input(pre + "Press Enter when you put the robotic arm in ready pose and ready to draw")
+                square_x = float(input("x"))
+                square_y = float(input("y"))
+                square_s = float(input("s"))
                 progress(pre + "Drawing a square~")
-                square_x = self.square_param['x']
-                square_y = self.square_param['y']
-                square_s = self.square_param['s']
+                # square_x = self.square_param['x']
+                # square_y = self.square_param['y']
+                # square_s = self.square_param['s']
                 # progress("x: "+str(square_x)+" y: "+str(square_y)+ " z: "+ str(square_s))
                 self.discretize_square(square_x,square_y,square_s,self.cali_pos) # set self.target_square
                 self.drawP.start()
